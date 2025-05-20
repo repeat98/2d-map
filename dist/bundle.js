@@ -5292,305 +5292,6 @@ var App = function App() {
 
 /***/ }),
 
-/***/ "./src/components/DotHover.jsx":
-/*!*************************************!*\
-  !*** ./src/components/DotHover.jsx ***!
-  \*************************************/
-/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
-
-"use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
-/* harmony export */ });
-/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! react */ "./node_modules/react/index.js");
-/* harmony import */ var react__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(react__WEBPACK_IMPORTED_MODULE_0__);
-/* harmony import */ var pixi_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! pixi.js */ "./node_modules/pixi.js/lib/index.mjs");
-/* harmony import */ var wavesurfer_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! wavesurfer.js */ "./node_modules/wavesurfer.js/dist/wavesurfer.esm.js");
-/* harmony import */ var _assets_default_artwork_png__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ../../assets/default-artwork.png */ "./assets/default-artwork.png");
-/* harmony import */ var _DotHover_scss__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./DotHover.scss */ "./src/components/DotHover.scss");
-function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
-function _regeneratorRuntime() { "use strict"; /*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/babel/babel/blob/main/packages/babel-helpers/LICENSE */ _regeneratorRuntime = function _regeneratorRuntime() { return r; }; var t, r = {}, e = Object.prototype, n = e.hasOwnProperty, o = "function" == typeof Symbol ? Symbol : {}, i = o.iterator || "@@iterator", a = o.asyncIterator || "@@asyncIterator", u = o.toStringTag || "@@toStringTag"; function c(t, r, e, n) { return Object.defineProperty(t, r, { value: e, enumerable: !n, configurable: !n, writable: !n }); } try { c({}, ""); } catch (t) { c = function c(t, r, e) { return t[r] = e; }; } function h(r, e, n, o) { var i = e && e.prototype instanceof Generator ? e : Generator, a = Object.create(i.prototype); return c(a, "_invoke", function (r, e, n) { var o = 1; return function (i, a) { if (3 === o) throw Error("Generator is already running"); if (4 === o) { if ("throw" === i) throw a; return { value: t, done: !0 }; } for (n.method = i, n.arg = a;;) { var u = n.delegate; if (u) { var c = d(u, n); if (c) { if (c === f) continue; return c; } } if ("next" === n.method) n.sent = n._sent = n.arg;else if ("throw" === n.method) { if (1 === o) throw o = 4, n.arg; n.dispatchException(n.arg); } else "return" === n.method && n.abrupt("return", n.arg); o = 3; var h = s(r, e, n); if ("normal" === h.type) { if (o = n.done ? 4 : 2, h.arg === f) continue; return { value: h.arg, done: n.done }; } "throw" === h.type && (o = 4, n.method = "throw", n.arg = h.arg); } }; }(r, n, new Context(o || [])), !0), a; } function s(t, r, e) { try { return { type: "normal", arg: t.call(r, e) }; } catch (t) { return { type: "throw", arg: t }; } } r.wrap = h; var f = {}; function Generator() {} function GeneratorFunction() {} function GeneratorFunctionPrototype() {} var l = {}; c(l, i, function () { return this; }); var p = Object.getPrototypeOf, y = p && p(p(x([]))); y && y !== e && n.call(y, i) && (l = y); var v = GeneratorFunctionPrototype.prototype = Generator.prototype = Object.create(l); function g(t) { ["next", "throw", "return"].forEach(function (r) { c(t, r, function (t) { return this._invoke(r, t); }); }); } function AsyncIterator(t, r) { function e(o, i, a, u) { var c = s(t[o], t, i); if ("throw" !== c.type) { var h = c.arg, f = h.value; return f && "object" == _typeof(f) && n.call(f, "__await") ? r.resolve(f.__await).then(function (t) { e("next", t, a, u); }, function (t) { e("throw", t, a, u); }) : r.resolve(f).then(function (t) { h.value = t, a(h); }, function (t) { return e("throw", t, a, u); }); } u(c.arg); } var o; c(this, "_invoke", function (t, n) { function i() { return new r(function (r, o) { e(t, n, r, o); }); } return o = o ? o.then(i, i) : i(); }, !0); } function d(r, e) { var n = e.method, o = r.i[n]; if (o === t) return e.delegate = null, "throw" === n && r.i["return"] && (e.method = "return", e.arg = t, d(r, e), "throw" === e.method) || "return" !== n && (e.method = "throw", e.arg = new TypeError("The iterator does not provide a '" + n + "' method")), f; var i = s(o, r.i, e.arg); if ("throw" === i.type) return e.method = "throw", e.arg = i.arg, e.delegate = null, f; var a = i.arg; return a ? a.done ? (e[r.r] = a.value, e.next = r.n, "return" !== e.method && (e.method = "next", e.arg = t), e.delegate = null, f) : a : (e.method = "throw", e.arg = new TypeError("iterator result is not an object"), e.delegate = null, f); } function w(t) { this.tryEntries.push(t); } function m(r) { var e = r[4] || {}; e.type = "normal", e.arg = t, r[4] = e; } function Context(t) { this.tryEntries = [[-1]], t.forEach(w, this), this.reset(!0); } function x(r) { if (null != r) { var e = r[i]; if (e) return e.call(r); if ("function" == typeof r.next) return r; if (!isNaN(r.length)) { var o = -1, a = function e() { for (; ++o < r.length;) if (n.call(r, o)) return e.value = r[o], e.done = !1, e; return e.value = t, e.done = !0, e; }; return a.next = a; } } throw new TypeError(_typeof(r) + " is not iterable"); } return GeneratorFunction.prototype = GeneratorFunctionPrototype, c(v, "constructor", GeneratorFunctionPrototype), c(GeneratorFunctionPrototype, "constructor", GeneratorFunction), GeneratorFunction.displayName = c(GeneratorFunctionPrototype, u, "GeneratorFunction"), r.isGeneratorFunction = function (t) { var r = "function" == typeof t && t.constructor; return !!r && (r === GeneratorFunction || "GeneratorFunction" === (r.displayName || r.name)); }, r.mark = function (t) { return Object.setPrototypeOf ? Object.setPrototypeOf(t, GeneratorFunctionPrototype) : (t.__proto__ = GeneratorFunctionPrototype, c(t, u, "GeneratorFunction")), t.prototype = Object.create(v), t; }, r.awrap = function (t) { return { __await: t }; }, g(AsyncIterator.prototype), c(AsyncIterator.prototype, a, function () { return this; }), r.AsyncIterator = AsyncIterator, r.async = function (t, e, n, o, i) { void 0 === i && (i = Promise); var a = new AsyncIterator(h(t, e, n, o), i); return r.isGeneratorFunction(e) ? a : a.next().then(function (t) { return t.done ? t.value : a.next(); }); }, g(v), c(v, u, "Generator"), c(v, i, function () { return this; }), c(v, "toString", function () { return "[object Generator]"; }), r.keys = function (t) { var r = Object(t), e = []; for (var n in r) e.unshift(n); return function t() { for (; e.length;) if ((n = e.pop()) in r) return t.value = n, t.done = !1, t; return t.done = !0, t; }; }, r.values = x, Context.prototype = { constructor: Context, reset: function reset(r) { if (this.prev = this.next = 0, this.sent = this._sent = t, this.done = !1, this.delegate = null, this.method = "next", this.arg = t, this.tryEntries.forEach(m), !r) for (var e in this) "t" === e.charAt(0) && n.call(this, e) && !isNaN(+e.slice(1)) && (this[e] = t); }, stop: function stop() { this.done = !0; var t = this.tryEntries[0][4]; if ("throw" === t.type) throw t.arg; return this.rval; }, dispatchException: function dispatchException(r) { if (this.done) throw r; var e = this; function n(t) { a.type = "throw", a.arg = r, e.next = t; } for (var o = e.tryEntries.length - 1; o >= 0; --o) { var i = this.tryEntries[o], a = i[4], u = this.prev, c = i[1], h = i[2]; if (-1 === i[0]) return n("end"), !1; if (!c && !h) throw Error("try statement without catch or finally"); if (null != i[0] && i[0] <= u) { if (u < c) return this.method = "next", this.arg = t, n(c), !0; if (u < h) return n(h), !1; } } }, abrupt: function abrupt(t, r) { for (var e = this.tryEntries.length - 1; e >= 0; --e) { var n = this.tryEntries[e]; if (n[0] > -1 && n[0] <= this.prev && this.prev < n[2]) { var o = n; break; } } o && ("break" === t || "continue" === t) && o[0] <= r && r <= o[2] && (o = null); var i = o ? o[4] : {}; return i.type = t, i.arg = r, o ? (this.method = "next", this.next = o[2], f) : this.complete(i); }, complete: function complete(t, r) { if ("throw" === t.type) throw t.arg; return "break" === t.type || "continue" === t.type ? this.next = t.arg : "return" === t.type ? (this.rval = this.arg = t.arg, this.method = "return", this.next = "end") : "normal" === t.type && r && (this.next = r), f; }, finish: function finish(t) { for (var r = this.tryEntries.length - 1; r >= 0; --r) { var e = this.tryEntries[r]; if (e[2] === t) return this.complete(e[4], e[3]), m(e), f; } }, "catch": function _catch(t) { for (var r = this.tryEntries.length - 1; r >= 0; --r) { var e = this.tryEntries[r]; if (e[0] === t) { var n = e[4]; if ("throw" === n.type) { var o = n.arg; m(e); } return o; } } throw Error("illegal catch attempt"); }, delegateYield: function delegateYield(r, e, n) { return this.delegate = { i: x(r), r: e, n: n }, "next" === this.method && (this.arg = t), f; } }, r; }
-function asyncGeneratorStep(n, t, e, r, o, a, c) { try { var i = n[a](c), u = i.value; } catch (n) { return void e(n); } i.done ? t(u) : Promise.resolve(u).then(r, o); }
-function _asyncToGenerator(n) { return function () { var t = this, e = arguments; return new Promise(function (r, o) { var a = n.apply(t, e); function _next(n) { asyncGeneratorStep(a, r, o, _next, _throw, "next", n); } function _throw(n) { asyncGeneratorStep(a, r, o, _next, _throw, "throw", n); } _next(void 0); }); }; }
-
-
-
-
-
-var PLAY_BUTTON_COLOR = 0x6A82FB;
-var PLAY_BUTTON_HOVER_COLOR = 0x8BA3FF;
-var PLAY_BUTTON_SIZE = 24;
-var TOOLTIP_WIDTH = 300;
-var TOOLTIP_HEIGHT = 200;
-var TOOLTIP_PADDING = 10;
-var COVER_ART_SIZE = 80;
-var DotHover = function DotHover(_ref) {
-  var track = _ref.track,
-    xFeature = _ref.xFeature,
-    yFeature = _ref.yFeature,
-    xFeatureLabel = _ref.xFeatureLabel,
-    yFeatureLabel = _ref.yFeatureLabel,
-    xValue = _ref.xValue,
-    yValue = _ref.yValue,
-    formatTickValue = _ref.formatTickValue,
-    wavesurfer = _ref.wavesurfer,
-    onPlayPause = _ref.onPlayPause,
-    isPlaying = _ref.isPlaying,
-    position = _ref.position,
-    container = _ref.container;
-  var containerRef = (0,react__WEBPACK_IMPORTED_MODULE_0__.useRef)(null);
-  var playButtonRef = (0,react__WEBPACK_IMPORTED_MODULE_0__.useRef)(null);
-  var playIconRef = (0,react__WEBPACK_IMPORTED_MODULE_0__.useRef)(null);
-  var waveformContainerRef = (0,react__WEBPACK_IMPORTED_MODULE_0__.useRef)(null);
-  var coverArtSpriteRef = (0,react__WEBPACK_IMPORTED_MODULE_0__.useRef)(null);
-  var titleTextRef = (0,react__WEBPACK_IMPORTED_MODULE_0__.useRef)(null);
-  var featuresTextRef = (0,react__WEBPACK_IMPORTED_MODULE_0__.useRef)(null);
-  (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(function () {
-    if (!container) return;
-
-    // Create container
-    var tooltipContainer = new pixi_js__WEBPACK_IMPORTED_MODULE_1__.Container();
-    containerRef.current = tooltipContainer;
-    container.addChild(tooltipContainer);
-
-    // Set position
-    tooltipContainer.position.set(position.x, position.y);
-
-    // Create background
-    var bg = new pixi_js__WEBPACK_IMPORTED_MODULE_1__.Graphics().roundRect(0, 0, TOOLTIP_WIDTH, TOOLTIP_HEIGHT, 8).fill({
-      color: 0x333333
-    });
-    tooltipContainer.addChild(bg);
-
-    // Create cover art sprite
-    var coverArt = new pixi_js__WEBPACK_IMPORTED_MODULE_1__.Sprite(pixi_js__WEBPACK_IMPORTED_MODULE_1__.Texture.EMPTY);
-    coverArt.position.set(TOOLTIP_PADDING, TOOLTIP_PADDING);
-    coverArt.width = COVER_ART_SIZE;
-    coverArt.height = COVER_ART_SIZE;
-    tooltipContainer.addChild(coverArt);
-    coverArtSpriteRef.current = coverArt;
-
-    // Create title text
-    var titleText = new pixi_js__WEBPACK_IMPORTED_MODULE_1__.Text({
-      text: track.title || 'Unknown Title',
-      style: {
-        fontFamily: 'Arial',
-        fontSize: 16,
-        fontWeight: 'bold',
-        fill: 0xFFFFFF,
-        wordWrap: true,
-        wordWrapWidth: TOOLTIP_WIDTH - (TOOLTIP_PADDING * 2 + COVER_ART_SIZE + TOOLTIP_PADDING)
-      }
-    });
-    titleText.position.set(TOOLTIP_PADDING + COVER_ART_SIZE + TOOLTIP_PADDING, TOOLTIP_PADDING);
-    tooltipContainer.addChild(titleText);
-    titleTextRef.current = titleText;
-
-    // Create features text
-    var featuresText = new pixi_js__WEBPACK_IMPORTED_MODULE_1__.Text({
-      text: "".concat(xFeatureLabel, ": ").concat(formatTickValue(xValue), "\n").concat(yFeatureLabel, ": ").concat(formatTickValue(yValue)),
-      style: {
-        fontFamily: 'Arial',
-        fontSize: 14,
-        fill: 0xAAAAAA,
-        wordWrap: true,
-        wordWrapWidth: TOOLTIP_WIDTH - (TOOLTIP_PADDING * 2 + COVER_ART_SIZE + TOOLTIP_PADDING)
-      }
-    });
-    featuresText.position.set(TOOLTIP_PADDING + COVER_ART_SIZE + TOOLTIP_PADDING, TOOLTIP_PADDING + 30);
-    tooltipContainer.addChild(featuresText);
-    featuresTextRef.current = featuresText;
-
-    // Create play button
-    var playButton = new pixi_js__WEBPACK_IMPORTED_MODULE_1__.Graphics().circle(0, 0, PLAY_BUTTON_SIZE / 2).fill({
-      color: PLAY_BUTTON_COLOR
-    });
-    playButton.position.set(TOOLTIP_WIDTH - PLAY_BUTTON_SIZE - 10, PLAY_BUTTON_SIZE + 10);
-    playButton.eventMode = 'static';
-    playButton.cursor = 'pointer';
-    tooltipContainer.addChild(playButton);
-    playButtonRef.current = playButton;
-
-    // Create play icon
-    var playIcon = new pixi_js__WEBPACK_IMPORTED_MODULE_1__.Graphics();
-    playIcon.beginFill(0xFFFFFF);
-    playIcon.moveTo(-4, -6);
-    playIcon.lineTo(-4, 6);
-    playIcon.lineTo(6, 0);
-    playIcon.endFill();
-    playButton.addChild(playIcon);
-    playIconRef.current = playIcon;
-
-    // Add hover effect for play button
-    playButton.on('pointerover', function () {
-      playButton.clear().circle(0, 0, PLAY_BUTTON_SIZE / 2).fill({
-        color: PLAY_BUTTON_HOVER_COLOR
-      });
-      playButton.addChild(playIcon);
-    });
-    playButton.on('pointerout', function () {
-      playButton.clear().circle(0, 0, PLAY_BUTTON_SIZE / 2).fill({
-        color: PLAY_BUTTON_COLOR
-      });
-      playButton.addChild(playIcon);
-    });
-
-    // Add click handler for play button
-    playButton.on('pointerdown', function () {
-      onPlayPause();
-    });
-
-    // Create waveform container
-    var waveformContainer = new pixi_js__WEBPACK_IMPORTED_MODULE_1__.Container();
-    waveformContainer.position.set(TOOLTIP_PADDING, TOOLTIP_PADDING + COVER_ART_SIZE + TOOLTIP_PADDING);
-    tooltipContainer.addChild(waveformContainer);
-    waveformContainerRef.current = waveformContainer;
-
-    // Load cover art
-    var loadCoverArt = /*#__PURE__*/function () {
-      var _ref2 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee() {
-        var artworkPath, texture;
-        return _regeneratorRuntime().wrap(function _callee$(_context) {
-          while (1) switch (_context.prev = _context.next) {
-            case 0:
-              _context.prev = 0;
-              artworkPath = track.artwork_thumbnail_path || track.coverArtUrl || _assets_default_artwork_png__WEBPACK_IMPORTED_MODULE_3__["default"];
-              _context.next = 4;
-              return pixi_js__WEBPACK_IMPORTED_MODULE_1__.Texture.from(artworkPath);
-            case 4:
-              texture = _context.sent;
-              coverArt.texture = texture;
-              _context.next = 12;
-              break;
-            case 8:
-              _context.prev = 8;
-              _context.t0 = _context["catch"](0);
-              console.error("💥 Error loading cover art:", _context.t0);
-              coverArt.texture = pixi_js__WEBPACK_IMPORTED_MODULE_1__.Texture.from(_assets_default_artwork_png__WEBPACK_IMPORTED_MODULE_3__["default"]);
-            case 12:
-            case "end":
-              return _context.stop();
-          }
-        }, _callee, null, [[0, 8]]);
-      }));
-      return function loadCoverArt() {
-        return _ref2.apply(this, arguments);
-      };
-    }();
-    loadCoverArt();
-
-    // Load waveform
-    var loadWaveform = /*#__PURE__*/function () {
-      var _ref3 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee2() {
-        var _bg, waveformResponse, waveformData, waveformGraphics, peaks, width, height, centerY, step, i, x, y, errorText;
-        return _regeneratorRuntime().wrap(function _callee2$(_context2) {
-          while (1) switch (_context2.prev = _context2.next) {
-            case 0:
-              _context2.prev = 0;
-              // Clear previous waveform
-              waveformContainer.removeChildren();
-
-              // Add background
-              _bg = new pixi_js__WEBPACK_IMPORTED_MODULE_1__.Graphics().rect(0, 0, 150, 40).fill({
-                color: 0x1A1A1A
-              });
-              waveformContainer.addChild(_bg);
-              if (!track.audioUrl) {
-                _context2.next = 22;
-                break;
-              }
-              _context2.next = 7;
-              return fetch("http://localhost:3000/tracks/waveform/".concat(track.id));
-            case 7:
-              waveformResponse = _context2.sent;
-              if (!waveformResponse.ok) {
-                _context2.next = 22;
-                break;
-              }
-              _context2.next = 11;
-              return waveformResponse.json();
-            case 11:
-              waveformData = _context2.sent;
-              // Draw waveform
-              waveformGraphics = new pixi_js__WEBPACK_IMPORTED_MODULE_1__.Graphics();
-              waveformGraphics.setStrokeStyle({
-                width: 1,
-                color: 0x6A82FB
-              });
-              peaks = waveformData.waveform;
-              width = 150;
-              height = 40;
-              centerY = height / 2;
-              step = width / peaks.length;
-              waveformGraphics.moveTo(0, centerY);
-              for (i = 0; i < peaks.length; i++) {
-                x = i * step;
-                y = centerY + peaks[i] * centerY;
-                waveformGraphics.lineTo(x, y);
-              }
-              waveformContainer.addChild(waveformGraphics);
-            case 22:
-              _context2.next = 31;
-              break;
-            case 24:
-              _context2.prev = 24;
-              _context2.t0 = _context2["catch"](0);
-              console.error("💥 Error loading waveform:", _context2.t0);
-              errorText = new pixi_js__WEBPACK_IMPORTED_MODULE_1__.Text({
-                text: 'Error loading waveform',
-                style: {
-                  fontFamily: 'Arial',
-                  fontSize: 12,
-                  fill: 0xFF0000,
-                  align: 'center'
-                }
-              });
-              errorText.anchor.set(0.5);
-              errorText.position.set(75, 20);
-              waveformContainer.addChild(errorText);
-            case 31:
-            case "end":
-              return _context2.stop();
-          }
-        }, _callee2, null, [[0, 24]]);
-      }));
-      return function loadWaveform() {
-        return _ref3.apply(this, arguments);
-      };
-    }();
-    loadWaveform();
-    return function () {
-      if (tooltipContainer.parent) {
-        tooltipContainer.parent.removeChild(tooltipContainer);
-      }
-      tooltipContainer.destroy({
-        children: true
-      });
-    };
-  }, [track, xFeature, yFeature, xFeatureLabel, yFeatureLabel, xValue, yValue, formatTickValue, position, container]);
-  (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(function () {
-    if (playIconRef.current) {
-      playIconRef.current.clear();
-      playIconRef.current.beginFill(0xFFFFFF);
-      if (isPlaying) {
-        // Draw pause icon
-        playIconRef.current.drawRect(-4, -6, 8, 12);
-      } else {
-        // Draw play icon
-        playIconRef.current.moveTo(-4, -6);
-        playIconRef.current.lineTo(-4, 6);
-        playIconRef.current.lineTo(6, 0);
-      }
-      playIconRef.current.endFill();
-    }
-  }, [isPlaying]);
-  return null; // This component doesn't render anything directly
-};
-/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (DotHover);
-
-/***/ }),
-
 /***/ "./src/components/VisualizationCanvas.jsx":
 /*!************************************************!*\
   !*** ./src/components/VisualizationCanvas.jsx ***!
@@ -5607,9 +5308,8 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var pixi_js_unsafe_eval__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! pixi.js/unsafe-eval */ "./node_modules/pixi.js/lib/unsafe-eval/init.mjs");
 /* harmony import */ var pixi_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! pixi.js */ "./node_modules/pixi.js/lib/index.mjs");
 /* harmony import */ var wavesurfer_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! wavesurfer.js */ "./node_modules/wavesurfer.js/dist/wavesurfer.esm.js");
-/* harmony import */ var _DotHover__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./DotHover */ "./src/components/DotHover.jsx");
-/* harmony import */ var _VisualizationCanvas_scss__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./VisualizationCanvas.scss */ "./src/components/VisualizationCanvas.scss");
-/* harmony import */ var _assets_default_artwork_png__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ../../assets/default-artwork.png */ "./assets/default-artwork.png");
+/* harmony import */ var _VisualizationCanvas_scss__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./VisualizationCanvas.scss */ "./src/components/VisualizationCanvas.scss");
+/* harmony import */ var _assets_default_artwork_png__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ../../assets/default-artwork.png */ "./assets/default-artwork.png");
 function _createForOfIteratorHelper(r, e) { var t = "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (!t) { if (Array.isArray(r) || (t = _unsupportedIterableToArray(r)) || e && r && "number" == typeof r.length) { t && (r = t); var _n = 0, F = function F() {}; return { s: F, n: function n() { return _n >= r.length ? { done: !0 } : { done: !1, value: r[_n++] }; }, e: function e(r) { throw r; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var o, a = !0, u = !1; return { s: function s() { t = t.call(r); }, n: function n() { var r = t.next(); return a = r.done, r; }, e: function e(r) { u = !0, o = r; }, f: function f() { try { a || null == t["return"] || t["return"](); } finally { if (u) throw o; } } }; }
 function _regeneratorRuntime() { "use strict"; /*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/babel/babel/blob/main/packages/babel-helpers/LICENSE */ _regeneratorRuntime = function _regeneratorRuntime() { return r; }; var t, r = {}, e = Object.prototype, n = e.hasOwnProperty, o = "function" == typeof Symbol ? Symbol : {}, i = o.iterator || "@@iterator", a = o.asyncIterator || "@@asyncIterator", u = o.toStringTag || "@@toStringTag"; function c(t, r, e, n) { return Object.defineProperty(t, r, { value: e, enumerable: !n, configurable: !n, writable: !n }); } try { c({}, ""); } catch (t) { c = function c(t, r, e) { return t[r] = e; }; } function h(r, e, n, o) { var i = e && e.prototype instanceof Generator ? e : Generator, a = Object.create(i.prototype); return c(a, "_invoke", function (r, e, n) { var o = 1; return function (i, a) { if (3 === o) throw Error("Generator is already running"); if (4 === o) { if ("throw" === i) throw a; return { value: t, done: !0 }; } for (n.method = i, n.arg = a;;) { var u = n.delegate; if (u) { var c = d(u, n); if (c) { if (c === f) continue; return c; } } if ("next" === n.method) n.sent = n._sent = n.arg;else if ("throw" === n.method) { if (1 === o) throw o = 4, n.arg; n.dispatchException(n.arg); } else "return" === n.method && n.abrupt("return", n.arg); o = 3; var h = s(r, e, n); if ("normal" === h.type) { if (o = n.done ? 4 : 2, h.arg === f) continue; return { value: h.arg, done: n.done }; } "throw" === h.type && (o = 4, n.method = "throw", n.arg = h.arg); } }; }(r, n, new Context(o || [])), !0), a; } function s(t, r, e) { try { return { type: "normal", arg: t.call(r, e) }; } catch (t) { return { type: "throw", arg: t }; } } r.wrap = h; var f = {}; function Generator() {} function GeneratorFunction() {} function GeneratorFunctionPrototype() {} var l = {}; c(l, i, function () { return this; }); var p = Object.getPrototypeOf, y = p && p(p(x([]))); y && y !== e && n.call(y, i) && (l = y); var v = GeneratorFunctionPrototype.prototype = Generator.prototype = Object.create(l); function g(t) { ["next", "throw", "return"].forEach(function (r) { c(t, r, function (t) { return this._invoke(r, t); }); }); } function AsyncIterator(t, r) { function e(o, i, a, u) { var c = s(t[o], t, i); if ("throw" !== c.type) { var h = c.arg, f = h.value; return f && "object" == _typeof(f) && n.call(f, "__await") ? r.resolve(f.__await).then(function (t) { e("next", t, a, u); }, function (t) { e("throw", t, a, u); }) : r.resolve(f).then(function (t) { h.value = t, a(h); }, function (t) { return e("throw", t, a, u); }); } u(c.arg); } var o; c(this, "_invoke", function (t, n) { function i() { return new r(function (r, o) { e(t, n, r, o); }); } return o = o ? o.then(i, i) : i(); }, !0); } function d(r, e) { var n = e.method, o = r.i[n]; if (o === t) return e.delegate = null, "throw" === n && r.i["return"] && (e.method = "return", e.arg = t, d(r, e), "throw" === e.method) || "return" !== n && (e.method = "throw", e.arg = new TypeError("The iterator does not provide a '" + n + "' method")), f; var i = s(o, r.i, e.arg); if ("throw" === i.type) return e.method = "throw", e.arg = i.arg, e.delegate = null, f; var a = i.arg; return a ? a.done ? (e[r.r] = a.value, e.next = r.n, "return" !== e.method && (e.method = "next", e.arg = t), e.delegate = null, f) : a : (e.method = "throw", e.arg = new TypeError("iterator result is not an object"), e.delegate = null, f); } function w(t) { this.tryEntries.push(t); } function m(r) { var e = r[4] || {}; e.type = "normal", e.arg = t, r[4] = e; } function Context(t) { this.tryEntries = [[-1]], t.forEach(w, this), this.reset(!0); } function x(r) { if (null != r) { var e = r[i]; if (e) return e.call(r); if ("function" == typeof r.next) return r; if (!isNaN(r.length)) { var o = -1, a = function e() { for (; ++o < r.length;) if (n.call(r, o)) return e.value = r[o], e.done = !1, e; return e.value = t, e.done = !0, e; }; return a.next = a; } } throw new TypeError(_typeof(r) + " is not iterable"); } return GeneratorFunction.prototype = GeneratorFunctionPrototype, c(v, "constructor", GeneratorFunctionPrototype), c(GeneratorFunctionPrototype, "constructor", GeneratorFunction), GeneratorFunction.displayName = c(GeneratorFunctionPrototype, u, "GeneratorFunction"), r.isGeneratorFunction = function (t) { var r = "function" == typeof t && t.constructor; return !!r && (r === GeneratorFunction || "GeneratorFunction" === (r.displayName || r.name)); }, r.mark = function (t) { return Object.setPrototypeOf ? Object.setPrototypeOf(t, GeneratorFunctionPrototype) : (t.__proto__ = GeneratorFunctionPrototype, c(t, u, "GeneratorFunction")), t.prototype = Object.create(v), t; }, r.awrap = function (t) { return { __await: t }; }, g(AsyncIterator.prototype), c(AsyncIterator.prototype, a, function () { return this; }), r.AsyncIterator = AsyncIterator, r.async = function (t, e, n, o, i) { void 0 === i && (i = Promise); var a = new AsyncIterator(h(t, e, n, o), i); return r.isGeneratorFunction(e) ? a : a.next().then(function (t) { return t.done ? t.value : a.next(); }); }, g(v), c(v, u, "Generator"), c(v, i, function () { return this; }), c(v, "toString", function () { return "[object Generator]"; }), r.keys = function (t) { var r = Object(t), e = []; for (var n in r) e.unshift(n); return function t() { for (; e.length;) if ((n = e.pop()) in r) return t.value = n, t.done = !1, t; return t.done = !0, t; }; }, r.values = x, Context.prototype = { constructor: Context, reset: function reset(r) { if (this.prev = this.next = 0, this.sent = this._sent = t, this.done = !1, this.delegate = null, this.method = "next", this.arg = t, this.tryEntries.forEach(m), !r) for (var e in this) "t" === e.charAt(0) && n.call(this, e) && !isNaN(+e.slice(1)) && (this[e] = t); }, stop: function stop() { this.done = !0; var t = this.tryEntries[0][4]; if ("throw" === t.type) throw t.arg; return this.rval; }, dispatchException: function dispatchException(r) { if (this.done) throw r; var e = this; function n(t) { a.type = "throw", a.arg = r, e.next = t; } for (var o = e.tryEntries.length - 1; o >= 0; --o) { var i = this.tryEntries[o], a = i[4], u = this.prev, c = i[1], h = i[2]; if (-1 === i[0]) return n("end"), !1; if (!c && !h) throw Error("try statement without catch or finally"); if (null != i[0] && i[0] <= u) { if (u < c) return this.method = "next", this.arg = t, n(c), !0; if (u < h) return n(h), !1; } } }, abrupt: function abrupt(t, r) { for (var e = this.tryEntries.length - 1; e >= 0; --e) { var n = this.tryEntries[e]; if (n[0] > -1 && n[0] <= this.prev && this.prev < n[2]) { var o = n; break; } } o && ("break" === t || "continue" === t) && o[0] <= r && r <= o[2] && (o = null); var i = o ? o[4] : {}; return i.type = t, i.arg = r, o ? (this.method = "next", this.next = o[2], f) : this.complete(i); }, complete: function complete(t, r) { if ("throw" === t.type) throw t.arg; return "break" === t.type || "continue" === t.type ? this.next = t.arg : "return" === t.type ? (this.rval = this.arg = t.arg, this.method = "return", this.next = "end") : "normal" === t.type && r && (this.next = r), f; }, finish: function finish(t) { for (var r = this.tryEntries.length - 1; r >= 0; --r) { var e = this.tryEntries[r]; if (e[2] === t) return this.complete(e[4], e[3]), m(e), f; } }, "catch": function _catch(t) { for (var r = this.tryEntries.length - 1; r >= 0; --r) { var e = this.tryEntries[r]; if (e[0] === t) { var n = e[4]; if ("throw" === n.type) { var o = n.arg; m(e); } return o; } } throw Error("illegal catch attempt"); }, delegateYield: function delegateYield(r, e, n) { return this.delegate = { i: x(r), r: e, n: n }, "next" === this.method && (this.arg = t), f; } }, r; }
 function _toConsumableArray(r) { return _arrayWithoutHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray(r) || _nonIterableSpread(); }
@@ -5634,7 +5334,6 @@ function _arrayWithHoles(r) { if (Array.isArray(r)) return r; }
  // For PixiJS v7+, often needed for certain features/performance.
 
  // Ensure Wavesurfer.js is installed
-
 
 
 
@@ -5771,7 +5470,7 @@ var PLAY_BUTTON_COLOR = 0x6A82FB;
 var PLAY_BUTTON_HOVER_COLOR = 0x8BA3FF;
 var PLAY_BUTTON_SIZE = 24;
 var VisualizationCanvas = function VisualizationCanvas() {
-  var _defaultNumericFeatur, _defaultNumericFeatur2, _selectableFeatures$f, _selectableFeatures$f2;
+  var _defaultNumericFeatur, _defaultNumericFeatur2;
   var _useState = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)([]),
     _useState2 = _slicedToArray(_useState, 2),
     tracks = _useState2[0],
@@ -5853,6 +5552,8 @@ var VisualizationCanvas = function VisualizationCanvas() {
     _useState28 = _slicedToArray(_useState27, 2),
     tooltipPosition = _useState28[0],
     setTooltipPosition = _useState28[1];
+  var playButtonRef = (0,react__WEBPACK_IMPORTED_MODULE_0__.useRef)(null);
+  var playIconRef = (0,react__WEBPACK_IMPORTED_MODULE_0__.useRef)(null);
   (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(function () {
     var fetchTracksAndPrepareFeatures = /*#__PURE__*/function () {
       var _ref = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee() {
@@ -6071,40 +5772,35 @@ var VisualizationCanvas = function VisualizationCanvas() {
     if (!pixiCanvasContainerRef.current || pixiAppRef.current) return;
     var app = new pixi_js__WEBPACK_IMPORTED_MODULE_2__.Application();
     var _initPrimaryApp = /*#__PURE__*/function () {
-      var _ref2 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee4() {
+      var _ref2 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee3() {
         var retryCount,
           _pixiCanvasContainerR,
           cw,
           ch,
           tooltipBg,
-          tooltipWidth,
-          tooltipHeight,
-          playButton,
-          playIcon,
-          textStyle,
-          _args4 = arguments;
-        return _regeneratorRuntime().wrap(function _callee4$(_context4) {
-          while (1) switch (_context4.prev = _context4.next) {
+          _args3 = arguments;
+        return _regeneratorRuntime().wrap(function _callee3$(_context3) {
+          while (1) switch (_context3.prev = _context3.next) {
             case 0:
-              retryCount = _args4.length > 0 && _args4[0] !== undefined ? _args4[0] : 0;
-              _context4.prev = 1;
+              retryCount = _args3.length > 0 && _args3[0] !== undefined ? _args3[0] : 0;
+              _context3.prev = 1;
               _pixiCanvasContainerR = pixiCanvasContainerRef.current, cw = _pixiCanvasContainerR.clientWidth, ch = _pixiCanvasContainerR.clientHeight;
               if (!(cw <= 0 || ch <= 0)) {
-                _context4.next = 8;
+                _context3.next = 8;
                 break;
               }
               if (!(retryCount < 5)) {
-                _context4.next = 7;
+                _context3.next = 7;
                 break;
               }
               setTimeout(function () {
                 return _initPrimaryApp(retryCount + 1);
               }, 250);
-              return _context4.abrupt("return");
+              return _context3.abrupt("return");
             case 7:
               throw new Error("Container zero dimensions");
             case 8:
-              _context4.next = 10;
+              _context3.next = 10;
               return app.init({
                 width: cw,
                 height: ch,
@@ -6120,257 +5816,138 @@ var VisualizationCanvas = function VisualizationCanvas() {
                 width: app.screen.width,
                 height: app.screen.height
               });
+
+              // Create chart area
               chartAreaRef.current = new pixi_js__WEBPACK_IMPORTED_MODULE_2__.Container();
               app.stage.addChild(chartAreaRef.current);
+
+              // Create tooltip container
               tooltipContainerRef.current = new pixi_js__WEBPACK_IMPORTED_MODULE_2__.Container();
               tooltipContainerRef.current.visible = false;
               tooltipContainerRef.current.eventMode = 'static';
               tooltipContainerRef.current.cursor = 'default';
+              app.stage.addChild(tooltipContainerRef.current);
 
-              // Create a background with fixed size
-              tooltipBg = new pixi_js__WEBPACK_IMPORTED_MODULE_2__.Graphics();
-              tooltipWidth = 300;
-              tooltipHeight = 200;
-              tooltipBg.fill({
-                color: TOOLTIP_BG_COLOR
-              }).roundRect(0, 0, tooltipWidth, tooltipHeight, 8);
+              // Create tooltip background
+              tooltipBg = new pixi_js__WEBPACK_IMPORTED_MODULE_2__.Graphics().roundRect(0, 0, 300, 200, 8).fill({
+                color: 0x333333
+              });
               tooltipContainerRef.current.addChild(tooltipBg);
-
-              // Create play button
-              playButton = new pixi_js__WEBPACK_IMPORTED_MODULE_2__.Graphics();
-              playButton.beginFill(PLAY_BUTTON_COLOR);
-              playButton.drawCircle(0, 0, PLAY_BUTTON_SIZE / 2);
-              playButton.endFill();
-              playButton.position.set(tooltipWidth - PLAY_BUTTON_SIZE - 10, PLAY_BUTTON_SIZE + 10);
-              playButton.eventMode = 'static';
-              playButton.cursor = 'pointer';
-              tooltipContainerRef.current.addChild(playButton);
-
-              // Create play icon
-              playIcon = new pixi_js__WEBPACK_IMPORTED_MODULE_2__.Graphics();
-              playIcon.beginFill(0xFFFFFF);
-              playIcon.moveTo(-4, -6);
-              playIcon.lineTo(-4, 6);
-              playIcon.lineTo(6, 0);
-              playIcon.endFill();
-              playButton.addChild(playIcon);
-
-              // Add hover effect for play button
-              playButton.on('pointerover', function () {
-                playButton.clear();
-                playButton.beginFill(PLAY_BUTTON_HOVER_COLOR);
-                playButton.drawCircle(0, 0, PLAY_BUTTON_SIZE / 2);
-                playButton.endFill();
-                playButton.addChild(playIcon);
-              });
-              playButton.on('pointerout', function () {
-                playButton.clear();
-                playButton.beginFill(PLAY_BUTTON_COLOR);
-                playButton.drawCircle(0, 0, PLAY_BUTTON_SIZE / 2);
-                playButton.endFill();
-                playButton.addChild(playIcon);
-              });
-
-              // Add click handler for play button
-              playButton.on('pointerdown', /*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee2() {
-                var track;
-                return _regeneratorRuntime().wrap(function _callee2$(_context2) {
-                  while (1) switch (_context2.prev = _context2.next) {
-                    case 0:
-                      track = currentTooltipTrackRef.current;
-                      if (!(!track || !track.audioUrl)) {
-                        _context2.next = 3;
-                        break;
-                      }
-                      return _context2.abrupt("return");
-                    case 3:
-                      if (!wavesurferRef.current) {
-                        _context2.next = 22;
-                        break;
-                      }
-                      if (!wavesurferRef.current.isPlaying()) {
-                        _context2.next = 14;
-                        break;
-                      }
-                      wavesurferRef.current.pause();
-                      // Update play icon to show play
-                      playIcon.clear();
-                      playIcon.beginFill(0xFFFFFF);
-                      playIcon.moveTo(-4, -6);
-                      playIcon.lineTo(-4, 6);
-                      playIcon.lineTo(6, 0);
-                      playIcon.endFill();
-                      _context2.next = 22;
-                      break;
-                    case 14:
-                      if (!(activeAudioUrlRef.current !== track.audioUrl)) {
-                        _context2.next = 17;
-                        break;
-                      }
-                      _context2.next = 17;
-                      return wavesurferRef.current.load(track.audioUrl);
-                    case 17:
-                      wavesurferRef.current.play();
-                      // Update play icon to show pause
-                      playIcon.clear();
-                      playIcon.beginFill(0xFFFFFF);
-                      playIcon.drawRect(-4, -6, 8, 12);
-                      playIcon.endFill();
-                    case 22:
-                    case "end":
-                      return _context2.stop();
-                  }
-                }, _callee2);
-              })));
 
               // Create cover art sprite
               coverArtSpriteRef.current = new pixi_js__WEBPACK_IMPORTED_MODULE_2__.Sprite(pixi_js__WEBPACK_IMPORTED_MODULE_2__.Texture.EMPTY);
-              coverArtSpriteRef.current.position.set(TOOLTIP_PADDING, TOOLTIP_PADDING);
-              coverArtSpriteRef.current.width = COVER_ART_SIZE;
-              coverArtSpriteRef.current.height = COVER_ART_SIZE;
+              coverArtSpriteRef.current.position.set(10, 10);
+              coverArtSpriteRef.current.width = 80;
+              coverArtSpriteRef.current.height = 80;
               tooltipContainerRef.current.addChild(coverArtSpriteRef.current);
 
-              // Create text elements
-              textStyle = {
-                fontFamily: 'Arial, sans-serif',
-                fontSize: 13,
-                fill: TOOLTIP_TEXT_COLOR,
-                wordWrap: true,
-                wordWrapWidth: tooltipWidth - (TOOLTIP_PADDING * 2 + COVER_ART_SIZE + TOOLTIP_PADDING)
-              };
+              // Create title text
               trackTitleTextRef.current = new pixi_js__WEBPACK_IMPORTED_MODULE_2__.Text({
                 text: '',
-                style: _objectSpread(_objectSpread({}, textStyle), {}, {
+                style: {
+                  fontFamily: 'Arial',
+                  fontSize: 16,
                   fontWeight: 'bold',
-                  fontSize: 15
-                })
+                  fill: 0xFFFFFF,
+                  wordWrap: true,
+                  wordWrapWidth: 200
+                }
               });
-              trackTitleTextRef.current.position.set(TOOLTIP_PADDING + COVER_ART_SIZE + TOOLTIP_PADDING, TOOLTIP_PADDING);
+              trackTitleTextRef.current.position.set(100, 10);
               tooltipContainerRef.current.addChild(trackTitleTextRef.current);
+
+              // Create features text
               trackFeaturesTextRef.current = new pixi_js__WEBPACK_IMPORTED_MODULE_2__.Text({
                 text: '',
-                style: textStyle
+                style: {
+                  fontFamily: 'Arial',
+                  fontSize: 14,
+                  fill: 0xAAAAAA,
+                  wordWrap: true,
+                  wordWrapWidth: 200
+                }
               });
-              trackFeaturesTextRef.current.position.set(TOOLTIP_PADDING + COVER_ART_SIZE + TOOLTIP_PADDING, TOOLTIP_PADDING + 30);
+              trackFeaturesTextRef.current.position.set(100, 40);
               tooltipContainerRef.current.addChild(trackFeaturesTextRef.current);
+
+              // Create play button
+              playButtonRef.current = new pixi_js__WEBPACK_IMPORTED_MODULE_2__.Graphics().circle(0, 0, 12).fill({
+                color: 0x6A82FB
+              });
+              playButtonRef.current.position.set(280, 30);
+              playButtonRef.current.eventMode = 'static';
+              playButtonRef.current.cursor = 'pointer';
+              tooltipContainerRef.current.addChild(playButtonRef.current);
+
+              // Create play icon
+              playIconRef.current = new pixi_js__WEBPACK_IMPORTED_MODULE_2__.Graphics();
+              playIconRef.current.fill({
+                color: 0xFFFFFF
+              }).moveTo(-4, -6).lineTo(-4, 6).lineTo(6, 0);
+              playButtonRef.current.addChild(playIconRef.current);
 
               // Create waveform container
               waveformContainerRef.current = new pixi_js__WEBPACK_IMPORTED_MODULE_2__.Container();
-              waveformContainerRef.current.position.set(TOOLTIP_PADDING, TOOLTIP_PADDING + COVER_ART_SIZE + TOOLTIP_PADDING);
+              waveformContainerRef.current.position.set(10, 100);
               tooltipContainerRef.current.addChild(waveformContainerRef.current);
 
-              // Add tooltip to stage
-              app.stage.addChild(tooltipContainerRef.current);
-              if (wavesurferContainerRef.current) {
-                wavesurferRef.current = wavesurfer_js__WEBPACK_IMPORTED_MODULE_3__["default"].create({
-                  container: wavesurferContainerRef.current,
-                  waveColor: '#6A82FB',
-                  progressColor: '#3B4D9A',
-                  height: 40,
-                  // Set a fixed height for the waveform
-                  barWidth: 1,
-                  barGap: 1,
-                  cursorWidth: 0,
-                  interact: false,
-                  backend: 'MediaElement',
-                  normalize: true,
-                  autoCenter: true,
-                  partialRender: true,
-                  responsive: false,
-                  splitChannels: false,
-                  xhr: {
-                    mode: 'no-cors',
-                    credentials: 'same-origin',
-                    cache: 'force-cache'
-                  }
+              // Add hover effect for play button
+              playButtonRef.current.on('pointerover', function () {
+                playButtonRef.current.clear().circle(0, 0, 12).fill({
+                  color: 0x8BA3FF
                 });
-                console.log("🌊 Wavesurfer instance created.");
-                wavesurferRef.current.on('error', function (err) {
-                  return console.error('🌊 Wavesurfer Global Error:', err, "Attempted URL:", activeAudioUrlRef.current);
-                });
-                wavesurferRef.current.on('warn', function (warn) {
-                  return console.warn('🌊 Wavesurfer Global Warning:', warn);
-                });
-                wavesurferRef.current.on('ready', function () {
-                  var _wavesurferRef$curren, _tooltipContainerRef$;
-                  var currentSrc = (_wavesurferRef$curren = wavesurferRef.current) === null || _wavesurferRef$curren === void 0 || (_wavesurferRef$curren = _wavesurferRef$curren.getMediaElement()) === null || _wavesurferRef$curren === void 0 ? void 0 : _wavesurferRef$curren.src;
-                  console.log('🌊 Wavesurfer ready for URL:', currentSrc);
-                  var tooltipTrack = currentTooltipTrackRef.current;
-                  if (tooltipTrack && tooltipTrack.audioUrl === currentSrc && (_tooltipContainerRef$ = tooltipContainerRef.current) !== null && _tooltipContainerRef$ !== void 0 && _tooltipContainerRef$.visible) {
-                    console.log("🌊 Autoplaying on ready (tooltip is active for this track).");
-                    wavesurferRef.current.play()["catch"](function (e) {
-                      return console.error("🌊 Error auto-playing on ready:", e);
-                    });
-                  } else {
-                    console.log("🌊 Audio ready, but context changed. Not auto-playing.");
-                  }
-                });
-                wavesurferRef.current.on('play', function () {
-                  return console.log('🌊 Wavesurfer playing.');
-                });
-                wavesurferRef.current.on('pause', function () {
-                  return console.log('🌊 Wavesurfer paused.');
-                });
-              }
-              tooltipContainerRef.current.on('pointerover', /*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee3() {
-                var track;
-                return _regeneratorRuntime().wrap(function _callee3$(_context3) {
-                  while (1) switch (_context3.prev = _context3.next) {
-                    case 0:
-                      track = currentTooltipTrackRef.current;
-                      if (!(wavesurferRef.current && track && track.audioUrl)) {
-                        _context3.next = 19;
-                        break;
-                      }
-                      console.log("🎤 Tooltip Hover: Target audio:", track.audioUrl);
-                      if (!(activeAudioUrlRef.current !== track.audioUrl)) {
-                        _context3.next = 10;
-                        break;
-                      }
-                      console.log("  Loading new audio. Previous: ".concat(activeAudioUrlRef.current));
-                      activeAudioUrlRef.current = track.audioUrl;
-                      _context3.next = 8;
-                      return wavesurferRef.current.load(track.audioUrl)["catch"](function (err) {
-                        console.error("💥 Wavesurfer: Error starting audio load on tooltip hover:", track.audioUrl, err);
-                        activeAudioUrlRef.current = null; // Reset if load fails immediately
-                      });
-                    case 8:
-                      _context3.next = 17;
-                      break;
-                    case 10:
-                      if (!(wavesurferRef.current.isReady && !wavesurferRef.current.isPlaying())) {
-                        _context3.next = 16;
-                        break;
-                      }
-                      console.log("  Playing already loaded/paused audio.");
-                      _context3.next = 14;
-                      return wavesurferRef.current.play();
-                    case 14:
-                      _context3.next = 17;
-                      break;
-                    case 16:
-                      if (!wavesurferRef.current.isReady) {
-                        console.log("  Audio for", track.audioUrl, "is loading. 'ready' event will play.");
-                      }
-                    case 17:
-                      _context3.next = 20;
-                      break;
-                    case 19:
-                      if (track && !track.audioUrl) {
-                        console.warn("🤷‍ Tooltip Hover: No audioUrl for track:", track.title || track.id);
-                      }
-                    case 20:
-                    case "end":
-                      return _context3.stop();
-                  }
-                }, _callee3);
-              })));
-              tooltipContainerRef.current.on('pointerout', function () {
-                if (wavesurferRef.current && wavesurferRef.current.isPlaying()) {
-                  console.log("🎤 Tooltip Unhover: Pausing audio for", activeAudioUrlRef.current);
-                  wavesurferRef.current.pause();
-                }
+                playButtonRef.current.addChild(playIconRef.current);
               });
+              playButtonRef.current.on('pointerout', function () {
+                playButtonRef.current.clear().circle(0, 0, 12).fill({
+                  color: 0x6A82FB
+                });
+                playButtonRef.current.addChild(playIconRef.current);
+              });
+
+              // Add click handler for play button
+              playButtonRef.current.on('pointerdown', /*#__PURE__*/function () {
+                var _ref3 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee2(event) {
+                  return _regeneratorRuntime().wrap(function _callee2$(_context2) {
+                    while (1) switch (_context2.prev = _context2.next) {
+                      case 0:
+                        event.stopPropagation(); // Prevent event from bubbling to stage
+                        if (!(currentHoverTrack && wavesurferRef.current)) {
+                          _context2.next = 13;
+                          break;
+                        }
+                        if (!wavesurferRef.current.isPlaying()) {
+                          _context2.next = 7;
+                          break;
+                        }
+                        wavesurferRef.current.pause();
+                        setIsPlaying(false);
+                        _context2.next = 13;
+                        break;
+                      case 7:
+                        if (!(activeAudioUrlRef.current !== currentHoverTrack.audioUrl)) {
+                          _context2.next = 11;
+                          break;
+                        }
+                        _context2.next = 10;
+                        return wavesurferRef.current.load(currentHoverTrack.audioUrl);
+                      case 10:
+                        activeAudioUrlRef.current = currentHoverTrack.audioUrl;
+                      case 11:
+                        wavesurferRef.current.play();
+                        setIsPlaying(true);
+                      case 13:
+                      case "end":
+                        return _context2.stop();
+                    }
+                  }, _callee2);
+                }));
+                return function (_x) {
+                  return _ref3.apply(this, arguments);
+                };
+              }());
+
+              // Add wheel event listener for zooming
               onWheelZoomRef.current = function (event) {
                 event.preventDefault();
                 var chart = chartAreaRef.current;
@@ -6427,12 +6004,14 @@ var VisualizationCanvas = function VisualizationCanvas() {
               app.stage.eventMode = 'static';
               app.stage.cursor = 'grab';
               app.stage.on('pointerdown', function (event) {
-                setIsDragging(true);
-                setDragStart({
-                  x: event.global.x,
-                  y: event.global.y
-                });
-                app.stage.cursor = 'grabbing';
+                if (event.target === app.stage) {
+                  setIsDragging(true);
+                  setDragStart({
+                    x: event.global.x,
+                    y: event.global.y
+                  });
+                  app.stage.cursor = 'grabbing';
+                }
               });
               app.stage.on('pointermove', function (event) {
                 if (isDragging && chartAreaRef.current) {
@@ -6456,15 +6035,14 @@ var VisualizationCanvas = function VisualizationCanvas() {
               });
               setIsPixiAppReady(true);
               console.log("✅ Pixi App, Tooltip Listeners, Wavesurfer, Zoom initialized.");
-              _context4.next = 80;
+              _context3.next = 66;
               break;
-            case 73:
-              _context4.prev = 73;
-              _context4.t0 = _context4["catch"](1);
-              /* ... (same error handling) ... */
-              console.error("💥 AppCreate: Failed to init Pixi App:", _context4.t0);
+            case 59:
+              _context3.prev = 59;
+              _context3.t0 = _context3["catch"](1);
+              console.error("💥 AppCreate: Failed to init Pixi App:", _context3.t0);
               setError(function (e) {
-                return e || "Pixi Init Error: ".concat(_context4.t0.message);
+                return e || "Pixi Init Error: ".concat(_context3.t0.message);
               });
               if (app.destroy) app.destroy(true, {
                 children: true,
@@ -6473,11 +6051,11 @@ var VisualizationCanvas = function VisualizationCanvas() {
               });
               app = null;
               pixiAppRef.current = null;
-            case 80:
+            case 66:
             case "end":
-              return _context4.stop();
+              return _context3.stop();
           }
-        }, _callee4, null, [[1, 73]]);
+        }, _callee3, null, [[1, 59]]);
       }));
       return function initPrimaryApp() {
         return _ref2.apply(this, arguments);
@@ -6485,7 +6063,6 @@ var VisualizationCanvas = function VisualizationCanvas() {
     }();
     _initPrimaryApp();
     return function () {
-      /* ... (Cleanup: stop Wavesurfer, destroy instances, remove listeners) ... */
       var currentApp = pixiAppRef.current;
       if (currentApp && currentApp.canvas && onWheelZoomRef.current) {
         currentApp.canvas.removeEventListener('wheel', onWheelZoomRef.current);
@@ -6499,7 +6076,7 @@ var VisualizationCanvas = function VisualizationCanvas() {
       }
       pixiAppRef.current = null;
       if (wavesurferRef.current) {
-        wavesurferRef.current.stop(); // Stop any playback
+        wavesurferRef.current.stop();
         wavesurferRef.current.destroy();
         wavesurferRef.current = null;
         console.log("🌊 Wavesurfer instance destroyed.");
@@ -6510,8 +6087,116 @@ var VisualizationCanvas = function VisualizationCanvas() {
       setIsPixiAppReady(false);
     };
   }, [isDragging, dragStart, updateAxesTextScale]);
+
+  // Update tooltip content when track changes
+  (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(function () {
+    if (!currentHoverTrack || !tooltipContainerRef.current) return;
+    var updateTooltip = /*#__PURE__*/function () {
+      var _ref4 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee4() {
+        var _selectableFeatures$f, _selectableFeatures$f2, xFeatureLabel, yFeatureLabel, artworkPath, texture, bg, waveformResponse, waveformData, waveformGraphics, peaks, width, height, centerY, step, i, x, y, errorText;
+        return _regeneratorRuntime().wrap(function _callee4$(_context4) {
+          while (1) switch (_context4.prev = _context4.next) {
+            case 0:
+              _context4.prev = 0;
+              // Update title and features
+              trackTitleTextRef.current.text = currentHoverTrack.title || 'Unknown Title';
+              xFeatureLabel = ((_selectableFeatures$f = selectableFeatures.find(function (f) {
+                return f.value === xAxisFeature;
+              })) === null || _selectableFeatures$f === void 0 ? void 0 : _selectableFeatures$f.label) || xAxisFeature;
+              yFeatureLabel = ((_selectableFeatures$f2 = selectableFeatures.find(function (f) {
+                return f.value === yAxisFeature;
+              })) === null || _selectableFeatures$f2 === void 0 ? void 0 : _selectableFeatures$f2.label) || yAxisFeature;
+              trackFeaturesTextRef.current.text = "".concat(xFeatureLabel, ": ").concat(formatTickValue(currentHoverTrack[xAxisFeature]), "\n").concat(yFeatureLabel, ": ").concat(formatTickValue(currentHoverTrack[yAxisFeature]));
+
+              // Load cover art
+              artworkPath = currentHoverTrack.artwork_thumbnail_path || currentHoverTrack.coverArtUrl || _assets_default_artwork_png__WEBPACK_IMPORTED_MODULE_5__["default"];
+              console.log("🎨 Loading cover art from:", artworkPath);
+              _context4.next = 9;
+              return pixi_js__WEBPACK_IMPORTED_MODULE_2__.Texture.from(artworkPath);
+            case 9:
+              texture = _context4.sent;
+              coverArtSpriteRef.current.texture = texture;
+
+              // Load waveform
+              waveformContainerRef.current.removeChildren();
+
+              // Add background
+              bg = new pixi_js__WEBPACK_IMPORTED_MODULE_2__.Graphics().rect(0, 0, 150, 40).fill({
+                color: 0x1A1A1A
+              });
+              waveformContainerRef.current.addChild(bg);
+              if (!currentHoverTrack.audioUrl) {
+                _context4.next = 33;
+                break;
+              }
+              console.log("🎵 Loading waveform for track:", currentHoverTrack.id);
+              _context4.next = 18;
+              return fetch("http://localhost:3000/tracks/waveform/".concat(currentHoverTrack.id));
+            case 18:
+              waveformResponse = _context4.sent;
+              if (!waveformResponse.ok) {
+                _context4.next = 33;
+                break;
+              }
+              _context4.next = 22;
+              return waveformResponse.json();
+            case 22:
+              waveformData = _context4.sent;
+              // Draw waveform
+              waveformGraphics = new pixi_js__WEBPACK_IMPORTED_MODULE_2__.Graphics();
+              waveformGraphics.setStrokeStyle({
+                width: 1,
+                color: 0x6A82FB
+              });
+              peaks = waveformData.waveform;
+              width = 150;
+              height = 40;
+              centerY = height / 2;
+              step = width / peaks.length;
+              waveformGraphics.moveTo(0, centerY);
+              for (i = 0; i < peaks.length; i++) {
+                x = i * step;
+                y = centerY + peaks[i] * centerY;
+                waveformGraphics.lineTo(x, y);
+              }
+              waveformContainerRef.current.addChild(waveformGraphics);
+            case 33:
+              _context4.next = 43;
+              break;
+            case 35:
+              _context4.prev = 35;
+              _context4.t0 = _context4["catch"](0);
+              console.error("💥 Error updating tooltip:", _context4.t0);
+              // Set default artwork if cover art loading fails
+              coverArtSpriteRef.current.texture = pixi_js__WEBPACK_IMPORTED_MODULE_2__.Texture.from(_assets_default_artwork_png__WEBPACK_IMPORTED_MODULE_5__["default"]);
+
+              // Show error message in waveform container
+              errorText = new pixi_js__WEBPACK_IMPORTED_MODULE_2__.Text({
+                text: 'Error loading waveform',
+                style: {
+                  fontFamily: 'Arial',
+                  fontSize: 12,
+                  fill: 0xFF0000,
+                  align: 'center'
+                }
+              });
+              errorText.anchor.set(0.5);
+              errorText.position.set(75, 20);
+              waveformContainerRef.current.addChild(errorText);
+            case 43:
+            case "end":
+              return _context4.stop();
+          }
+        }, _callee4, null, [[0, 35]]);
+      }));
+      return function updateTooltip() {
+        return _ref4.apply(this, arguments);
+      };
+    }();
+    updateTooltip();
+  }, [currentHoverTrack, xAxisFeature, yAxisFeature, selectableFeatures, formatTickValue]);
   var formatTickValue = (0,react__WEBPACK_IMPORTED_MODULE_0__.useCallback)(function (value, isGenreAxis) {
-    /* ... (same) ... */
+    if (value === null || value === undefined) return 'N/A';
     if (isGenreAxis) return parseFloat(value.toFixed(1)).toString();
     if (Math.abs(value) < 0.01 && value !== 0) return value.toExponential(1);
     if (Math.abs(value) > 10000) return value.toExponential(1);
@@ -6688,6 +6373,7 @@ var VisualizationCanvas = function VisualizationCanvas() {
           return _regeneratorRuntime().wrap(function _callee5$(_context5) {
             while (1) switch (_context5.prev = _context5.next) {
               case 0:
+                event.stopPropagation(); // Prevent event from bubbling to stage
                 console.log("🎯 Dot hovered:", event.global);
                 dataDot.scale.set(DOT_RADIUS_HOVER / DOT_RADIUS);
                 setCurrentHoverTrack(track);
@@ -6707,11 +6393,8 @@ var VisualizationCanvas = function VisualizationCanvas() {
                 if (y < 0) {
                   y = 10;
                 }
-                setTooltipPosition({
-                  x: x,
-                  y: y
-                });
                 if (tooltipContainerRef.current) {
+                  tooltipContainerRef.current.position.set(x, y);
                   tooltipContainerRef.current.visible = true;
                 }
               case 13:
@@ -6720,11 +6403,12 @@ var VisualizationCanvas = function VisualizationCanvas() {
             }
           }, _callee5);
         }));
-        return function (_x) {
+        return function (_x2) {
           return _ref5.apply(this, arguments);
         };
       }());
-      dataDot.on('pointerout', function () {
+      dataDot.on('pointerout', function (event) {
+        event.stopPropagation(); // Prevent event from bubbling to stage
         console.log("🎯 Dot unhovered");
         dataDot.scale.set(1.0);
         setCurrentHoverTrack(null);
@@ -6749,45 +6433,6 @@ var VisualizationCanvas = function VisualizationCanvas() {
       return window.removeEventListener('resize', handleResize);
     };
   }, [isPixiAppReady]);
-  var handlePlayPause = /*#__PURE__*/function () {
-    var _ref6 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee6(track) {
-      return _regeneratorRuntime().wrap(function _callee6$(_context6) {
-        while (1) switch (_context6.prev = _context6.next) {
-          case 0:
-            if (!wavesurferRef.current) {
-              _context6.next = 12;
-              break;
-            }
-            if (!wavesurferRef.current.isPlaying()) {
-              _context6.next = 6;
-              break;
-            }
-            wavesurferRef.current.pause();
-            setIsPlaying(false);
-            _context6.next = 12;
-            break;
-          case 6:
-            if (!(activeAudioUrlRef.current !== track.audioUrl)) {
-              _context6.next = 10;
-              break;
-            }
-            _context6.next = 9;
-            return wavesurferRef.current.load(track.audioUrl);
-          case 9:
-            activeAudioUrlRef.current = track.audioUrl;
-          case 10:
-            wavesurferRef.current.play();
-            setIsPlaying(true);
-          case 12:
-          case "end":
-            return _context6.stop();
-        }
-      }, _callee6);
-    }));
-    return function handlePlayPause(_x2) {
-      return _ref6.apply(this, arguments);
-    };
-  }();
   return /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
     className: "visualization-outer-container"
   }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
@@ -6836,27 +6481,7 @@ var VisualizationCanvas = function VisualizationCanvas() {
     className: "loading-overlay"
   }, "Loading tracks..."), error && /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
     className: "error-overlay"
-  }, error), currentHoverTrack && /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement(_DotHover__WEBPACK_IMPORTED_MODULE_4__["default"], {
-    track: currentHoverTrack,
-    xFeature: xAxisFeature,
-    yFeature: yAxisFeature,
-    xFeatureLabel: ((_selectableFeatures$f = selectableFeatures.find(function (f) {
-      return f.value === xAxisFeature;
-    })) === null || _selectableFeatures$f === void 0 ? void 0 : _selectableFeatures$f.label) || xAxisFeature,
-    yFeatureLabel: ((_selectableFeatures$f2 = selectableFeatures.find(function (f) {
-      return f.value === yAxisFeature;
-    })) === null || _selectableFeatures$f2 === void 0 ? void 0 : _selectableFeatures$f2.label) || yAxisFeature,
-    xValue: currentHoverTrack[xAxisFeature],
-    yValue: currentHoverTrack[yAxisFeature],
-    formatTickValue: formatTickValue,
-    wavesurfer: wavesurferRef.current,
-    onPlayPause: function onPlayPause() {
-      return handlePlayPause(currentHoverTrack);
-    },
-    isPlaying: isPlaying,
-    position: tooltipPosition,
-    container: tooltipContainerRef.current
-  })));
+  }, error)));
 };
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (VisualizationCanvas);
 
@@ -6909,48 +6534,6 @@ ___CSS_LOADER_EXPORT___.push([module.id, `html, body, #root {
   overflow: hidden;
   display: flex;
 }`, "",{"version":3,"sources":["webpack://./src/App.scss"],"names":[],"mappings":"AACA;EACE,YAAA;EACA,SAAA;EACA,UAAA;EACA,gBAAA;AAAF;;AAGA;EACE,aAAA;EACA,sBAAA;EACA,YAAA;EACA,yBAAA;AAAF;;AAGA;EACE,YAAA;EACA,sBAAA;EACA,YAAA;EACA,cAAA;AAAF;;AAQA;EACE,YAAA;EACA,kBAAA;EACA,gBAAA;EACA,aAAA;AALF","sourceRoot":""}]);
-// Exports
-/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (___CSS_LOADER_EXPORT___);
-
-
-/***/ }),
-
-/***/ "./node_modules/css-loader/dist/cjs.js!./node_modules/sass-loader/dist/cjs.js!./src/components/DotHover.scss":
-/*!*******************************************************************************************************************!*\
-  !*** ./node_modules/css-loader/dist/cjs.js!./node_modules/sass-loader/dist/cjs.js!./src/components/DotHover.scss ***!
-  \*******************************************************************************************************************/
-/***/ ((module, __webpack_exports__, __webpack_require__) => {
-
-"use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
-/* harmony export */ });
-/* harmony import */ var _node_modules_css_loader_dist_runtime_sourceMaps_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../../node_modules/css-loader/dist/runtime/sourceMaps.js */ "./node_modules/css-loader/dist/runtime/sourceMaps.js");
-/* harmony import */ var _node_modules_css_loader_dist_runtime_sourceMaps_js__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(_node_modules_css_loader_dist_runtime_sourceMaps_js__WEBPACK_IMPORTED_MODULE_0__);
-/* harmony import */ var _node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ../../node_modules/css-loader/dist/runtime/api.js */ "./node_modules/css-loader/dist/runtime/api.js");
-/* harmony import */ var _node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(_node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1__);
-// Imports
-
-
-var ___CSS_LOADER_EXPORT___ = _node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_1___default()((_node_modules_css_loader_dist_runtime_sourceMaps_js__WEBPACK_IMPORTED_MODULE_0___default()));
-// Module
-___CSS_LOADER_EXPORT___.push([module.id, `.dot-hover {
-  position: absolute;
-  pointer-events: none;
-  z-index: 1000;
-  background: rgba(51, 51, 51, 0.95);
-  border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(4px);
-  transition: opacity 0.2s ease-in-out;
-}
-.dot-hover.visible {
-  opacity: 1;
-}
-.dot-hover.hidden {
-  opacity: 0;
-}`, "",{"version":3,"sources":["webpack://./src/components/DotHover.scss"],"names":[],"mappings":"AAAA;EACE,kBAAA;EACA,oBAAA;EACA,aAAA;EACA,kCAAA;EACA,kBAAA;EACA,wCAAA;EACA,0BAAA;EACA,oCAAA;AACF;AACE;EACE,UAAA;AACJ;AAEE;EACE,UAAA;AAAJ","sourceRoot":""}]);
 // Exports
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (___CSS_LOADER_EXPORT___);
 
@@ -42093,59 +41676,6 @@ var update = _node_modules_style_loader_dist_runtime_injectStylesIntoStyleTag_js
 
 
        /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (_node_modules_css_loader_dist_cjs_js_node_modules_sass_loader_dist_cjs_js_App_scss__WEBPACK_IMPORTED_MODULE_6__["default"] && _node_modules_css_loader_dist_cjs_js_node_modules_sass_loader_dist_cjs_js_App_scss__WEBPACK_IMPORTED_MODULE_6__["default"].locals ? _node_modules_css_loader_dist_cjs_js_node_modules_sass_loader_dist_cjs_js_App_scss__WEBPACK_IMPORTED_MODULE_6__["default"].locals : undefined);
-
-
-/***/ }),
-
-/***/ "./src/components/DotHover.scss":
-/*!**************************************!*\
-  !*** ./src/components/DotHover.scss ***!
-  \**************************************/
-/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
-
-"use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
-/* harmony export */ });
-/* harmony import */ var _node_modules_style_loader_dist_runtime_injectStylesIntoStyleTag_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! !../../node_modules/style-loader/dist/runtime/injectStylesIntoStyleTag.js */ "./node_modules/style-loader/dist/runtime/injectStylesIntoStyleTag.js");
-/* harmony import */ var _node_modules_style_loader_dist_runtime_injectStylesIntoStyleTag_js__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(_node_modules_style_loader_dist_runtime_injectStylesIntoStyleTag_js__WEBPACK_IMPORTED_MODULE_0__);
-/* harmony import */ var _node_modules_style_loader_dist_runtime_styleDomAPI_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! !../../node_modules/style-loader/dist/runtime/styleDomAPI.js */ "./node_modules/style-loader/dist/runtime/styleDomAPI.js");
-/* harmony import */ var _node_modules_style_loader_dist_runtime_styleDomAPI_js__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(_node_modules_style_loader_dist_runtime_styleDomAPI_js__WEBPACK_IMPORTED_MODULE_1__);
-/* harmony import */ var _node_modules_style_loader_dist_runtime_insertBySelector_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! !../../node_modules/style-loader/dist/runtime/insertBySelector.js */ "./node_modules/style-loader/dist/runtime/insertBySelector.js");
-/* harmony import */ var _node_modules_style_loader_dist_runtime_insertBySelector_js__WEBPACK_IMPORTED_MODULE_2___default = /*#__PURE__*/__webpack_require__.n(_node_modules_style_loader_dist_runtime_insertBySelector_js__WEBPACK_IMPORTED_MODULE_2__);
-/* harmony import */ var _node_modules_style_loader_dist_runtime_setAttributesWithoutAttributes_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! !../../node_modules/style-loader/dist/runtime/setAttributesWithoutAttributes.js */ "./node_modules/style-loader/dist/runtime/setAttributesWithoutAttributes.js");
-/* harmony import */ var _node_modules_style_loader_dist_runtime_setAttributesWithoutAttributes_js__WEBPACK_IMPORTED_MODULE_3___default = /*#__PURE__*/__webpack_require__.n(_node_modules_style_loader_dist_runtime_setAttributesWithoutAttributes_js__WEBPACK_IMPORTED_MODULE_3__);
-/* harmony import */ var _node_modules_style_loader_dist_runtime_insertStyleElement_js__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! !../../node_modules/style-loader/dist/runtime/insertStyleElement.js */ "./node_modules/style-loader/dist/runtime/insertStyleElement.js");
-/* harmony import */ var _node_modules_style_loader_dist_runtime_insertStyleElement_js__WEBPACK_IMPORTED_MODULE_4___default = /*#__PURE__*/__webpack_require__.n(_node_modules_style_loader_dist_runtime_insertStyleElement_js__WEBPACK_IMPORTED_MODULE_4__);
-/* harmony import */ var _node_modules_style_loader_dist_runtime_styleTagTransform_js__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! !../../node_modules/style-loader/dist/runtime/styleTagTransform.js */ "./node_modules/style-loader/dist/runtime/styleTagTransform.js");
-/* harmony import */ var _node_modules_style_loader_dist_runtime_styleTagTransform_js__WEBPACK_IMPORTED_MODULE_5___default = /*#__PURE__*/__webpack_require__.n(_node_modules_style_loader_dist_runtime_styleTagTransform_js__WEBPACK_IMPORTED_MODULE_5__);
-/* harmony import */ var _node_modules_css_loader_dist_cjs_js_node_modules_sass_loader_dist_cjs_js_DotHover_scss__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! !!../../node_modules/css-loader/dist/cjs.js!../../node_modules/sass-loader/dist/cjs.js!./DotHover.scss */ "./node_modules/css-loader/dist/cjs.js!./node_modules/sass-loader/dist/cjs.js!./src/components/DotHover.scss");
-
-      
-      
-      
-      
-      
-      
-      
-      
-      
-
-var options = {};
-
-options.styleTagTransform = (_node_modules_style_loader_dist_runtime_styleTagTransform_js__WEBPACK_IMPORTED_MODULE_5___default());
-options.setAttributes = (_node_modules_style_loader_dist_runtime_setAttributesWithoutAttributes_js__WEBPACK_IMPORTED_MODULE_3___default());
-options.insert = _node_modules_style_loader_dist_runtime_insertBySelector_js__WEBPACK_IMPORTED_MODULE_2___default().bind(null, "head");
-options.domAPI = (_node_modules_style_loader_dist_runtime_styleDomAPI_js__WEBPACK_IMPORTED_MODULE_1___default());
-options.insertStyleElement = (_node_modules_style_loader_dist_runtime_insertStyleElement_js__WEBPACK_IMPORTED_MODULE_4___default());
-
-var update = _node_modules_style_loader_dist_runtime_injectStylesIntoStyleTag_js__WEBPACK_IMPORTED_MODULE_0___default()(_node_modules_css_loader_dist_cjs_js_node_modules_sass_loader_dist_cjs_js_DotHover_scss__WEBPACK_IMPORTED_MODULE_6__["default"], options);
-
-
-
-
-       /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (_node_modules_css_loader_dist_cjs_js_node_modules_sass_loader_dist_cjs_js_DotHover_scss__WEBPACK_IMPORTED_MODULE_6__["default"] && _node_modules_css_loader_dist_cjs_js_node_modules_sass_loader_dist_cjs_js_DotHover_scss__WEBPACK_IMPORTED_MODULE_6__["default"].locals ? _node_modules_css_loader_dist_cjs_js_node_modules_sass_loader_dist_cjs_js_DotHover_scss__WEBPACK_IMPORTED_MODULE_6__["default"].locals : undefined);
 
 
 /***/ }),

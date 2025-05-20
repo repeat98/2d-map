@@ -2,7 +2,6 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import 'pixi.js/unsafe-eval'; // For PixiJS v7+, often needed for certain features/performance.
 import * as PIXI from 'pixi.js';
 import WaveSurfer from 'wavesurfer.js'; // Ensure Wavesurfer.js is installed
-import DotHover from './DotHover';
 import './VisualizationCanvas.scss';
 import defaultArtwork from "../../assets/default-artwork.png";
 
@@ -217,20 +216,36 @@ const VisualizationCanvas = () => {
     const initPrimaryApp = async (retryCount = 0) => {
       try {
         const { clientWidth: cw, clientHeight: ch } = pixiCanvasContainerRef.current;
-        if (cw <= 0 || ch <= 0) { if (retryCount < 5) { setTimeout(() => initPrimaryApp(retryCount + 1), 250); return; } throw new Error("Container zero dimensions"); }
-        await app.init({ width: cw, height: ch, backgroundColor: 0x101010, antialias: true, resolution: window.devicePixelRatio || 1, autoDensity: true });
+        if (cw <= 0 || ch <= 0) { 
+          if (retryCount < 5) { 
+            setTimeout(() => initPrimaryApp(retryCount + 1), 250); 
+            return; 
+          } 
+          throw new Error("Container zero dimensions"); 
+        }
+
+        await app.init({ 
+          width: cw, 
+          height: ch, 
+          backgroundColor: 0x101010, 
+          antialias: true, 
+          resolution: window.devicePixelRatio || 1, 
+          autoDensity: true 
+        });
+
         pixiCanvasContainerRef.current.appendChild(app.canvas);
-        pixiAppRef.current = app; setCanvasSize({width: app.screen.width, height: app.screen.height});
-        chartAreaRef.current = new PIXI.Container(); app.stage.addChild(chartAreaRef.current);
+        pixiAppRef.current = app;
+        setCanvasSize({width: app.screen.width, height: app.screen.height});
         
-        tooltipContainerRef.current = new PIXI.Container();
-        tooltipContainerRef.current.visible = false;
-        tooltipContainerRef.current.eventMode = 'static'; 
-        tooltipContainerRef.current.cursor = 'default'; 
+        // Create chart area
+        chartAreaRef.current = new PIXI.Container();
+        app.stage.addChild(chartAreaRef.current);
 
         // Create tooltip container
         tooltipContainerRef.current = new PIXI.Container();
         tooltipContainerRef.current.visible = false;
+        tooltipContainerRef.current.eventMode = 'static';
+        tooltipContainerRef.current.cursor = 'default';
         app.stage.addChild(tooltipContainerRef.current);
 
         // Create tooltip background
@@ -286,12 +301,16 @@ const VisualizationCanvas = () => {
 
         // Create play icon
         playIconRef.current = new PIXI.Graphics();
-        playIconRef.current.beginFill(0xFFFFFF);
-        playIconRef.current.moveTo(-4, -6);
-        playIconRef.current.lineTo(-4, 6);
-        playIconRef.current.lineTo(6, 0);
-        playIconRef.current.endFill();
+        playIconRef.current.fill({ color: 0xFFFFFF })
+          .moveTo(-4, -6)
+          .lineTo(-4, 6)
+          .lineTo(6, 0);
         playButtonRef.current.addChild(playIconRef.current);
+
+        // Create waveform container
+        waveformContainerRef.current = new PIXI.Container();
+        waveformContainerRef.current.position.set(10, 100);
+        tooltipContainerRef.current.addChild(waveformContainerRef.current);
 
         // Add hover effect for play button
         playButtonRef.current.on('pointerover', () => {
@@ -309,7 +328,8 @@ const VisualizationCanvas = () => {
         });
 
         // Add click handler for play button
-        playButtonRef.current.on('pointerdown', async () => {
+        playButtonRef.current.on('pointerdown', async (event) => {
+          event.stopPropagation(); // Prevent event from bubbling to stage
           if (currentHoverTrack && wavesurferRef.current) {
             if (wavesurferRef.current.isPlaying()) {
               wavesurferRef.current.pause();
@@ -325,84 +345,7 @@ const VisualizationCanvas = () => {
           }
         });
 
-        // Create waveform container
-        waveformContainerRef.current = new PIXI.Container();
-        waveformContainerRef.current.position.set(10, 100);
-        tooltipContainerRef.current.addChild(waveformContainerRef.current);
-
-        if (wavesurferContainerRef.current) { 
-          wavesurferRef.current = WaveSurfer.create({
-            container: wavesurferContainerRef.current,
-            waveColor: '#6A82FB',
-            progressColor: '#3B4D9A',
-            height: 40, // Set a fixed height for the waveform
-            barWidth: 1,
-            barGap: 1,
-            cursorWidth: 0,
-            interact: false,
-            backend: 'MediaElement',
-            normalize: true,
-            autoCenter: true,
-            partialRender: true,
-            responsive: false,
-            splitChannels: false,
-            xhr: {
-              mode: 'no-cors',
-              credentials: 'same-origin',
-              cache: 'force-cache'
-            }
-          });
-          
-          console.log("🌊 Wavesurfer instance created.");
-          wavesurferRef.current.on('error', (err) => console.error('🌊 Wavesurfer Global Error:', err, "Attempted URL:", activeAudioUrlRef.current));
-          wavesurferRef.current.on('warn', (warn) => console.warn('🌊 Wavesurfer Global Warning:', warn));
-          wavesurferRef.current.on('ready', () => {
-            const currentSrc = wavesurferRef.current?.getMediaElement()?.src;
-            console.log('🌊 Wavesurfer ready for URL:', currentSrc);
-            const tooltipTrack = currentTooltipTrackRef.current;
-            if (tooltipTrack && tooltipTrack.audioUrl === currentSrc && tooltipContainerRef.current?.visible) {
-              console.log("🌊 Autoplaying on ready (tooltip is active for this track).");
-              wavesurferRef.current.play().catch(e => console.error("🌊 Error auto-playing on ready:", e));
-            } else {
-              console.log("🌊 Audio ready, but context changed. Not auto-playing.");
-            }
-          });
-          wavesurferRef.current.on('play', () => console.log('🌊 Wavesurfer playing.'));
-          wavesurferRef.current.on('pause', () => console.log('🌊 Wavesurfer paused.'));
-        }
-
-        tooltipContainerRef.current.on('pointerover', async () => {
-            const track = currentTooltipTrackRef.current;
-            if (wavesurferRef.current && track && track.audioUrl) {
-                console.log("🎤 Tooltip Hover: Target audio:", track.audioUrl);
-                if (activeAudioUrlRef.current !== track.audioUrl) {
-                    console.log(`  Loading new audio. Previous: ${activeAudioUrlRef.current}`);
-                    activeAudioUrlRef.current = track.audioUrl;
-                    await wavesurferRef.current.load(track.audioUrl)
-                        .catch(err => {
-                            console.error("💥 Wavesurfer: Error starting audio load on tooltip hover:", track.audioUrl, err);
-                            activeAudioUrlRef.current = null; // Reset if load fails immediately
-                        });
-                } else { 
-                    if (wavesurferRef.current.isReady && !wavesurferRef.current.isPlaying()) {
-                         console.log("  Playing already loaded/paused audio.");
-                         await wavesurferRef.current.play();
-                    } else if (!wavesurferRef.current.isReady) {
-                         console.log("  Audio for", track.audioUrl, "is loading. 'ready' event will play.");
-                    }
-                }
-            } else if (track && !track.audioUrl) {
-                console.warn("🤷‍ Tooltip Hover: No audioUrl for track:", track.title || track.id);
-            }
-        });
-
-        tooltipContainerRef.current.on('pointerout', () => {
-            if (wavesurferRef.current && wavesurferRef.current.isPlaying()) {
-                console.log("🎤 Tooltip Unhover: Pausing audio for", activeAudioUrlRef.current);
-                wavesurferRef.current.pause();
-            }
-        });
-
+        // Add wheel event listener for zooming
         onWheelZoomRef.current = (event) => {
           event.preventDefault();
           const chart = chartAreaRef.current;
@@ -454,6 +397,7 @@ const VisualizationCanvas = () => {
           
           updateAxesTextScale(chart);
         };
+
         app.canvas.addEventListener('wheel', onWheelZoomRef.current, { passive: false });
 
         // Add drag handlers
@@ -461,9 +405,11 @@ const VisualizationCanvas = () => {
         app.stage.cursor = 'grab';
 
         app.stage.on('pointerdown', (event) => {
-          setIsDragging(true);
-          setDragStart({ x: event.global.x, y: event.global.y });
-          app.stage.cursor = 'grabbing';
+          if (event.target === app.stage) {
+            setIsDragging(true);
+            setDragStart({ x: event.global.x, y: event.global.y });
+            app.stage.cursor = 'grabbing';
+          }
         });
 
         app.stage.on('pointermove', (event) => {
@@ -488,69 +434,58 @@ const VisualizationCanvas = () => {
           app.stage.cursor = 'grab';
         });
 
-        setIsPixiAppReady(true); console.log("✅ Pixi App, Tooltip Listeners, Wavesurfer, Zoom initialized.");
-      } catch (initError) { /* ... (same error handling) ... */ 
-        console.error("💥 AppCreate: Failed to init Pixi App:", initError); setError(e => e || `Pixi Init Error: ${initError.message}`);
-        if (app.destroy) app.destroy(true, {children:true, texture:true, basePath:true}); app = null; pixiAppRef.current = null;
+        setIsPixiAppReady(true);
+        console.log("✅ Pixi App, Tooltip Listeners, Wavesurfer, Zoom initialized.");
+      } catch (initError) {
+        console.error("💥 AppCreate: Failed to init Pixi App:", initError);
+        setError(e => e || `Pixi Init Error: ${initError.message}`);
+        if (app.destroy) app.destroy(true, {children:true, texture:true, basePath:true});
+        app = null;
+        pixiAppRef.current = null;
       }
     };
     initPrimaryApp();
-    return () => { /* ... (Cleanup: stop Wavesurfer, destroy instances, remove listeners) ... */ 
-      const currentApp = pixiAppRef.current; 
-      if (currentApp && currentApp.canvas && onWheelZoomRef.current) { currentApp.canvas.removeEventListener('wheel', onWheelZoomRef.current); }
-      if (currentApp && currentApp.destroy) { currentApp.destroy(true, { children: true, texture: true, basePath: true });}
-      pixiAppRef.current = null; 
-      if (wavesurferRef.current) { 
-        wavesurferRef.current.stop(); // Stop any playback
-        wavesurferRef.current.destroy(); 
-        wavesurferRef.current = null; 
-        console.log("🌊 Wavesurfer instance destroyed."); 
+    return () => {
+      const currentApp = pixiAppRef.current;
+      if (currentApp && currentApp.canvas && onWheelZoomRef.current) {
+        currentApp.canvas.removeEventListener('wheel', onWheelZoomRef.current);
       }
-      chartAreaRef.current = null; tooltipContainerRef.current = null; currentTooltipTrackRef.current = null; setIsPixiAppReady(false);
+      if (currentApp && currentApp.destroy) {
+        currentApp.destroy(true, { children: true, texture: true, basePath: true });
+      }
+      pixiAppRef.current = null;
+      if (wavesurferRef.current) {
+        wavesurferRef.current.stop();
+        wavesurferRef.current.destroy();
+        wavesurferRef.current = null;
+        console.log("🌊 Wavesurfer instance destroyed.");
+      }
+      chartAreaRef.current = null;
+      tooltipContainerRef.current = null;
+      currentTooltipTrackRef.current = null;
+      setIsPixiAppReady(false);
     };
-  }, [isDragging, dragStart, updateAxesTextScale, currentHoverTrack]);
-
-  // Update play icon when playing state changes
-  useEffect(() => {
-    if (playIconRef.current) {
-      playIconRef.current.clear();
-      playIconRef.current.beginFill(0xFFFFFF);
-      if (isPlaying) {
-        // Draw pause icon
-        playIconRef.current.drawRect(-4, -6, 8, 12);
-      } else {
-        // Draw play icon
-        playIconRef.current.moveTo(-4, -6);
-        playIconRef.current.lineTo(-4, 6);
-        playIconRef.current.lineTo(6, 0);
-      }
-      playIconRef.current.endFill();
-    }
-  }, [isPlaying]);
+  }, [isDragging, dragStart, updateAxesTextScale]);
 
   // Update tooltip content when track changes
   useEffect(() => {
     if (!currentHoverTrack || !tooltipContainerRef.current) return;
 
     const updateTooltip = async () => {
-      // Update title and features
-      trackTitleTextRef.current.text = currentHoverTrack.title || 'Unknown Title';
-      const xFeatureLabel = selectableFeatures.find(f => f.value === xAxisFeature)?.label || xAxisFeature;
-      const yFeatureLabel = selectableFeatures.find(f => f.value === yAxisFeature)?.label || yAxisFeature;
-      trackFeaturesTextRef.current.text = `${xFeatureLabel}: ${formatTickValue(currentHoverTrack[xAxisFeature])}\n${yFeatureLabel}: ${formatTickValue(currentHoverTrack[yAxisFeature])}`;
-
-      // Load cover art
       try {
+        // Update title and features
+        trackTitleTextRef.current.text = currentHoverTrack.title || 'Unknown Title';
+        const xFeatureLabel = selectableFeatures.find(f => f.value === xAxisFeature)?.label || xAxisFeature;
+        const yFeatureLabel = selectableFeatures.find(f => f.value === yAxisFeature)?.label || yAxisFeature;
+        trackFeaturesTextRef.current.text = `${xFeatureLabel}: ${formatTickValue(currentHoverTrack[xAxisFeature])}\n${yFeatureLabel}: ${formatTickValue(currentHoverTrack[yAxisFeature])}`;
+
+        // Load cover art
         const artworkPath = currentHoverTrack.artwork_thumbnail_path || currentHoverTrack.coverArtUrl || defaultArtwork;
+        console.log("🎨 Loading cover art from:", artworkPath);
         const texture = await PIXI.Texture.from(artworkPath);
         coverArtSpriteRef.current.texture = texture;
-      } catch (error) {
-        console.error("💥 Error loading cover art:", error);
-        coverArtSpriteRef.current.texture = PIXI.Texture.from(defaultArtwork);
-      }
 
-      // Load waveform
-      try {
+        // Load waveform
         waveformContainerRef.current.removeChildren();
         
         // Add background
@@ -560,6 +495,7 @@ const VisualizationCanvas = () => {
         waveformContainerRef.current.addChild(bg);
 
         if (currentHoverTrack.audioUrl) {
+          console.log("🎵 Loading waveform for track:", currentHoverTrack.id);
           const waveformResponse = await fetch(`http://localhost:3000/tracks/waveform/${currentHoverTrack.id}`);
           if (waveformResponse.ok) {
             const waveformData = await waveformResponse.json();
@@ -586,8 +522,11 @@ const VisualizationCanvas = () => {
           }
         }
       } catch (error) {
-        console.error("💥 Error loading waveform:", error);
+        console.error("💥 Error updating tooltip:", error);
+        // Set default artwork if cover art loading fails
+        coverArtSpriteRef.current.texture = PIXI.Texture.from(defaultArtwork);
         
+        // Show error message in waveform container
         const errorText = new PIXI.Text({
           text: 'Error loading waveform',
           style: {
@@ -606,7 +545,8 @@ const VisualizationCanvas = () => {
     updateTooltip();
   }, [currentHoverTrack, xAxisFeature, yAxisFeature, selectableFeatures, formatTickValue]);
 
-  const formatTickValue = useCallback((value, isGenreAxis) => { /* ... (same) ... */ 
+  const formatTickValue = useCallback((value, isGenreAxis) => {
+    if (value === null || value === undefined) return 'N/A';
     if (isGenreAxis) return parseFloat(value.toFixed(1)).toString();
     if (Math.abs(value) < 0.01 && value !== 0) return value.toExponential(1);
     if (Math.abs(value) > 10000) return value.toExponential(1);
@@ -695,6 +635,7 @@ const VisualizationCanvas = () => {
       dataDot.cursor = 'pointer';
 
       dataDot.on('pointerover', async (event) => {
+        event.stopPropagation(); // Prevent event from bubbling to stage
         console.log("🎯 Dot hovered:", event.global);
         dataDot.scale.set(DOT_RADIUS_HOVER / DOT_RADIUS);
         setCurrentHoverTrack(track);
@@ -717,14 +658,14 @@ const VisualizationCanvas = () => {
           y = 10;
         }
         
-        setTooltipPosition({ x, y });
         if (tooltipContainerRef.current) {
           tooltipContainerRef.current.position.set(x, y);
           tooltipContainerRef.current.visible = true;
         }
       });
 
-      dataDot.on('pointerout', () => {
+      dataDot.on('pointerout', (event) => {
+        event.stopPropagation(); // Prevent event from bubbling to stage
         console.log("🎯 Dot unhovered");
         dataDot.scale.set(1.0);
         setCurrentHoverTrack(null);
@@ -779,23 +720,6 @@ const VisualizationCanvas = () => {
         <div ref={wavesurferContainerRef} className="wavesurfer-container-hidden"></div>
         {isLoadingTracks && <div className="loading-overlay">Loading tracks...</div>}
         {error && <div className="error-overlay">{error}</div>}
-        {currentHoverTrack && (
-          <DotHover
-            track={currentHoverTrack}
-            xFeature={xAxisFeature}
-            yFeature={yAxisFeature}
-            xFeatureLabel={selectableFeatures.find(f => f.value === xAxisFeature)?.label || xAxisFeature}
-            yFeatureLabel={selectableFeatures.find(f => f.value === yAxisFeature)?.label || yAxisFeature}
-            xValue={currentHoverTrack[xAxisFeature]}
-            yValue={currentHoverTrack[yAxisFeature]}
-            formatTickValue={formatTickValue}
-            wavesurfer={wavesurferRef.current}
-            onPlayPause={() => handlePlayPause(currentHoverTrack)}
-            isPlaying={isPlaying}
-            position={tooltipPosition}
-            container={tooltipContainerRef.current}
-          />
-        )}
       </div>
     </div>
   );
