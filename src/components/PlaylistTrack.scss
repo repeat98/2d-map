@@ -1,0 +1,124 @@
+/* src/components/PlaylistTrack.scss */
+.playlist-track {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  height: 48px;
+  box-sizing: border-box;
+  background: white;
+  border-radius: 8px;
+  margin-bottom: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+
+  &.recommended {
+    background-color: #f1ebff;
+  }
+
+  .track-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 250px;
+    flex-shrink: 0;
+  }
+
+  .track-details {
+    display: flex;
+    flex-direction: column;
+    width: 150px;
+  }
+
+  .track-title {
+    font-weight: bold;
+    font-size: 0.9em;
+    color: #333;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .track-artist {
+    font-size: 0.8em;
+    color: #777;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .track-waveform {
+    width: 80px;
+    height: 8px;
+    margin-left: 5px;
+    flex-shrink: 0;
+    overflow: hidden;
+
+    .waveform-container {
+      height: 100%;
+    }
+
+    svg {
+      height: 100%;
+      width: 100%;
+    }
+  }
+
+  .track-tags {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 4px;
+    margin-left: 5px;
+    width: 80px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .track-tag {
+    background-color: #e0e0e0;
+    padding: 1px 3px;
+    border-radius: 3px;
+    font-size: 0.7em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .no-tags {
+    font-size: 0.7em;
+    color: #999;
+  }
+
+  .track-actions {
+    display: flex;
+    gap: 4px;
+    margin-left: 5px;
+    width: 60px;
+    flex-shrink: 0;
+  }
+
+  .button-accept,
+  .button-deny,
+  .button-remove {
+    width: 24px;
+    height: 24px;
+    border: 1px solid #ccc;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 0.9em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.3s, border-color 0.3s;
+    background-color: transparent;
+    color: #555;
+  }
+
+  .button-accept:hover,
+  .button-deny:hover,
+  .button-remove:hover {
+    background-color: #f0f0f0;
+    border-color: #bbb;
+  }
+}

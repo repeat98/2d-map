@@ -1,0 +1,26 @@
+.column-context-menu {
+    position: absolute;
+    z-index: 1000;
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .menu-item {
+    padding: 4px 8px;
+    cursor: pointer;
+  }
+  
+  .menu-item label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+  }
+  
+  .menu-item input[type='checkbox'] {
+    margin-right: 8px;
+  }

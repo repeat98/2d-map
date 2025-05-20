@@ -1,0 +1,40 @@
+node_modules
+essentia_model/
+matrix/
+scripts/venv/
+*.DS_Store
+assets/artworks/*
+
+waveforms/
+
+# Ignore all files and subdirectories inside the folder
+db/
+scripts/build
+scripts/lib
+scripts/share   
+
+
+
+assets/artworks
+
+
+# But don't ignore the folder itself
+!db/
+out/
+libopenblasp-r0.3.28.dylib
+scripts/sim_matrix.npy
+scripts/sim_track_ids.npy
+scripts/feature_matrix.npy
+scripts/input_playlist_profile.txt
+scripts/output.m3u
+scripts/output2.m3u
+scripts/error.log
+scripts/Electro : Breaks_9dbcff0d.m3u
+scripts/Electro : Breaks_75728a39.m3u
+scripts/Experimental Techno_c15f3b6d.m3u
+scripts/faiss_index.index
+scripts/Malin Genie 2_9460e3b4.m3u
+scripts/Malin Genie_14fd50fa.m3u
+scripts/track_ids.npy
+scripts/Warmup Madness 2_29e8b5fe_sorted.m3u
+scripts/Warmup Madness 2_29e8b5fe.m3u

@@ -1,0 +1,17 @@
+.player-container {
+  display: flex;
+  height: 78px;
+  padding: 12px 16px;
+  justify-content: center;
+  align-items: center;
+  gap: 0 32px;
+  flex: 1 0 0;
+  flex-wrap: wrap;
+  border-radius: 13px;
+  background: #f5f5f5;
+
+  #waveform-big {
+    height: 100%;
+    width: 100%;
+  }
+}

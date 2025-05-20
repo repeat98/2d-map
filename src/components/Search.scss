@@ -1,0 +1,30 @@
+// src/components/Search.scss
+.search {
+    display: flex;
+    height: 64px;
+    min-width: 480px;
+    padding: 0 16px;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-end;
+    flex: 1 0 0;
+    border-radius: 13px;
+    background: #f5f5f5;
+  
+    #searchInput {
+      display: flex;
+      width: 296px;
+      height: 40px;
+      padding: 10px 14px;
+      align-items: center;
+      gap: 8px;
+      border-radius: 8px;
+      border: 1px solid #d0d5dd;
+      background: #fff;
+    }
+  
+    #searchInput:focus {
+      border-color: #7f56d9;
+      outline: none;
+    }
+  }

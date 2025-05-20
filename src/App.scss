@@ -1,0 +1,33 @@
+// Ensure html and body take full height and have no margin
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden; // Prevent main scrollbars if content overflows slightly
+}
+
+.App {
+  display: flex;
+  flex-direction: column;
+  height: 100%; // Make .App fill the #root or body
+  background-color: #f0f0f0; // Optional: background for the whole app
+}
+
+.titlebar {
+  height: 22px; // Or your actual titlebar height
+  background-color: #333; // Example
+  color: white;
+  flex-shrink: 0; // Prevent titlebar from shrinking
+  // If it's a custom draggable titlebar, you might have:
+  // -webkit-app-region: drag;
+  // display: flex;
+  // align-items: center;
+  // padding-left: 70px; // Space for traffic lights on macOS
+}
+
+.main-content-area {
+  flex-grow: 1; // This makes it take up all available vertical space after the titlebar
+  position: relative; // Good for positioning children if needed
+  overflow: hidden;   // Important if child manages its own scroll/overflow
+  display: flex;      // Use flex to make its child fill it easily
+}

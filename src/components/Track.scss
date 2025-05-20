@@ -1,0 +1,70 @@
+/* Track.scss */
+.track-row {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #ddd;
+  padding: 0 16px;
+  box-sizing: border-box;
+  height: 100%;
+  transition: background-color 0.3s, border 0.3s;
+  background-color: white;
+  overflow: hidden;
+  border-radius: 9px;
+
+  &:hover {
+    background-color: #e6f7ff;
+  }
+
+  .artwork,
+  .title,
+  .artist,
+  .album,
+  .bpm,
+  .energy,
+  .mood,
+  .key,
+  .tags,
+  .wave {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 8px 0;
+  }
+
+  /* Add bold font weight to the title */
+  .title {
+    font-weight: bold;
+  }
+
+  .artwork {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    img {
+      max-width: 50px;
+      height: auto;
+      border-radius: 4px;
+    }
+  }
+
+  .wave {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    img {
+      max-width: 100px;
+      height: auto;
+    }
+  }
+}
+
+.wave-column {
+  width: 100%; // Adjust as needed
+  height: 8px; // Match the Waveform height for Track
+}
+
+.track-title {
+  font-weight: bold;
+}

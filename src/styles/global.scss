@@ -1,0 +1,11 @@
+// src/styles/global.scss
+$font-stack: 'Inter', Helvetica, Arial, sans-serif;
+$primary-color: #3498db;
+
+body {
+  margin: 0;
+  width: 100vw;
+  height: 100vh;
+  font-family: $font-stack;
+  color: #2c3e50;
+}

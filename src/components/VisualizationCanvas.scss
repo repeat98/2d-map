@@ -1,0 +1,218 @@
+// Define color palette using CSS variables for easy theming
+:root {
+    --bg-color-darkest: #101010; // Pixi canvas background
+    --bg-color-darker: #1a1b1e;  // Canvas target div background
+    --bg-color-dark: #232323;    // Outer container background
+    --panel-bg-color: #2c3e50;   // Controls panel background
+    --panel-border-color: #34495e;
+    --panel-select-bg-disabled: #2c3a4a; // Pre-darkened version for disabled select background
+    --text-color-light: #ecf0f1;
+    --text-color-medium: #bdc3c7;
+    --text-color-dark: #95a5a6;
+    --accent-color: #3498db;     // A general accent color
+    --accent-color-hover: #5dade2;
+    --error-color: #e74c3c;
+    --warning-color: #f39c12;
+    --success-color: #2ecc71; // For positive feedback if needed
+    --disabled-opacity: 0.6;
+  
+    --font-family-sans: 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+  }
+  
+  .visualization-outer-container {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    background-color: #101010;
+    overflow: hidden;
+  }
+  
+  .controls-panel {
+    background-color: rgba(26, 26, 26, 0.9);
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  
+    .axis-selectors {
+      display: flex;
+      gap: 20px;
+    }
+  
+    .axis-selector {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+  
+      label {
+        color: #E0E0E0;
+        font-size: 14px;
+        font-weight: 500;
+      }
+  
+      select {
+        background-color: #2A2A2A;
+        color: #E0E0E0;
+        border: 1px solid #3A3A3A;
+        border-radius: 4px;
+        padding: 8px 12px;
+        font-size: 14px;
+        min-width: 150px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+  
+        &:hover {
+          background-color: #3A3A3A;
+        }
+  
+        &:focus {
+          outline: none;
+          border-color: #6A82FB;
+          box-shadow: 0 0 0 2px rgba(106, 130, 251, 0.2);
+        }
+      }
+    }
+  }
+  
+  .canvas-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+  
+  .pixi-canvas-target {
+    width: 100%;
+    height: 100%;
+    
+    canvas {
+      display: block; // Remove extra space below canvas
+      width: 100% !important;  // Ensure Pixi canvas scales visually to container
+      height: 100% !important; // Pixi handles internal resolution
+    }
+  }
+  
+  .wavesurfer-container-hidden {
+    position: absolute;
+    left: -9999px;
+    top: -9999px;
+    width: 150px;
+    height: 40px;
+    pointer-events: none;
+  }
+  
+  .loading-overlay,
+  .error-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 20px 30px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 500;
+    z-index: 1000;
+  }
+  
+  .loading-overlay {
+    background-color: rgba(26, 26, 26, 0.9);
+    color: #E0E0E0;
+  }
+  
+  .error-overlay {
+    background-color: rgba(220, 53, 69, 0.9);
+    color: white;
+  }
+  
+  // Overlay messages
+  .overlay-message {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: var(--text-color-light);
+    font-size: 1.1em;
+    text-align: center;
+    padding: 25px 35px;
+    background-color: rgba(44, 62, 80, 0.92); // Dark, slightly transparent
+    border-radius: 8px;
+    z-index: 100; // Ensure it's on top of the canvas
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+    max-width: 85%;
+    line-height: 1.6;
+  
+    &.loading, &.init {
+      // You can add specific icons or animations here later
+      // e.g. using ::before pseudo-element with a spinner
+      color: var(--text-color-medium);
+    }
+  
+    &.error-display {
+      background-color: rgba(231, 76, 60, 0.85); // Using actual RGB for error-color
+      color: white;
+      font-weight: 500;
+    }
+    
+    &.warning {
+      background-color: rgba(243, 156, 18, 0.85); // Using actual RGB for warning-color
+      color: #2c3e50; // Darker text for yellow bg
+      font-weight: 500;
+      white-space: pre-wrap; // Respect newlines in the message
+    }
+  
+    &.no-data {
+      color: var(--text-color-medium);
+    }
+  }
+
+  // Tooltip styles
+  .tooltip-container {
+    position: absolute;
+    background-color: rgba(26, 26, 26, 0.95);
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    pointer-events: none;
+    z-index: 1000;
+    
+    .tooltip-content {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      
+      .tooltip-header {
+        display: flex;
+        gap: 15px;
+        
+        .cover-art {
+          width: 80px;
+          height: 80px;
+          border-radius: 4px;
+          object-fit: cover;
+        }
+        
+        .track-info {
+          flex: 1;
+          
+          .track-title {
+            color: #E0E0E0;
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 5px;
+          }
+          
+          .track-features {
+            color: #AAAAAA;
+            font-size: 14px;
+            line-height: 1.4;
+          }
+        }
+      }
+      
+      .waveform-container {
+        width: 100%;
+        height: 40px;
+        background-color: #1A1A1A;
+        border-radius: 4px;
+        overflow: hidden;
+      }
+    }
+  }
