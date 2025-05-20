@@ -120,11 +120,11 @@ const VisualizationCanvas = () => {
 
   // --- CLUSTERING STATE ---
   const [clusterSettings, setClusterSettings] = useState({
-    [FEATURE_CATEGORIES.MOOD]: 1.0,
-    [FEATURE_CATEGORIES.SPECTRAL]: 0.8,
-    [FEATURE_CATEGORIES.TECHNICAL]: 1.0,
-    [FEATURE_CATEGORIES.STYLE]: 1.0,
-    [FEATURE_CATEGORIES.INSTRUMENT]: 0.7,
+    [FEATURE_CATEGORIES.MOOD]: true,
+    [FEATURE_CATEGORIES.SPECTRAL]: true,
+    [FEATURE_CATEGORIES.TECHNICAL]: true,
+    [FEATURE_CATEGORIES.STYLE]: true,
+    [FEATURE_CATEGORIES.INSTRUMENT]: true,
     enabled: true,
   });
   const [numClustersControl, setNumClustersControl] = useState(7); // User-configurable k
@@ -615,24 +615,14 @@ const VisualizationCanvas = () => {
 
   // --- DATA PREPARATION FOR CLUSTERING & PCA ---
   const prepareFeatureData = useCallback((tracksToProcess, allSelectableFeatures, currentClusterSettings) => {
-    if (!tracksToProcess || tracksToProcess.length === 0) return null;
-    if (!allSelectableFeatures || allSelectableFeatures.length === 0) return null;
+    if (!tracksToProcess?.length || !allSelectableFeatures?.length) return null;
 
-    const activeFeatureConfigs = [];
-    allSelectableFeatures.forEach(featureConf => {
-        if (featureConf.isNumeric) {
-            const categoryWeight = currentClusterSettings[featureConf.category];
-            if (typeof categoryWeight === 'number' && categoryWeight > 0) {
-                activeFeatureConfigs.push({
-                    ...featureConf, // Includes value, label, category
-                    weight: categoryWeight
-                });
-            }
-        }
-    });
+    const activeFeatureConfigs = allSelectableFeatures.filter(featureConf => 
+      featureConf.isNumeric && currentClusterSettings[featureConf.category]
+    );
 
-    if (activeFeatureConfigs.length === 0) {
-      console.warn("DataPrep: No numeric features selected based on active categories weights.");
+    if (!activeFeatureConfigs.length) {
+      console.warn("DataPrep: No numeric features selected based on active categories.");
       return null;
     }
 
@@ -640,59 +630,63 @@ const VisualizationCanvas = () => {
     const trackIdsForProcessing = [];
     const validTracksForProcessing = [];
 
+    // Pre-allocate arrays for better performance
+    const vectorLength = activeFeatureConfigs.length;
+    const tempVector = new Array(vectorLength);
+
     tracksToProcess.forEach(track => {
-      const vector = [];
       let hasAnyValidData = false;
-      activeFeatureConfigs.forEach(fConfig => {
-        const value = track.parsedFeatures?.[fConfig.value];
-        if (typeof value === 'number' && !isNaN(value)) {
-          vector.push(value * fConfig.weight); // Apply weight
-          hasAnyValidData = true;
-        } else {
-          vector.push(0); // Impute with 0 if missing, after weighting this means 0
-        }
-      });
+      for (let i = 0; i < vectorLength; i++) {
+        const value = track.parsedFeatures?.[activeFeatureConfigs[i].value];
+        tempVector[i] = typeof value === 'number' && !isNaN(value) ? value : 0;
+        if (tempVector[i] !== 0) hasAnyValidData = true;
+      }
 
       if (hasAnyValidData) {
-        featureVectors.push(vector);
+        featureVectors.push([...tempVector]); // Create new array to avoid reference issues
         trackIdsForProcessing.push(track.id);
         validTracksForProcessing.push(track);
       }
     });
 
-    if (featureVectors.length === 0) return null;
+    if (!featureVectors.length) return null;
 
-    const numFeatures = activeFeatureConfigs.length;
-    const normalizedFeatureVectors = JSON.parse(JSON.stringify(featureVectors)); // Deep copy
-    const normalizationParams = []; // To store min/range for each feature
+    // Normalize features in-place for better performance
+    const numFeatures = vectorLength;
+    const normalizationParams = new Array(numFeatures);
 
     for (let j = 0; j < numFeatures; j++) {
       let minVal = Infinity;
       let maxVal = -Infinity;
-      for (let i = 0; i < normalizedFeatureVectors.length; i++) {
-        minVal = Math.min(minVal, normalizedFeatureVectors[i][j]);
-        maxVal = Math.max(maxVal, normalizedFeatureVectors[i][j]);
+      
+      // Find min/max in one pass
+      for (let i = 0; i < featureVectors.length; i++) {
+        const val = featureVectors[i][j];
+        minVal = Math.min(minVal, val);
+        maxVal = Math.max(maxVal, val);
       }
-      const range = maxVal - minVal;
-      normalizationParams.push({ min: minVal, range: range === 0 ? 1 : range });
 
+      const range = maxVal - minVal;
+      normalizationParams[j] = { min: minVal, range: range === 0 ? 1 : range };
+
+      // Normalize in-place
       if (range === 0) {
-        for (let i = 0; i < normalizedFeatureVectors.length; i++) {
-          normalizedFeatureVectors[i][j] = 0.5; // Or 0, if range is 0
+        for (let i = 0; i < featureVectors.length; i++) {
+          featureVectors[i][j] = 0.5;
         }
       } else {
-        for (let i = 0; i < normalizedFeatureVectors.length; i++) {
-          normalizedFeatureVectors[i][j] = (normalizedFeatureVectors[i][j] - minVal) / range;
+        for (let i = 0; i < featureVectors.length; i++) {
+          featureVectors[i][j] = (featureVectors[i][j] - minVal) / range;
         }
       }
     }
 
     return {
-      features: normalizedFeatureVectors,
+      features: featureVectors,
       trackIds: trackIdsForProcessing,
       originalTracks: validTracksForProcessing,
-      featureConfigsUsed: activeFeatureConfigs, // Full config with weight
-      normalizationParams // Min/max used for each feature's normalization
+      featureConfigsUsed: activeFeatureConfigs,
+      normalizationParams
     };
   }, []);
 
@@ -730,9 +724,13 @@ const VisualizationCanvas = () => {
     console.log("🏷️ Generating improved cluster labels...");
 
     const newClusters = [];
-    const { originalTracks, trackIds, featureConfigsUsed } = dataForClustering; // featureConfigsUsed has value, label, category, weight
+    const { originalTracks, trackIds, featureConfigsUsed } = dataForClustering;
     const { assignments, actualKUsed } = clusteringResult;
 
+    // Get enabled categories
+    const enabledCategories = Object.entries(clusterSettings)
+      .filter(([key, value]) => key !== 'enabled' && value === true)
+      .map(([key]) => key);
 
     for (let i = 0; i < actualKUsed; i++) {
         const trackIndicesInCluster = [];
@@ -745,22 +743,25 @@ const VisualizationCanvas = () => {
         const tracksInCluster = trackIndicesInCluster.map(idx => originalTracks[idx]);
         let labelParts = [];
 
-        // 1. BPM Analysis
-        const bpmValues = tracksInCluster.map(t => t.parsedFeatures?.bpm).filter(v => typeof v === 'number');
-        if (bpmValues.length > 0) {
-            const avgBpm = bpmValues.reduce((sum, v) => sum + v, 0) / bpmValues.length;
-            if (avgBpm < 95) labelParts.push(`Slow (${Math.round(avgBpm)} BPM)`);
-            else if (avgBpm < 130) labelParts.push(`Mid-Tempo (${Math.round(avgBpm)} BPM)`);
-            else labelParts.push(`Fast (${Math.round(avgBpm)} BPM)`);
+        // Only include BPM if Technical category is enabled
+        if (enabledCategories.includes(FEATURE_CATEGORIES.TECHNICAL)) {
+            const bpmValues = tracksInCluster.map(t => t.parsedFeatures?.bpm).filter(v => typeof v === 'number');
+            if (bpmValues.length > 0) {
+                const avgBpm = bpmValues.reduce((sum, v) => sum + v, 0) / bpmValues.length;
+                if (avgBpm < 95) labelParts.push(`Slow (${Math.round(avgBpm)} BPM)`);
+                else if (avgBpm < 130) labelParts.push(`Mid-Tempo (${Math.round(avgBpm)} BPM)`);
+                else labelParts.push(`Fast (${Math.round(avgBpm)} BPM)`);
+            }
         }
 
-        // 2. Characteristic Mood/Technical/Spectral Features
+        // Characteristic Mood/Technical/Spectral Features
         const moodTechSpectralDescriptors = [];
         const relevantFeatureConfs = featureConfigsUsed
-            .map(fc => allSelectableFeatures.find(sf => sf.value === fc.value) || fc) // Get full feature info
+            .map(fc => allSelectableFeatures.find(sf => sf.value === fc.value) || fc)
             .filter(featureConf => featureConf &&
+                enabledCategories.includes(featureConf.category) && // Only include enabled categories
                 (featureConf.category === FEATURE_CATEGORIES.MOOD ||
-                 featureConf.category === FEATURE_CATEGORIES.TECHNICAL || // Excluding BPM as it's handled
+                 featureConf.category === FEATURE_CATEGORIES.TECHNICAL ||
                  featureConf.category === FEATURE_CATEGORIES.SPECTRAL) &&
                  featureConf.value !== 'bpm' // Already handled
             );
@@ -770,116 +771,166 @@ const VisualizationCanvas = () => {
             if (values.length === 0) return;
             const avgValue = values.reduce((sum, v) => sum + v, 0) / values.length;
 
-            // Heuristic: consider "strong" if avgValue is high (e.g., > 0.6 for a typical 0-1 normalized Essentia feature)
-            // This threshold might need tuning or comparison to global averages for robustness
-            if (avgValue > 0.60) { // Threshold for a feature to be considered "characteristically high"
+            if (avgValue > 0.60) {
                 moodTechSpectralDescriptors.push({
-                    name: featureConf.label.split('(')[0].trim(), // Clean label
-                    score: avgValue
+                    name: featureConf.label.split('(')[0].trim(),
+                    score: avgValue,
+                    category: featureConf.category
                 });
             }
         });
-        moodTechSpectralDescriptors.sort((a, b) => b.score - a.score); // Sort by strength
+
+        // Sort by category priority and then by score
+        const categoryPriority = {
+            [FEATURE_CATEGORIES.MOOD]: 1,
+            [FEATURE_CATEGORIES.TECHNICAL]: 2,
+            [FEATURE_CATEGORIES.SPECTRAL]: 3
+        };
         
-        // Add top 1 or 2 characteristic features to label parts
-        if (moodTechSpectralDescriptors.length > 0) labelParts.push(moodTechSpectralDescriptors[0].name);
-        if (moodTechSpectralDescriptors.length > 1 && labelParts.length < (bpmValues.length > 0 ? 3 : 2) + (bpmValues.length > 0 ? 0:1) ) { // Allow more if no BPM
-             labelParts.push(moodTechSpectralDescriptors[1].name);
-        }
+        moodTechSpectralDescriptors.sort((a, b) => {
+            if (categoryPriority[a.category] !== categoryPriority[b.category]) {
+                return categoryPriority[a.category] - categoryPriority[b.category];
+            }
+            return b.score - a.score;
+        });
 
-
-        // 3. Dominant Style/Instrument Features
-        const styleInstrumentCounts = {};
-        const styleInstrumentFeatureDefs = featureConfigsUsed
-            .map(fc => allSelectableFeatures.find(sf => sf.value === fc.value) || fc)
-            .filter(featureConf => featureConf &&
-                (featureConf.category === FEATURE_CATEGORIES.STYLE ||
-                 featureConf.category === FEATURE_CATEGORIES.INSTRUMENT)
-            );
-
-        styleInstrumentFeatureDefs.forEach(featureConf => {
-            let trackCountWithFeature = 0;
-            tracksInCluster.forEach(track => {
-                if (track.parsedFeatures?.[featureConf.value] >= currentStyleThreshold) {
-                    trackCountWithFeature++;
-                }
-            });
-            // Feature is considered dominant if present in a significant portion of cluster tracks
-            if (trackCountWithFeature / tracksInCluster.length > 0.3) { // At least 30% of tracks in cluster
-                styleInstrumentCounts[featureConf.label.split('(')[0].trim()] = trackCountWithFeature;
+        // Add top features from each enabled category
+        const addedCategories = new Set();
+        moodTechSpectralDescriptors.forEach(desc => {
+            if (!addedCategories.has(desc.category) && labelParts.length < 3) {
+                labelParts.push(desc.name);
+                addedCategories.add(desc.category);
             }
         });
 
-        const sortedStylesInstruments = Object.entries(styleInstrumentCounts).sort((a,b) => b[1] - a[1]);
-        if (sortedStylesInstruments.length > 0) labelParts.push(sortedStylesInstruments[0][0]);
-        if (sortedStylesInstruments.length > 1 && labelParts.length < 4) labelParts.push(sortedStylesInstruments[1][0]);
+        // Style/Instrument Features
+        if (enabledCategories.includes(FEATURE_CATEGORIES.STYLE) || enabledCategories.includes(FEATURE_CATEGORIES.INSTRUMENT)) {
+            const styleInstrumentCounts = {};
+            const styleInstrumentFeatureDefs = featureConfigsUsed
+                .map(fc => allSelectableFeatures.find(sf => sf.value === fc.value) || fc)
+                .filter(featureConf => featureConf &&
+                    enabledCategories.includes(featureConf.category) && // Only include enabled categories
+                    (featureConf.category === FEATURE_CATEGORIES.STYLE ||
+                     featureConf.category === FEATURE_CATEGORIES.INSTRUMENT)
+                );
 
+            styleInstrumentFeatureDefs.forEach(featureConf => {
+                let trackCountWithFeature = 0;
+                tracksInCluster.forEach(track => {
+                    if (track.parsedFeatures?.[featureConf.value] >= currentStyleThreshold) {
+                        trackCountWithFeature++;
+                    }
+                });
+                if (trackCountWithFeature / tracksInCluster.length > 0.3) {
+                    styleInstrumentCounts[featureConf.label.split('(')[0].trim()] = {
+                        count: trackCountWithFeature,
+                        category: featureConf.category
+                    };
+                }
+            });
 
-        let finalLabel = labelParts.slice(0, 3).join(' | '); // Max 3-4 parts for readability
-        if (!finalLabel) finalLabel = `Cluster ${i + 1}`;
+            // Sort by category priority and then by count
+            const styleInstrumentPriority = {
+                [FEATURE_CATEGORIES.STYLE]: 1,
+                [FEATURE_CATEGORIES.INSTRUMENT]: 2
+            };
+
+            const sortedStylesInstruments = Object.entries(styleInstrumentCounts)
+                .sort((a, b) => {
+                    if (styleInstrumentPriority[a[1].category] !== styleInstrumentPriority[b[1].category]) {
+                        return styleInstrumentPriority[a[1].category] - styleInstrumentPriority[b[1].category];
+                    }
+                    return b[1].count - a[1].count;
+                });
+
+            // Add top features from each enabled category
+            const addedStyleInstrumentCategories = new Set();
+            sortedStylesInstruments.forEach(([label, info]) => {
+                if (!addedStyleInstrumentCategories.has(info.category) && labelParts.length < 4) {
+                    labelParts.push(label);
+                    addedStyleInstrumentCategories.add(info.category);
+                }
+            });
+        }
+
+        let finalLabel = labelParts.slice(0, 3).join(' | ');
+        if (!finalLabel) {
+            // If no features were selected, show enabled categories
+            const enabledCategoryLabels = enabledCategories
+                .map(cat => cat.toLowerCase())
+                .join('/');
+            finalLabel = `Cluster ${i + 1} (${enabledCategoryLabels})`;
+        }
 
         newClusters.push({
             id: i,
             label: finalLabel,
             trackIds: trackIndicesInCluster.map(idx => trackIds[idx]),
-            color: clusterColors[i % clusterColors.length] // Use dynamic colors
+            color: clusterColors[i % clusterColors.length]
         });
     }
     console.log("🏷️ Generated labels:", newClusters.map(c=> ({id: c.id, label: c.label, tracks: c.trackIds.length }) ));
     return newClusters;
-
-  }, [selectableFeatures, styleThreshold, clusterColors]); // Added clusterColors
+  }, [selectableFeatures, styleThreshold, clusterColors, clusterSettings]); // Added clusterSettings dependency
 
 
   // --- PCA CALCULATION ---
   const calculatePca = useCallback((data, forClusteringVis = false) => {
     if (!data || !data.features || data.features.length === 0) {
       if (forClusteringVis) setIsPcaCalculating(false);
-      setTsneData(null); return;
+      setTsneData(null);
+      return;
     }
+
     const nActualFeatures = data.features[0]?.length || 0;
     if (nActualFeatures < 1) {
-        if (forClusteringVis) setIsPcaCalculating(false);
-        setTsneData(null); return;
-    }
-    const nComponentsToUse = Math.min(2, nActualFeatures);
-
-    console.log(`🔄 Starting PCA calculation with ${data.features.length} tracks, ${nActualFeatures} features, for ${nComponentsToUse} components.`);
-    try {
-      const pca = new PCA(data.features);
-      const result = pca.predict(data.features, { nComponents: nComponentsToUse });
-      let resultArray = result.data || result;
-
-      if (nComponentsToUse === 1 && resultArray.every(p => typeof p[0] === 'number')) {
-          resultArray = resultArray.map(point => [point[0], 0.0]); // Make it 2D for consistency
-      }
-
-      if (!resultArray || resultArray.length === 0 || !resultArray[0] || resultArray[0].length < nComponentsToUse ) {
-          if (forClusteringVis) setIsPcaCalculating(false);
-          setTsneData(null); return;
-      }
-
-      const xValues = resultArray.map(point => point[0]);
-      const yValues = resultArray.map(point => point[1]);
-      const xMin = Math.min(...xValues); const xMax = Math.max(...xValues);
-      const yMin = Math.min(...yValues); const yMax = Math.max(...yValues);
-      const xRangePCA = (xMax - xMin) === 0 ? 1 : (xMax - xMin);
-      const yRangePCA = (yMax - yMin) === 0 ? 1 : (yMax - yMin);
-
-      const normalizedResult = resultArray.map((point, index) => ({
-        x: (point[0] - xMin) / xRangePCA,
-        y: (point[1] - yMin) / yRangePCA, // Y is often inverted in scatter plots if needed, but raw PCA y is fine
-        trackId: data.trackIds[index]
-      }));
-
-      console.log("✅ PCA results normalized.");
-      setTsneData(normalizedResult);
-    } catch (error) {
-      console.error("❌ Error calculating PCA:", error);
-      setTsneData(null);
-    } finally {
       if (forClusteringVis) setIsPcaCalculating(false);
+      setTsneData(null);
+      return;
     }
+
+    // Use requestAnimationFrame for smoother UI
+    requestAnimationFrame(() => {
+      try {
+        const pca = new PCA(data.features);
+        const result = pca.predict(data.features, { nComponents: 2 });
+        let resultArray = result.data || result;
+
+        if (!resultArray?.length || !resultArray[0]?.length) {
+          if (forClusteringVis) setIsPcaCalculating(false);
+          setTsneData(null);
+          return;
+        }
+
+        // Calculate bounds in one pass
+        let xMin = Infinity, xMax = -Infinity;
+        let yMin = Infinity, yMax = -Infinity;
+
+        resultArray.forEach(point => {
+          xMin = Math.min(xMin, point[0]);
+          xMax = Math.max(xMax, point[0]);
+          yMin = Math.min(yMin, point[1]);
+          yMax = Math.max(yMax, point[1]);
+        });
+
+        const xRange = xMax - xMin || 1;
+        const yRange = yMax - yMin || 1;
+
+        // Create normalized result in one pass
+        const normalizedResult = resultArray.map((point, index) => ({
+          x: (point[0] - xMin) / xRange,
+          y: (point[1] - yMin) / yRange,
+          trackId: data.trackIds[index]
+        }));
+
+        setTsneData(normalizedResult);
+      } catch (error) {
+        console.error("❌ Error calculating PCA:", error);
+        setTsneData(null);
+      } finally {
+        if (forClusteringVis) setIsPcaCalculating(false);
+      }
+    });
   }, []);
 
 
@@ -891,49 +942,73 @@ const VisualizationCanvas = () => {
       return;
     }
 
-    const activeCategoriesForClustering = Object.entries(clusterSettings)
-        .filter(([key, value]) => key !== 'enabled' && typeof value === 'number' && value > 0)
-        .reduce((obj, [key, value]) => { obj[key] = value; return obj; }, {}); // Pass weights directly
+    const activeCategories = Object.entries(clusterSettings)
+      .filter(([key, value]) => key !== 'enabled' && value === true)
+      .map(([key]) => key);
 
-    if (Object.keys(activeCategoriesForClustering).length === 0) {
-        setClusters([]); setTsneData(null); return;
+    if (!activeCategories.length) {
+      setClusters([]);
+      setTsneData(null);
+      return;
     }
 
+    // Use requestAnimationFrame for smoother UI
+    let animationFrameId;
     const timeoutId = setTimeout(() => {
       setIsClusteringCalculating(true);
       setIsPcaCalculating(true);
 
-      // Pass full clusterSettings to prepareFeatureData for weights
-      const dataForClustering = prepareFeatureData(tracks, selectableFeatures, clusterSettings);
+      // Use requestAnimationFrame to batch state updates
+      animationFrameId = requestAnimationFrame(() => {
+        const dataForClustering = prepareFeatureData(tracks, selectableFeatures, clusterSettings);
 
-      if (dataForClustering && dataForClustering.features.length > 0) {
-        const clusteringResult = runKMeansClustering(dataForClustering, numClustersControl);
+        if (dataForClustering?.features.length) {
+          // Run clustering in a separate animation frame
+          requestAnimationFrame(() => {
+            const clusteringResult = runKMeansClustering(dataForClustering, numClustersControl);
 
-        if (clusteringResult) {
-          const trackIdToClusterId = clusteringResult.trackIdToClusterId;
-          setTracks(prevTracks => prevTracks.map(t => ({...t, clusterId: trackIdToClusterId[t.id]})));
-
-          const labeledClusters = generateClusterLabels(clusteringResult, dataForClustering, selectableFeatures, styleThreshold);
-          setClusters(labeledClusters);
-
-          calculatePca(dataForClustering, true);
+            if (clusteringResult) {
+              // Batch state updates
+              requestAnimationFrame(() => {
+                const trackIdToClusterId = clusteringResult.trackIdToClusterId;
+                setTracks(prevTracks => prevTracks.map(t => ({...t, clusterId: trackIdToClusterId[t.id]})));
+                const labeledClusters = generateClusterLabels(clusteringResult, dataForClustering, selectableFeatures, styleThreshold);
+                setClusters(labeledClusters);
+                calculatePca(dataForClustering, true);
+              });
+            } else {
+              setClusters([]);
+              setTsneData(null);
+              setIsPcaCalculating(false);
+            }
+            setIsClusteringCalculating(false);
+          });
         } else {
-          setClusters([]); setTsneData(null); setIsPcaCalculating(false);
+          setClusters([]);
+          setTsneData(null);
+          setIsPcaCalculating(false);
+          setIsClusteringCalculating(false);
         }
-      } else {
-        setClusters([]); setTsneData(null); setIsPcaCalculating(false);
-      }
-      setIsClusteringCalculating(false);
-    }, 750); // Slightly longer debounce for more complex calcs / user changes
+      });
+    }, 500); // Reduced debounce time since we're using requestAnimationFrame
 
-    return () => clearTimeout(timeoutId);
+    return () => {
+      clearTimeout(timeoutId);
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+    };
   }, [
     isSimilarityMode,
-    clusterSettings, // Object itself, if any property changes, it's a new object or should be for deep compare
-    tracks.length, // Optimization: only re-run if track count changes significantly
-    selectableFeatures.length, // Optimization
-    numClustersControl, // User-defined k
-    prepareFeatureData, runKMeansClustering, generateClusterLabels, calculatePca, styleThreshold // Callbacks
+    clusterSettings,
+    tracks.length,
+    selectableFeatures.length,
+    numClustersControl,
+    prepareFeatureData,
+    runKMeansClustering,
+    generateClusterLabels,
+    calculatePca,
+    styleThreshold
   ]);
 
 
@@ -1126,8 +1201,8 @@ const VisualizationCanvas = () => {
   }, [isPixiAppReady]);
 
 
-  const handleClusterSettingChange = (category, value) => {
-    setClusterSettings(prev => ({ ...prev, [category]: value }));
+  const handleClusterSettingChange = (category) => {
+    setClusterSettings(prev => ({ ...prev, [category]: !prev[category] }));
   };
 
   const handleNumClustersChange = (e) => {
@@ -1170,27 +1245,58 @@ const VisualizationCanvas = () => {
                     value={numClustersControl}
                     onChange={handleNumClustersChange}
                     min="1"
-                    max="50" // Sensible max for visualization
+                    max="50"
                     style={{width: '60px', padding: '5px'}}
                 />
             </div>
 
-            <div style={{fontWeight: 'bold', marginBottom: '5px'}}>Feature Category Weights:</div>
+            <div style={{fontWeight: 'bold', marginBottom: '5px'}}>Feature Categories:</div>
             {[FEATURE_CATEGORIES.MOOD, FEATURE_CATEGORIES.SPECTRAL, FEATURE_CATEGORIES.TECHNICAL, FEATURE_CATEGORIES.STYLE, FEATURE_CATEGORIES.INSTRUMENT].map(category => (
               <div key={category} style={{marginBottom: '8px'}}>
-                <label style={{display: 'block', marginBottom: '2px', textTransform: 'capitalize'}}>
-                  {category.toLowerCase()}: {(clusterSettings[category] * 100).toFixed(0)}%
+                <label style={{display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer'}}>
+                  <input
+                    type="checkbox"
+                    checked={clusterSettings[category]}
+                    onChange={() => handleClusterSettingChange(category)}
+                    style={{ width: '16px', height: '16px' }}
+                  />
+                  <span style={{textTransform: 'capitalize'}}>{category.toLowerCase()}</span>
                 </label>
-                <input
-                  type="range"
-                  min="0" // Allow 0 to effectively disable a category for clustering
-                  max="100"
-                  value={(clusterSettings[category] || 0) * 100} // Default to 0 if undefined
-                  onChange={(e) => handleClusterSettingChange(category, parseInt(e.target.value) / 100)}
-                  style={{width: '100%'}}
-                />
               </div>
             ))}
+
+            {/* Add Cluster Legend */}
+            {clusters.length > 0 && (
+              <div style={{marginTop: '15px', borderTop: '1px solid #555', paddingTop: '15px'}}>
+                <div style={{fontWeight: 'bold', marginBottom: '10px'}}>Cluster Legend:</div>
+                <div style={{maxHeight: '200px', overflowY: 'auto', paddingRight: '5px'}}>
+                  {clusters.map((cluster) => (
+                    <div key={cluster.id} style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      marginBottom: '8px',
+                      fontSize: '0.9em'
+                    }}>
+                      <div style={{
+                        width: '12px',
+                        height: '12px',
+                        borderRadius: '50%',
+                        backgroundColor: `#${cluster.color.toString(16).padStart(6, '0')}`,
+                        flexShrink: 0
+                      }} />
+                      <span style={{
+                        color: '#ccc',
+                        wordBreak: 'break-word',
+                        lineHeight: '1.2'
+                      }}>
+                        {cluster.label}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
