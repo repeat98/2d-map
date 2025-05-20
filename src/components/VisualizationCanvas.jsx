@@ -4,6 +4,9 @@ import * as PIXI from 'pixi.js';
 import WaveSurfer from 'wavesurfer.js'; // Ensure Wavesurfer.js is installed
 import './VisualizationCanvas.scss';
 import defaultArtwork from "../../assets/default-artwork.png";
+import Waveform from './Waveform';
+import ReactDOM from 'react-dom/client';
+import { PlaybackContext } from '../context/PlaybackContext';
 
 /*
 * IMPORTANT NOTE FOR ELECTRON USERS (Content Security Policy - CSP):
@@ -469,23 +472,50 @@ const VisualizationCanvas = () => {
 
   // Update tooltip content when track changes
   useEffect(() => {
-    if (!currentHoverTrack || !tooltipContainerRef.current) return;
+    if (!currentHoverTrack || !tooltipContainerRef.current) {
+      // Clean up any existing waveform containers when tooltip is hidden
+      const existingContainers = pixiCanvasContainerRef.current?.querySelectorAll('.waveform-react-container');
+      existingContainers?.forEach(container => {
+        if (container.parentElement) {
+          container.parentElement.removeChild(container);
+        }
+      });
+      return;
+    }
 
     const updateTooltip = async () => {
       try {
+        // Clean up any existing waveform containers first
+        const existingContainers = pixiCanvasContainerRef.current?.querySelectorAll('.waveform-react-container');
+        existingContainers?.forEach(container => {
+          if (container.parentElement) {
+            container.parentElement.removeChild(container);
+          }
+        });
+
         // Update title and features
         trackTitleTextRef.current.text = currentHoverTrack.title || 'Unknown Title';
         const xFeatureLabel = selectableFeatures.find(f => f.value === xAxisFeature)?.label || xAxisFeature;
         const yFeatureLabel = selectableFeatures.find(f => f.value === yAxisFeature)?.label || yAxisFeature;
         trackFeaturesTextRef.current.text = `${xFeatureLabel}: ${formatTickValue(currentHoverTrack[xAxisFeature])}\n${yFeatureLabel}: ${formatTickValue(currentHoverTrack[yAxisFeature])}`;
 
-        // Load cover art
-        const artworkPath = currentHoverTrack.artwork_thumbnail_path || currentHoverTrack.coverArtUrl || defaultArtwork;
+        // Load cover art with error handling
+        const artworkPath = currentHoverTrack.artwork_thumbnail_path || defaultArtwork;
         console.log("🎨 Loading cover art from:", artworkPath);
-        const texture = await PIXI.Texture.from(artworkPath);
-        coverArtSpriteRef.current.texture = texture;
+        
+        // Create a new Image to preload the artwork
+        const img = new Image();
+        img.onload = () => {
+          const texture = PIXI.Texture.from(img);
+          coverArtSpriteRef.current.texture = texture;
+        };
+        img.onerror = () => {
+          console.warn("⚠️ Failed to load cover art, using default");
+          coverArtSpriteRef.current.texture = PIXI.Texture.from(defaultArtwork);
+        };
+        img.src = artworkPath;
 
-        // Load waveform
+        // Create waveform container
         waveformContainerRef.current.removeChildren();
         
         // Add background
@@ -494,55 +524,83 @@ const VisualizationCanvas = () => {
           .fill({ color: 0x1A1A1A });
         waveformContainerRef.current.addChild(bg);
 
-        if (currentHoverTrack.audioUrl) {
-          console.log("🎵 Loading waveform for track:", currentHoverTrack.id);
-          const waveformResponse = await fetch(`http://localhost:3000/tracks/waveform/${currentHoverTrack.id}`);
-          if (waveformResponse.ok) {
-            const waveformData = await waveformResponse.json();
-            
-            // Draw waveform
-            const waveformGraphics = new PIXI.Graphics();
-            waveformGraphics.setStrokeStyle({ width: 1, color: 0x6A82FB });
-            
-            const peaks = waveformData.waveform;
-            const width = 150;
-            const height = 40;
-            const centerY = height / 2;
-            const step = width / peaks.length;
-            
-            waveformGraphics.moveTo(0, centerY);
-            
-            for (let i = 0; i < peaks.length; i++) {
-              const x = i * step;
-              const y = centerY + (peaks[i] * centerY);
-              waveformGraphics.lineTo(x, y);
+        // Create a container for the React Waveform component
+        const waveformReactContainer = document.createElement('div');
+        waveformReactContainer.className = 'waveform-react-container'; // Add class for easier cleanup
+        waveformReactContainer.style.width = '150px';
+        waveformReactContainer.style.height = '40px';
+        waveformReactContainer.style.position = 'absolute';
+        waveformReactContainer.style.top = '0';
+        waveformReactContainer.style.left = '0';
+        waveformReactContainer.style.pointerEvents = 'none';
+        
+        // Create a container for the React component
+        const reactContainer = document.createElement('div');
+        reactContainer.style.width = '100%';
+        reactContainer.style.height = '100%';
+        waveformReactContainer.appendChild(reactContainer);
+        
+        // Add the container to the DOM
+        const canvasContainer = pixiCanvasContainerRef.current;
+        if (canvasContainer) {
+          canvasContainer.appendChild(waveformReactContainer);
+          
+          // Position the waveform container
+          const tooltipPos = tooltipContainerRef.current.position;
+          waveformReactContainer.style.transform = `translate(${tooltipPos.x + 10}px, ${tooltipPos.y + 100}px)`;
+
+          // Create a context value for the Waveform component
+          const playbackContextValue = {
+            setPlayingWaveSurfer: (wavesurfer) => {
+              if (wavesurferRef.current) {
+                wavesurferRef.current.stop();
+              }
+              wavesurferRef.current = wavesurfer;
+            },
+            currentTrack: currentHoverTrack,
+            setCurrentTrack: () => {} // No-op since we handle track selection differently
+          };
+
+          // Render the Waveform component with context
+          const root = ReactDOM.createRoot(reactContainer);
+          root.render(
+            <PlaybackContext.Provider value={playbackContextValue}>
+              <Waveform
+                trackId={currentHoverTrack.id.toString()}
+                audioPath={currentHoverTrack.audioUrl}
+                isInteractive={true}
+                onPlay={() => {
+                  if (wavesurferRef.current) {
+                    wavesurferRef.current.play();
+                    setIsPlaying(true);
+                  }
+                }}
+              />
+            </PlaybackContext.Provider>
+          );
+
+          // Return cleanup function
+          return () => {
+            root.unmount();
+            if (waveformReactContainer.parentElement) {
+              waveformReactContainer.parentElement.removeChild(waveformReactContainer);
             }
-            
-            waveformContainerRef.current.addChild(waveformGraphics);
-          }
+          };
         }
       } catch (error) {
         console.error("💥 Error updating tooltip:", error);
         // Set default artwork if cover art loading fails
         coverArtSpriteRef.current.texture = PIXI.Texture.from(defaultArtwork);
-        
-        // Show error message in waveform container
-        const errorText = new PIXI.Text({
-          text: 'Error loading waveform',
-          style: {
-            fontFamily: 'Arial',
-            fontSize: 12,
-            fill: 0xFF0000,
-            align: 'center'
-          }
-        });
-        errorText.anchor.set(0.5);
-        errorText.position.set(75, 20);
-        waveformContainerRef.current.addChild(errorText);
       }
+      return () => {}; // Return empty cleanup function
     };
 
-    updateTooltip();
+    let cleanup = updateTooltip();
+    return () => {
+      if (typeof cleanup === 'function') {
+        cleanup();
+      }
+    };
   }, [currentHoverTrack, xAxisFeature, yAxisFeature, selectableFeatures, formatTickValue]);
 
   const formatTickValue = useCallback((value, isGenreAxis) => {
@@ -596,7 +654,7 @@ const VisualizationCanvas = () => {
     if (!isPixiAppReady || !pixiAppRef.current || !chartAreaRef.current || isLoadingTracks || error || !tracks || !canvasSize.width || !canvasSize.height || !axisMinMax.x || !axisMinMax.y || selectableFeatures.length === 0 ) return;
     const app = pixiAppRef.current; const chartArea = chartAreaRef.current;
     chartArea.removeChildren();
-    if (tracks.length === 0 || !axisMinMax.x.hasData || !axisMinMax.y.hasData) { /* ... (message handling) ... */ 
+    if (tracks.length === 0 || !axisMinMax.x.hasData || !axisMinMax.y.hasData) {
         const msg = tracks.length === 0 ? "No tracks to display." : `Axis data not fully ready. X: ${axisMinMax.x?.count ?? 'N/A'}, Y: ${axisMinMax.y?.count ?? 'N/A'}`;
         const msgText = new PIXI.Text({text:msg, style:new PIXI.TextStyle({ fill: 'orange', fontSize: 16, align: 'center'})});
         msgText.anchor.set(0.5); msgText.position.set(app.screen.width / 2, app.screen.height / 2);
@@ -612,7 +670,7 @@ const VisualizationCanvas = () => {
     const yFeatureInfo = selectableFeatures.find(f => f.value === yAxisFeature);
 
     tracks.forEach((track) => {
-      let rawXVal, rawYVal; /* ... (raw value calculation) ... */ 
+      let rawXVal, rawYVal;
       if (xFeatureInfo && !xFeatureInfo.isNumeric) { rawXVal = track.parsedFeatures?.[xAxisFeature] || 0; } 
       else { rawXVal = track[xAxisFeature]; if (typeof rawXVal !== 'number' || isNaN(rawXVal)) rawXVal = xRange.min; }
       if (yFeatureInfo && !yFeatureInfo.isNumeric) { rawYVal = track.parsedFeatures?.[yAxisFeature] || 0; } 
@@ -620,22 +678,34 @@ const VisualizationCanvas = () => {
       const nX = xRange.range === 0 ? 0.5 : (rawXVal - xRange.min) / xRange.range;
       const nY = yRange.range === 0 ? 0.5 : (rawYVal - yRange.min) / yRange.range;
       const x = PADDING + nX * drawableWidth; const y = PADDING + (1 - nY) * drawableHeight;
-      let fillColor = DEFAULT_DOT_COLOR; /* ... (color logic) ... */ 
+      let fillColor = DEFAULT_DOT_COLOR;
       const happinessVal = track.parsedFeatures?.happiness ?? track.happiness;
       const aggressiveVal = track.parsedFeatures?.aggressive ?? track.aggressive;
       const relaxedVal = track.parsedFeatures?.relaxed ?? track.relaxed;
       if (typeof happinessVal === 'number' && happinessVal > 0.75) fillColor = HAPPINESS_COLOR;
       else if (typeof aggressiveVal === 'number' && aggressiveVal > 0.65) fillColor = AGGRESSIVE_COLOR;
       else if (typeof relaxedVal === 'number' && relaxedVal > 0.75) fillColor = RELAXED_COLOR;
+
+      // Create a container for the dot to handle hit area
+      const dotContainer = new PIXI.Container();
+      dotContainer.position.set(x, y);
+      dotContainer.eventMode = 'static';
+      dotContainer.cursor = 'pointer';
+
+      // Create the visual dot
       const dataDot = new PIXI.Graphics()
         .circle(0, 0, DOT_RADIUS)
         .fill({ color: fillColor });
-      dataDot.position.set(x, y);
-      dataDot.eventMode = 'static';
-      dataDot.cursor = 'pointer';
+      dotContainer.addChild(dataDot);
 
-      dataDot.on('pointerover', async (event) => {
-        event.stopPropagation(); // Prevent event from bubbling to stage
+      // Create a larger hit area for better interaction
+      const hitArea = new PIXI.Graphics()
+        .circle(0, 0, DOT_RADIUS * 2)
+        .fill({ color: 0xFFFFFF, alpha: 0 });
+      dotContainer.addChild(hitArea);
+
+      dotContainer.on('pointerover', async (event) => {
+        event.stopPropagation();
         console.log("🎯 Dot hovered:", event.global);
         dataDot.scale.set(DOT_RADIUS_HOVER / DOT_RADIUS);
         setCurrentHoverTrack(track);
@@ -664,8 +734,8 @@ const VisualizationCanvas = () => {
         }
       });
 
-      dataDot.on('pointerout', (event) => {
-        event.stopPropagation(); // Prevent event from bubbling to stage
+      dotContainer.on('pointerout', (event) => {
+        event.stopPropagation();
         console.log("🎯 Dot unhovered");
         dataDot.scale.set(1.0);
         setCurrentHoverTrack(null);
@@ -677,7 +747,8 @@ const VisualizationCanvas = () => {
           setIsPlaying(false);
         }
       });
-      chartArea.addChild(dataDot);
+
+      chartArea.addChild(dotContainer);
     });
     updateAxesTextScale(chartArea);
   }, [isPixiAppReady, tracks, axisMinMax, xAxisFeature, yAxisFeature, isLoadingTracks, error, drawAxes, formatTickValue, canvasSize, updateAxesTextScale, selectableFeatures, setCurrentHoverTrack, setIsPlaying]);
@@ -688,6 +759,55 @@ const VisualizationCanvas = () => {
     if (isPixiAppReady && pixiAppRef.current && pixiCanvasContainerRef.current) { /* ... */ } // same
     return () => window.removeEventListener('resize', handleResize);
   }, [isPixiAppReady]);
+
+  // Initialize WaveSurfer when the component mounts
+  useEffect(() => {
+    if (wavesurferContainerRef.current) {
+      wavesurferRef.current = WaveSurfer.create({
+        container: wavesurferContainerRef.current,
+        waveColor: '#6A82FB',
+        progressColor: '#3B4D9A',
+        height: 40,
+        barWidth: 1,
+        barGap: 1,
+        cursorWidth: 0,
+        interact: false,
+        backend: 'MediaElement',
+        normalize: true,
+        autoCenter: true,
+        partialRender: true,
+        responsive: false,
+        splitChannels: false,
+        xhr: {
+          mode: 'no-cors',
+          credentials: 'same-origin',
+          cache: 'force-cache'
+        }
+      });
+      
+      console.log("🌊 Wavesurfer instance created.");
+      wavesurferRef.current.on('error', (err) => console.error('🌊 Wavesurfer Global Error:', err, "Attempted URL:", activeAudioUrlRef.current));
+      wavesurferRef.current.on('warn', (warn) => console.warn('🌊 Wavesurfer Global Warning:', warn));
+      wavesurferRef.current.on('ready', () => {
+        const currentSrc = wavesurferRef.current?.getMediaElement()?.src;
+        console.log('🌊 Wavesurfer ready for URL:', currentSrc);
+        const tooltipTrack = currentTooltipTrackRef.current;
+        if (tooltipTrack && tooltipTrack.audioUrl === currentSrc && tooltipContainerRef.current?.visible) {
+          console.log("🌊 Autoplaying on ready (tooltip is active for this track).");
+          wavesurferRef.current.play().catch(e => console.error("🌊 Error auto-playing on ready:", e));
+        }
+      });
+      wavesurferRef.current.on('play', () => console.log('🌊 Wavesurfer playing.'));
+      wavesurferRef.current.on('pause', () => console.log('🌊 Wavesurfer paused.'));
+    }
+
+    return () => {
+      if (wavesurferRef.current) {
+        wavesurferRef.current.destroy();
+        wavesurferRef.current = null;
+      }
+    };
+  }, []);
 
   return ( 
     <div className="visualization-outer-container">
