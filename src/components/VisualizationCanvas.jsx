@@ -34,6 +34,8 @@ const coreFeaturesConfig = [
   { value: 'spectral_flatness', label: 'Spectral Flatness (Noisiness)', isNumeric: true, axisTitleStyle: { fill: 0xd35400 } },
 ];
 
+// Add probability threshold constant
+const STYLE_PROBABILITY_THRESHOLD = 0.3; // Only count styles that appear with at least 30% probability
 
 // Style constants
 const PADDING = 70; const AXIS_COLOR = 0xAAAAAA; const TEXT_COLOR = 0xE0E0E0;
@@ -51,6 +53,7 @@ const VisualizationCanvas = () => {
   const [error, setError] = useState(null);
   const [isLoadingTracks, setIsLoadingTracks] = useState(true);
   const [isSimilarityMode, setIsSimilarityMode] = useState(false);
+  const [styleThreshold, setStyleThreshold] = useState(0.3);
   
   const pixiCanvasContainerRef = useRef(null);
   const pixiAppRef = useRef(null);
@@ -100,37 +103,35 @@ const VisualizationCanvas = () => {
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const rawTracks = await response.json();
 
-        const allDiscoveredFeatureKeys = new Set(coreFeaturesConfig.map(f => f.value));
+        const allDiscoveredFeatureKeys = new Set();
+        const featureFrequencies = {}; // To store frequencies of dynamic features
 
         const processedTracks = rawTracks.map(track => {
           const currentParsedFeatures = {};
 
-          // 1. Process core features from top-level of track object
           coreFeaturesConfig.forEach(coreFeatureConf => {
             const featureKey = coreFeatureConf.value;
             if (track[featureKey] !== undefined && track[featureKey] !== null) {
               const val = parseFloat(track[featureKey]);
               if (!isNaN(val)) currentParsedFeatures[featureKey] = val;
             }
+            allDiscoveredFeatureKeys.add(featureKey);
           });
 
-          // 2. Process genre features (from track.features blob)
-          //    These keys might overlap with coreFeatures if names are similar (e.g. 'sad' as a genre vs mood)
-          //    The order here means genre blob could overwrite a core feature if names clash.
           if (track.features) {
             try {
               const genreObject = typeof track.features === 'string' ? JSON.parse(track.features) : track.features;
               Object.entries(genreObject).forEach(([genreKey, value]) => {
                 const val = parseFloat(value);
-                if (!isNaN(val)) {
+                if (!isNaN(val) && val >= styleThreshold) {
                     currentParsedFeatures[genreKey] = val;
                     allDiscoveredFeatureKeys.add(genreKey);
+                    featureFrequencies[genreKey] = (featureFrequencies[genreKey] || 0) + 1;
                 }
               });
             } catch (e) { console.error("Error parsing genre features for track:", track.id, e); }
           }
 
-          // 3. Process instrument features (from track.instrument_features blob)
           if (track.instrument_features) {
             try {
               const instrumentObject = typeof track.instrument_features === 'string'
@@ -141,12 +142,12 @@ const VisualizationCanvas = () => {
                  if (!isNaN(val)) {
                     currentParsedFeatures[instrumentKey] = val;
                     allDiscoveredFeatureKeys.add(instrumentKey);
+                    featureFrequencies[instrumentKey] = (featureFrequencies[instrumentKey] || 0) + 1;
                  }
               });
             } catch (e) { console.error("Error parsing instrument features for track:", track.id, e); }
           }
           
-          // Log a sample of parsed features for the first track
           if (rawTracks.indexOf(track) === 0) {
             console.log("Sample parsedFeatures for first track:", currentParsedFeatures);
           }
@@ -154,34 +155,80 @@ const VisualizationCanvas = () => {
           return { ...track, parsedFeatures: currentParsedFeatures };
         });
         
-        // 4. Build the final selectableFeatures list
-        const finalSelectableFeatures = Array.from(allDiscoveredFeatureKeys).sort().map(featureKey => {
-          const existingConfig = coreFeaturesConfig.find(f => f.value === featureKey);
-          if (existingConfig) return existingConfig; // Use predefined label and style
+        console.log("Collected Feature Frequencies:", JSON.parse(JSON.stringify(featureFrequencies)));
 
-          // For new dynamic features (genres, instruments)
-          const label = featureKey
-            .replace(/_/g, ' ') // Replace underscores with spaces
-            .replace(/---/g, ' - ') // Replace '---' with ' - ' for genres
+        const coreFeatureValues = new Set(coreFeaturesConfig.map(f => f.value));
+        const dynamicFeatureConfigs = [];
+
+        Array.from(allDiscoveredFeatureKeys).forEach(featureKey => {
+          if (coreFeatureValues.has(featureKey)) {
+            return;
+          }
+
+          let label = featureKey;
+          if (featureKey.includes("---")) { 
+            label = featureKey.substring(featureKey.indexOf("---") + 3);
+          }
+          
+          label = label
+            .replace(/_/g, ' ') 
             .split(/[\s-]+/) 
             .map(word => word.charAt(0).toUpperCase() + word.slice(1))
             .join(' ');
-          return {
-            value: featureKey,
-            label: label,
-            isNumeric: true, // Assume all parsed features are numeric for plotting
-            axisTitleStyle: { fill: 0x95a5a6 } // Default color for dynamic features
-          };
+
+          const frequency = featureFrequencies[featureKey] || 0;
+          if (frequency > 0) { // Only add features that have a frequency
+            dynamicFeatureConfigs.push({
+              value: featureKey,
+              label: `${label} (${frequency})`, // Add frequency to label
+              isNumeric: true, 
+              axisTitleStyle: { fill: 0x95a5a6 }, 
+              frequency: frequency
+            });
+          }
         });
 
+        // Log before sorting
+        console.log("Dynamic Feature Configs (before sort - label, freq):", 
+            JSON.parse(JSON.stringify(dynamicFeatureConfigs.map(f => ({label: f.label, freq: f.frequency, val: f.value})))));
+
+        dynamicFeatureConfigs.sort((a, b) => {
+          if (b.frequency !== a.frequency) {
+            return b.frequency - a.frequency; // Sort by frequency descending
+          }
+          return a.label.localeCompare(b.label); // Then by label ascending
+        });
+        
+        // Log after sorting
+        console.log("Dynamic Feature Configs (after sort - label, freq):", 
+            JSON.parse(JSON.stringify(dynamicFeatureConfigs.map(f => ({label: f.label, freq: f.frequency, val: f.value})))));
+        
+        const finalSelectableFeatures = [...coreFeaturesConfig, ...dynamicFeatureConfigs];
+
+        // Log final list sample
+        console.log("Final Selectable Features (first 20 entries with freq):", 
+            finalSelectableFeatures.slice(0, 20).map(f => ({
+                label: f.label, 
+                value: f.value, 
+                // For core features, frequency might be undefined, show N/A
+                frequency: f.frequency !== undefined ? f.frequency : 'N/A (core)' 
+            }))
+        );
+
+
         setSelectableFeatures(finalSelectableFeatures);
+
         if (finalSelectableFeatures.length > 0 && !finalSelectableFeatures.find(f => f.value === xAxisFeature)) {
             setXAxisFeature(finalSelectableFeatures[0].value);
         }
         if (finalSelectableFeatures.length > 1 && !finalSelectableFeatures.find(f => f.value === yAxisFeature)) {
             setYAxisFeature(finalSelectableFeatures[1].value);
-        } else if (finalSelectableFeatures.length === 1 && !finalSelectableFeatures.find(f => f.value === yAxisFeature)) {
-            setYAxisFeature(finalSelectableFeatures[0].value); // Fallback if only one feature
+        } else if (finalSelectableFeatures.length === 1 && xAxisFeature !== finalSelectableFeatures[0].value) { 
+            setYAxisFeature(finalSelectableFeatures[0].value);
+        } else if (finalSelectableFeatures.length > 0 && yAxisFeature === xAxisFeature && finalSelectableFeatures.length > 1) {
+            const secondFeature = finalSelectableFeatures.find(f => f.value !== xAxisFeature);
+            if (secondFeature) setYAxisFeature(secondFeature.value);
+            else setYAxisFeature(finalSelectableFeatures[0].value); 
         }
 
 
@@ -194,9 +241,9 @@ const VisualizationCanvas = () => {
       }
     };
     fetchTracksAndPrepareFeatures();
-  }, []); // Runs once on mount
+  }, [styleThreshold]);
 
-  useEffect(() => { // MinMax calculation
+  useEffect(() => { 
     if (isLoadingTracks || !tracks || tracks.length === 0 || !xAxisFeature || !yAxisFeature || selectableFeatures.length === 0) return;
     
     const calculateMinMax = (featureKey, tracksToCalc) => {
@@ -215,10 +262,10 @@ const VisualizationCanvas = () => {
 
       if (!hasValidValues) {
         console.warn(`No valid numeric values found for feature: ${featureKey}. Defaulting range to 0-1.`);
-        return { min: 0, max: 1, range: 1, hasData: false }; // Added hasData flag
+        return { min: 0, max: 1, range: 1, hasData: false }; 
       }
       const range = max - min;
-      return { min, max, range: range === 0 ? 1 : range, hasData: true }; // Avoid zero range for scaling
+      return { min, max, range: range === 0 ? 1 : range, hasData: true }; 
     };
 
     const xRange = calculateMinMax(xAxisFeature, tracks);
@@ -231,13 +278,13 @@ const VisualizationCanvas = () => {
     setAxisMinMax({ x: xRange, y: yRange });
   }, [tracks, xAxisFeature, yAxisFeature, isLoadingTracks, selectableFeatures]);
 
-  const updateAxesTextScale = useCallback((chartArea) => { /* ... (same logic) ... */ 
+  const updateAxesTextScale = useCallback((chartArea) => { 
     if (!chartArea || !chartArea.scale) return;
     const currentChartScale = chartArea.scale.x; const inverseScale = 1 / currentChartScale;
     for (const child of chartArea.children) { if (child.isAxisTextElement) { child.scale.set(inverseScale); } }
   }, []);
 
-  useEffect(() => { // Pixi App Setup, Tooltip event listeners, Wavesurfer, Zoom
+  useEffect(() => { 
     if (!pixiCanvasContainerRef.current || pixiAppRef.current) return;
     let app = new PIXI.Application();
     const initPrimaryApp = async (retryCount = 0) => {
@@ -264,31 +311,26 @@ const VisualizationCanvas = () => {
         pixiAppRef.current = app;
         setCanvasSize({width: app.screen.width, height: app.screen.height});
         
-        // Create chart area
         chartAreaRef.current = new PIXI.Container();
         app.stage.addChild(chartAreaRef.current);
 
-        // Create tooltip container
         tooltipContainerRef.current = new PIXI.Container();
         tooltipContainerRef.current.visible = false;
         tooltipContainerRef.current.eventMode = 'static';
         tooltipContainerRef.current.cursor = 'default';
         app.stage.addChild(tooltipContainerRef.current);
 
-        // Create tooltip background
         const tooltipBg = new PIXI.Graphics()
           .roundRect(0, 0, 300, 200, 8)
           .fill({ color: 0x333333 });
         tooltipContainerRef.current.addChild(tooltipBg);
 
-        // Create cover art sprite
         coverArtSpriteRef.current = new PIXI.Sprite(PIXI.Texture.EMPTY);
         coverArtSpriteRef.current.position.set(10, 10);
         coverArtSpriteRef.current.width = 80;
         coverArtSpriteRef.current.height = 80;
         tooltipContainerRef.current.addChild(coverArtSpriteRef.current);
 
-        // Create title text
         trackTitleTextRef.current = new PIXI.Text({
           text: '',
           style: {
@@ -303,7 +345,6 @@ const VisualizationCanvas = () => {
         trackTitleTextRef.current.position.set(100, 10);
         tooltipContainerRef.current.addChild(trackTitleTextRef.current);
 
-        // Create features text
         trackFeaturesTextRef.current = new PIXI.Text({
           text: '',
           style: {
@@ -318,7 +359,6 @@ const VisualizationCanvas = () => {
         trackFeaturesTextRef.current.position.set(100, 40);
         tooltipContainerRef.current.addChild(trackFeaturesTextRef.current);
 
-        // Create play button
         playButtonRef.current = new PIXI.Graphics()
           .circle(0, 0, 12)
           .fill({ color: 0x6A82FB });
@@ -327,7 +367,6 @@ const VisualizationCanvas = () => {
         playButtonRef.current.cursor = 'pointer';
         tooltipContainerRef.current.addChild(playButtonRef.current);
 
-        // Create play icon
         playIconRef.current = new PIXI.Graphics();
         playIconRef.current.fill({ color: 0xFFFFFF })
           .moveTo(-4, -6)
@@ -335,12 +374,10 @@ const VisualizationCanvas = () => {
           .lineTo(6, 0);
         playButtonRef.current.addChild(playIconRef.current);
 
-        // Create waveform container
         waveformContainerRef.current = new PIXI.Container();
-        waveformContainerRef.current.position.set(10, 100); // Position for React Waveform
-        tooltipContainerRef.current.addChild(waveformContainerRef.current); // Add to tooltip
+        waveformContainerRef.current.position.set(10, 100); 
+        tooltipContainerRef.current.addChild(waveformContainerRef.current); 
 
-        // Add hover effect for play button
         playButtonRef.current.on('pointerover', () => {
           playButtonRef.current.clear()
             .circle(0, 0, 12)
@@ -355,10 +392,9 @@ const VisualizationCanvas = () => {
           playButtonRef.current.addChild(playIconRef.current);
         });
 
-        // Add click handler for play button
         playButtonRef.current.on('pointerdown', async (event) => {
           event.stopPropagation(); 
-          const trackToPlay = currentTooltipTrackRef.current; // Use ref for track being shown in tooltip
+          const trackToPlay = currentTooltipTrackRef.current; 
           if (trackToPlay && wavesurferRef.current) {
             if (wavesurferRef.current.isPlaying() && activeAudioUrlRef.current === trackToPlay.path) {
               wavesurferRef.current.pause();
@@ -366,12 +402,12 @@ const VisualizationCanvas = () => {
             } else {
               if (activeAudioUrlRef.current !== trackToPlay.path) {
                 console.log(`🌊 Loading new track for Wavesurfer: ${trackToPlay.path}`);
-                await wavesurferRef.current.load(trackToPlay.path); // Assuming track.path is the audio URL
+                await wavesurferRef.current.load(trackToPlay.path); 
                 activeAudioUrlRef.current = trackToPlay.path;
               } else {
-                wavesurferRef.current.play(); // Play if already loaded but paused
+                wavesurferRef.current.play(); 
               }
-              setIsPlaying(true); // Set playing state after load or play
+              setIsPlaying(true); 
             }
           }
         });
@@ -388,7 +424,6 @@ const VisualizationCanvas = () => {
         });
 
 
-        // Add wheel event listener for zooming
         onWheelZoomRef.current = (event) => {
           event.preventDefault();
           if (!chartAreaRef.current) return;
@@ -416,13 +451,13 @@ const VisualizationCanvas = () => {
 
         app.stage.eventMode = 'static';
         app.stage.cursor = 'grab';
-        let localIsDragging = false; // Use local variable to avoid state update lag
+        let localIsDragging = false; 
         let localDragStart = { x: 0, y: 0 };
         let chartStartPos = { x: 0, y: 0 };
 
 
         app.stage.on('pointerdown', (event) => {
-          if (event.target === app.stage || event.target === chartAreaRef.current) { // Allow dragging on chart area too
+          if (event.target === app.stage || event.target === chartAreaRef.current) { 
             localIsDragging = true;
             localDragStart = { x: event.global.x, y: event.global.y };
             chartStartPos = { x: chartAreaRef.current.x, y: chartAreaRef.current.y };
@@ -458,7 +493,7 @@ const VisualizationCanvas = () => {
         tooltipContainerRef.current.on('pointerout', () => {
           if (!tooltipTimeoutRef.current) {
             tooltipTimeoutRef.current = setTimeout(() => {
-              setCurrentHoverTrack(null); // This will hide tooltip via useEffect
+              setCurrentHoverTrack(null); 
               currentTooltipTrackRef.current = null;
               if (tooltipContainerRef.current) tooltipContainerRef.current.visible = false;
               if (wavesurferRef.current && wavesurferRef.current.isPlaying()) {
@@ -499,9 +534,8 @@ const VisualizationCanvas = () => {
       currentTooltipTrackRef.current = null;
       setIsPixiAppReady(false);
     };
-  }, [updateAxesTextScale]); // Add other dependencies if initPrimaryApp uses them from outer scope
+  }, [updateAxesTextScale]); 
 
-  // Update tooltip content when track changes
   useEffect(() => {
     if (!currentHoverTrack || !tooltipContainerRef.current || !pixiAppRef.current) {
       if (tooltipContainerRef.current) tooltipContainerRef.current.visible = false;
@@ -509,7 +543,7 @@ const VisualizationCanvas = () => {
       existingReactContainers?.forEach(container => container.remove());
       return;
     }
-    currentTooltipTrackRef.current = currentHoverTrack; // Keep track of which track is in tooltip
+    currentTooltipTrackRef.current = currentHoverTrack; 
 
     const updateTooltipVisuals = async () => {
       try {
@@ -529,23 +563,21 @@ const VisualizationCanvas = () => {
         img.onerror = () => { coverArtSpriteRef.current.texture = PIXI.Texture.from(defaultArtwork); };
         img.src = artworkPath;
         
-        tooltipContainerRef.current.visible = true; // Make sure it's visible
+        tooltipContainerRef.current.visible = true; 
 
-        // Manage Waveform React component rendering
         const existingReactContainers = pixiCanvasContainerRef.current?.querySelectorAll('.waveform-react-container');
         existingReactContainers?.forEach(container => container.remove());
 
         const waveformHostElement = document.createElement('div');
         waveformHostElement.className = 'waveform-react-container';
-        waveformHostElement.style.width = '150px'; // Match Pixi placeholder bg
+        waveformHostElement.style.width = '150px'; 
         waveformHostElement.style.height = '40px';
-        waveformHostElement.style.position = 'absolute'; // Positioned relative to pixiCanvasContainerRef
-        waveformHostElement.style.pointerEvents = 'auto'; // Allow interaction
+        waveformHostElement.style.position = 'absolute'; 
+        waveformHostElement.style.pointerEvents = 'auto'; 
 
         const tooltipGlobalPos = tooltipContainerRef.current.getGlobalPosition(new PIXI.Point());
         const canvasRect = pixiCanvasContainerRef.current.getBoundingClientRect();
 
-        // Position relative to canvas container, then add Pixi local offsets
         waveformHostElement.style.left = `${tooltipGlobalPos.x - canvasRect.left + waveformContainerRef.current.x}px`;
         waveformHostElement.style.top = `${tooltipGlobalPos.y - canvasRect.top + waveformContainerRef.current.y}px`;
         
@@ -553,7 +585,7 @@ const VisualizationCanvas = () => {
         
         const root = ReactDOM.createRoot(waveformHostElement);
         const playbackContextValue = {
-          setPlayingWaveSurfer: (ws) => { /* wavesurferRef.current = ws; */ }, // Let Waveform manage its own instance
+          setPlayingWaveSurfer: (ws) => {  }, 
           currentTrack: currentHoverTrack,
           setCurrentTrack: () => {},
         };
@@ -561,17 +593,17 @@ const VisualizationCanvas = () => {
         root.render(
           <PlaybackContext.Provider value={playbackContextValue}>
             <Waveform
-              key={currentHoverTrack.id} // Ensure re-mount for new track
+              key={currentHoverTrack.id} 
               trackId={currentHoverTrack.id.toString()}
-              audioPath={currentHoverTrack.path} // Use main track path for audio
+              audioPath={currentHoverTrack.path} 
               isInteractive={true}
-              wavesurferInstanceRef={wavesurferRef} // Pass the global wavesurfer for control
+              wavesurferInstanceRef={wavesurferRef} 
               onPlay={() => {
                 setIsPlaying(true);
                 activeAudioUrlRef.current = currentHoverTrack.path;
               }}
               onPause={() => setIsPlaying(false)}
-              onReadyToPlay={(ws) => { // Callback when Waveform's WS is ready
+              onReadyToPlay={(ws) => { 
                 if (activeAudioUrlRef.current === currentHoverTrack.path && tooltipContainerRef.current?.visible) {
                    ws.play();
                    setIsPlaying(true);
@@ -581,7 +613,7 @@ const VisualizationCanvas = () => {
           </PlaybackContext.Provider>
         );
         
-        return () => { // Cleanup function
+        return () => { 
           root.unmount();
           if (waveformHostElement.parentElement) {
             waveformHostElement.remove();
@@ -592,24 +624,17 @@ const VisualizationCanvas = () => {
         console.error("💥 Error updating tooltip:", error);
         if (coverArtSpriteRef.current) coverArtSpriteRef.current.texture = PIXI.Texture.from(defaultArtwork);
       }
-      return () => {}; // Default cleanup
+      return () => {}; 
     };
 
-    let cleanupFunc = updateTooltipVisuals();
-    // if (cleanupFunc && typeof cleanupFunc.then === 'function') { // If it's a promise
-    //     cleanupFunc.then(actualCleanup => {
-    //         return () => { if(typeof actualCleanup === 'function') actualCleanup(); };
-    //     });
-    // } else if (typeof cleanupFunc === 'function') {
-    //      return cleanupFunc;
-    // }
-    // Simpler:
-     return () => {
-        if (typeof cleanupFunc === 'function') cleanupFunc();
-        else if (cleanupFunc && typeof cleanupFunc.then === 'function') {
-            cleanupFunc.then(actualCleanup => {
+    let cleanupPromise = updateTooltipVisuals();
+     return () => { 
+        if (cleanupPromise && typeof cleanupPromise.then === 'function') {
+            cleanupPromise.then(actualCleanup => {
                 if(typeof actualCleanup === 'function') actualCleanup();
-            });
+            }).catch(e => console.warn("Error in async cleanup:", e));
+        } else if (typeof cleanupPromise === 'function') {
+            cleanupPromise(); 
         }
     };
 
@@ -619,12 +644,11 @@ const VisualizationCanvas = () => {
 
   const formatTickValue = useCallback((value, isGenreAxis) => {
     if (value === null || value === undefined) return 'N/A';
-    if (typeof value !== 'number' || isNaN(value)) return String(value); // Handle non-numeric if they slip through
-    // if (isGenreAxis) return parseFloat(value.toFixed(1)).toString(); // Genres/instruments are often 0-1 probs
+    if (typeof value !== 'number' || isNaN(value)) return String(value); 
     if (Math.abs(value) < 0.001 && value !== 0) return value.toExponential(1);
     if (Math.abs(value) >= 10000) return value.toExponential(1);
-    const numStr = value.toFixed(2); // Use 2 decimal places for better precision for probabilities
-    return parseFloat(numStr).toString(); // Remove trailing zeros like .00 or .50
+    const numStr = value.toFixed(2); 
+    return parseFloat(numStr).toString(); 
   }, []);
 
   const drawAxes = useCallback((chartArea, currentXAxisFeatureKey, currentYAxisFeatureKey, xRange, yRange, currentCanvasSize) => { 
@@ -657,7 +681,7 @@ const VisualizationCanvas = () => {
     yTitle.isAxisTextElement = true; yTitle.anchor.set(0.5, 1); yTitle.rotation = -Math.PI / 2; yTitle.position.set(PADDING - 45, PADDING + drawableHeight / 2);
     chartArea.addChild(yTitle);
     
-    const numTicks = 5; // Fixed number of ticks for simplicity
+    const numTicks = 5; 
     for (let i = 0; i <= numTicks; i++) {
         const xVal = xRange.min + (xRange.range / numTicks) * i;
         const xTickPos = PADDING + (i / numTicks) * drawableWidth;
@@ -709,11 +733,11 @@ const VisualizationCanvas = () => {
           vector.push(value);
           hasAnyValidData = true;
         } else {
-          vector.push(0); // Impute missing/non-numeric with 0
+          vector.push(0); 
         }
       });
 
-      if (hasAnyValidData || featureOrder.length === 0) { // Include if has data or if no features (edge case)
+      if (hasAnyValidData || featureOrder.length === 0) { 
           featureVectors.push(vector);
           trackIdsForPca.push(track.id);
       }
@@ -725,17 +749,15 @@ const VisualizationCanvas = () => {
     }
     if (featureVectors.length < 2) {
         console.warn("PCA: Need at least 2 data points for PCA. Got:", featureVectors.length);
-        return null; // PCA typically needs more than N components + 1 samples.
+        return null; 
     }
      if (featureVectors[0].length < 2 ) {
         console.warn(`PCA: Need at least 2 features (dimensions) for 2-component PCA. Got: ${featureVectors[0].length}`);
-        // If you want to proceed with 1D data and project to 1D, ml-pca might handle it or you might need to adjust nComponents.
-        // For 2D viz, this is problematic.
-        if (featureVectors[0].length === 1) { // Handle 1D data case: make second component zero
+        if (featureVectors[0].length === 1) { 
              const oneDdata = {
-                features: featureVectors.map(v => [v[0], 0.0]), // Pad with a zero component
+                features: featureVectors.map(v => [v[0], 0.0]), 
                 trackIds: trackIdsForPca,
-                featureNames: [featureOrder[0], " искусственный_второй_компонент"]
+                featureNames: [featureOrder[0], " artificial_second_component"]
             };
             console.log("PCA: Handling 1D data by padding with a zero component.");
             return oneDdata;
@@ -743,8 +765,6 @@ const VisualizationCanvas = () => {
         return null;
     }
 
-
-    // Normalization (Min-Max scaling for each feature column)
     const numFeatures = featureOrder.length;
     const normalizedFeatureVectors = JSON.parse(JSON.stringify(featureVectors)); 
 
@@ -758,7 +778,7 @@ const VisualizationCanvas = () => {
       const range = maxVal - minVal;
       if (range === 0) { 
         for (let i = 0; i < normalizedFeatureVectors.length; i++) {
-          normalizedFeatureVectors[i][j] = 0.5; // If no variance, map to midpoint
+          normalizedFeatureVectors[i][j] = 0.5; 
         }
       } else {
         for (let i = 0; i < normalizedFeatureVectors.length; i++) {
@@ -771,32 +791,6 @@ const VisualizationCanvas = () => {
     return { features: normalizedFeatureVectors, trackIds: trackIdsForPca, featureNames: featureOrder };
   }, []);
 
-
-  useEffect(() => { // Calculate PCA when similarity mode is active
-    if (!tracks || tracks.length === 0) {
-      setTsneData(null); return;
-    }
-    if (!isSimilarityMode) {
-      setTsneData(null); return;
-    }
-
-    console.log("✅ Requesting PCA calculation for all tracks in similarity mode.");
-    setIsTsneCalculating(true);
-    
-    setTimeout(() => {
-      const dataForPca = preparePcaData(tracks, selectableFeatures);
-      if (dataForPca && dataForPca.features.length > 0) {
-        console.log("PCA: Data prepared, proceeding to calculatePca.", dataForPca.features.length, "tracks,", dataForPca.features[0].length, "features.");
-        calculatePca(dataForPca);
-      } else {
-        console.warn("PCA: Data preparation failed or yielded no usable data. Clearing t-SNE data.");
-        setIsTsneCalculating(false);
-        setTsneData(null);
-      }
-    }, 0);
-  }, [tracks, isSimilarityMode, preparePcaData, selectableFeatures, calculatePca]); // Added calculatePca
-
-  // Function to calculate PCA (memoized with useCallback)
   const calculatePca = useCallback((data) => {
     if (!data || !data.features || data.features.length === 0) {
       console.warn("PCA: Invalid or empty data provided to calculatePca.");
@@ -804,24 +798,22 @@ const VisualizationCanvas = () => {
       setTsneData(null);
       return;
     }
-    // Ensure we have enough features for 2 components. If not, PCA might fail or give unexpected results.
     const nActualFeatures = data.features[0]?.length || 0;
-    if (nActualFeatures < 1) { // PCA needs at least one feature.
+    if (nActualFeatures < 1) { 
         console.warn(`PCA: Not enough features (${nActualFeatures}) to perform PCA for 2 components.`);
         setIsTsneCalculating(false);
         setTsneData(null);
         return;
     }
-    const nComponentsToUse = Math.min(2, nActualFeatures); // Don't request more components than features
+    const nComponentsToUse = Math.min(2, nActualFeatures); 
 
     console.log(`🔄 Starting PCA calculation with ${data.features.length} tracks, ${nActualFeatures} features, for ${nComponentsToUse} components.`);
     
     try {
       const pca = new PCA(data.features);
       const result = pca.predict(data.features, { nComponents: nComponentsToUse });
-      let resultArray = result.data || result; // Adapt to ml-pca result structure
+      let resultArray = result.data || result; 
 
-      // If only 1 component was possible/requested, pad with zeros for the second component for 2D plot
       if (nComponentsToUse === 1 && resultArray.every(p => typeof p[0] === 'number')) {
           resultArray = resultArray.map(point => [point[0], 0.0]);
           console.log("PCA: Result was 1D, padded to 2D for visualization.");
@@ -843,7 +835,7 @@ const VisualizationCanvas = () => {
       const yMin = Math.min(...yValues);
       const yMax = Math.max(...yValues);
       
-      const xRangePCA = (xMax - xMin) === 0 ? 1 : (xMax - xMin); // Avoid division by zero
+      const xRangePCA = (xMax - xMin) === 0 ? 1 : (xMax - xMin); 
       const yRangePCA = (yMax - yMin) === 0 ? 1 : (yMax - yMin);
 
       const normalizedResult = resultArray.map((point, index) => ({
@@ -861,7 +853,32 @@ const VisualizationCanvas = () => {
     } finally {
       setIsTsneCalculating(false);
     }
-  }, []); // Empty dependency array as it's a stable function definition
+  }, []); 
+
+  useEffect(() => { 
+    if (!tracks || tracks.length === 0) {
+      setTsneData(null); return;
+    }
+    if (!isSimilarityMode) {
+      setTsneData(null); return;
+    }
+
+    console.log("✅ Requesting PCA calculation for all tracks in similarity mode.");
+    setIsTsneCalculating(true);
+    
+    setTimeout(() => {
+      const dataForPca = preparePcaData(tracks, selectableFeatures);
+      if (dataForPca && dataForPca.features.length > 0) {
+        console.log("PCA: Data prepared, proceeding to calculatePca.", dataForPca.features.length, "tracks,", dataForPca.features[0].length, "features.");
+        calculatePca(dataForPca);
+      } else {
+        console.warn("PCA: Data preparation failed or yielded no usable data. Clearing t-SNE data.");
+        setIsTsneCalculating(false);
+        setTsneData(null);
+      }
+    }, 0);
+  }, [tracks, isSimilarityMode, preparePcaData, selectableFeatures, calculatePca]);
+
 
   const calculateVisualizationBounds = useCallback((points, padding = 0.1) => {
     if (!points || points.length === 0) return { xMin:0, xMax:1, yMin:0, yMax:1, xRange:1, yRange:1 };
@@ -874,8 +891,8 @@ const VisualizationCanvas = () => {
     
     let xRange = xMax - xMin; let yRange = yMax - yMin;
 
-    if (xRange === 0) { xRange = 1; xMin -= 0.5; xMax += 0.5; } // Handle case where all x are same
-    if (yRange === 0) { yRange = 1; yMin -= 0.5; yMax += 0.5; } // Handle case where all y are same
+    if (xRange === 0) { xRange = 1; xMin -= 0.5; xMax += 0.5; } 
+    if (yRange === 0) { yRange = 1; yMin -= 0.5; yMax += 0.5; } 
 
     const xPadding = xRange * padding;
     const yPadding = yRange * padding;
@@ -887,13 +904,12 @@ const VisualizationCanvas = () => {
     };
   }, []);
 
-  useEffect(() => { // Main Drawing Logic
+  useEffect(() => { 
     if (!isPixiAppReady || !pixiAppRef.current || !chartAreaRef.current || isLoadingTracks || error || !tracks || !canvasSize.width || !canvasSize.height) return;
     
     const app = pixiAppRef.current;
     const chartArea = chartAreaRef.current;
     chartArea.removeChildren();
-    // chartArea.scale.set(MIN_ZOOM); // Reset zoom on redraw might be too aggressive, manage externally or on mode change
 
     if (tracks.length === 0 && !isLoadingTracks) {
       const msgText = new PIXI.Text({text: "No tracks to display.", style: new PIXI.TextStyle({ fill: 'orange', fontSize: 16, align: 'center'})});
@@ -927,7 +943,7 @@ const VisualizationCanvas = () => {
         dotContainer.eventMode = 'static'; dotContainer.cursor = 'pointer';
         const dataDot = new PIXI.Graphics().circle(0, 0, DOT_RADIUS).fill({ color: fillColor });
         dotContainer.addChild(dataDot);
-        const hitArea = new PIXI.Graphics().circle(0, 0, DOT_RADIUS * 1.5).fill({ color: 0xFFFFFF, alpha: 0.001 }); // Slightly larger hit area
+        const hitArea = new PIXI.Graphics().circle(0, 0, DOT_RADIUS * 1.5).fill({ color: 0xFFFFFF, alpha: 0.001 }); 
         dotContainer.addChild(hitArea);
 
         dotContainer.on('pointerover', (event) => {
@@ -935,7 +951,7 @@ const VisualizationCanvas = () => {
           setCurrentHoverTrack(track);
           if (tooltipTimeoutRef.current) { clearTimeout(tooltipTimeoutRef.current); tooltipTimeoutRef.current = null; }
           
-          const mousePosition = event.global; const tooltipWidth = 300; const tooltipHeight = 200; // Tooltip with waveform
+          const mousePosition = event.global; const tooltipWidth = 300; const tooltipHeight = 200; 
           let x = mousePosition.x + 20; let y = mousePosition.y - tooltipHeight / 2;
           if (x + tooltipWidth > app.screen.width) x = mousePosition.x - tooltipWidth - 20;
           if (y + tooltipHeight > app.screen.height) y = app.screen.height - tooltipHeight - 10;
@@ -948,7 +964,6 @@ const VisualizationCanvas = () => {
           tooltipTimeoutRef.current = setTimeout(() => {
             setCurrentHoverTrack(null); currentTooltipTrackRef.current = null;
             if (tooltipContainerRef.current) tooltipContainerRef.current.visible = false;
-            // if (wavesurferRef.current && wavesurferRef.current.isPlaying()) { wavesurferRef.current.pause(); setIsPlaying(false); }
           }, 300);
         });
         chartArea.addChild(dotContainer);
@@ -959,7 +974,7 @@ const VisualizationCanvas = () => {
       const pcaBounds = calculateVisualizationBounds(tsneData);
       if (!pcaBounds) return;
 
-      const graphics = new PIXI.Graphics(); /* Draw PCA axes */
+      const graphics = new PIXI.Graphics(); 
       graphics.moveTo(PADDING, currentCanvasHeight - PADDING).lineTo(currentCanvasWidth - PADDING, currentCanvasHeight - PADDING).stroke({width:1, color:AXIS_COLOR});
       graphics.moveTo(PADDING, PADDING).lineTo(PADDING, currentCanvasHeight - PADDING).stroke({width:1, color:AXIS_COLOR});
       const xTitle = new PIXI.Text({text: "Principal Component 1", style: { fontFamily: 'Arial', fontSize: 14, fontWeight: 'bold', fill: TEXT_COLOR, align: 'center' }});
@@ -972,13 +987,9 @@ const VisualizationCanvas = () => {
         const track = tracks.find(t => t.id === trackId);
         if (!track) return;
         const screenX = PADDING + ((pcaX - pcaBounds.xMin) / pcaBounds.xRange) * drawableWidth;
-        const screenY = PADDING + (1 - ((pcaY - pcaBounds.yMin) / pcaBounds.yRange)) * drawableHeight; // Invert Y for typical screen coords
+        const screenY = PADDING + (1 - ((pcaY - pcaBounds.yMin) / pcaBounds.yRange)) * drawableHeight; 
         commonDotLogic(track, screenX, screenY);
       });
-    //   const chartBounds = chartArea.getBounds(true); // Get accurate bounds after drawing
-    //   chartArea.x = (app.screen.width - chartBounds.width * chartArea.scale.x) / 2 + chartBounds.x * chartArea.scale.x;
-    //   chartArea.y = (app.screen.height - chartBounds.height* chartArea.scale.y) / 2 + chartBounds.y * chartArea.scale.y;
-
 
     } else if (!isSimilarityMode) {
       if (!axisMinMax.x || !axisMinMax.y || !axisMinMax.x.hasData || !axisMinMax.y.hasData) {
@@ -993,22 +1004,21 @@ const VisualizationCanvas = () => {
         const rawXVal = track.parsedFeatures?.[xAxisFeature];
         const rawYVal = track.parsedFeatures?.[yAxisFeature];
         if (typeof rawXVal !== 'number' || isNaN(rawXVal) || typeof rawYVal !== 'number' || isNaN(rawYVal)) {
-          // console.warn(`Track ${track.id} missing data for ${xAxisFeature} or ${yAxisFeature}`);
           return; 
         }
         const screenX = PADDING + ((rawXVal - xRange.min) / xRange.range) * drawableWidth;
-        const screenY = PADDING + (1 - ((rawYVal - yRange.min) / yRange.range)) * drawableHeight; // Invert Y
+        const screenY = PADDING + (1 - ((rawYVal - yRange.min) / yRange.range)) * drawableHeight; 
         commonDotLogic(track, screenX, screenY);
       });
     }
     updateAxesTextScale(chartArea);
   }, [isPixiAppReady, tracks, axisMinMax, xAxisFeature, yAxisFeature, isLoadingTracks, error, drawAxes, formatTickValue, canvasSize, updateAxesTextScale, selectableFeatures, setCurrentHoverTrack, setIsPlaying, tsneData, isTsneCalculating, isSimilarityMode, calculateVisualizationBounds]);
 
-  useEffect(() => { // Clean up timeout on unmount
+  useEffect(() => { 
     return () => { if (tooltipTimeoutRef.current) clearTimeout(tooltipTimeoutRef.current); };
   }, []);
 
-  useEffect(() => { // Window Resize
+  useEffect(() => { 
     const handleResize = () => {
       if (pixiAppRef.current && pixiCanvasContainerRef.current) {
         const { clientWidth, clientHeight } = pixiCanvasContainerRef.current;
@@ -1017,17 +1027,14 @@ const VisualizationCanvas = () => {
       }
     };
     window.addEventListener('resize', handleResize);
-    handleResize(); // Initial call
+    handleResize(); 
     return () => window.removeEventListener('resize', handleResize);
-  }, [isPixiAppReady]); // Add isPixiAppReady dependency
+  }, [isPixiAppReady]); 
 
-  // Initialize WaveSurfer when the component mounts - for the tooltip playback
   useEffect(() => {
-    // This wavesurfer is now mainly controlled by the <Waveform> component instance passed via ref
-    // The global one is mainly for a fallback or if direct control is needed outside React tree
-    if (wavesurferContainerRef.current && !wavesurferRef.current) { // Only init if not already done
+    if (wavesurferContainerRef.current && !wavesurferRef.current) { 
       const wsInstance = WaveSurfer.create({
-        container: wavesurferContainerRef.current, // Hidden container
+        container: wavesurferContainerRef.current, 
         waveColor: '#6A82FB', progressColor: '#3B4D9A', height: 40, barWidth: 1,
         barGap: 1, cursorWidth: 0, interact: false, backend: 'MediaElement',
         normalize: true, autoCenter: true, partialRender: true, responsive: false,
@@ -1035,14 +1042,7 @@ const VisualizationCanvas = () => {
       wavesurferRef.current = wsInstance;
       console.log("🌊 Global Wavesurfer instance created for tooltip potential control.");
       wsInstance.on('error', (err) => console.error('🌊 Global WS Error:', err, "Attempted URL:", activeAudioUrlRef.current));
-      // Ready, play, pause events are better handled by the Waveform component instance
     }
-    return () => {
-      if (wavesurferRef.current && wavesurferRef.current.destroy) {
-        // wavesurferRef.current.destroy(); // Don't destroy if managed by Waveform component
-        // wavesurferRef.current = null;
-      }
-    };
   }, []);
 
 
@@ -1056,12 +1056,25 @@ const VisualizationCanvas = () => {
               checked={isSimilarityMode}
               onChange={(e) => {
                 setIsSimilarityMode(e.target.checked);
-                if(chartAreaRef.current) chartAreaRef.current.scale.set(MIN_ZOOM); // Reset zoom on mode change
+                if(chartAreaRef.current) chartAreaRef.current.scale.set(MIN_ZOOM); 
               }}
               style={{ width: '16px', height: '16px' }}
             />
             Similarity Mode
           </label>
+        </div>
+        <div className="style-threshold" style={{ marginBottom: '10px' }}>
+          <label style={{ color: '#E0E0E0', display: 'block', marginBottom: '5px' }}>
+            Style Threshold: {(styleThreshold * 100).toFixed(0)}%
+          </label>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={styleThreshold * 100}
+            onChange={(e) => setStyleThreshold(parseInt(e.target.value) / 100)}
+            style={{ width: '100%' }}
+          />
         </div>
         {!isSimilarityMode && (
           <div className="axis-selectors" style={{display: "flex", gap: "10px"}}>
