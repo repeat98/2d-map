@@ -12,6 +12,7 @@ db/
 scripts/build
 scripts/lib
 scripts/share   
+analysis_plots/
 
 
 
