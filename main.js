@@ -358,17 +358,14 @@ function initRoutes() {
 
       if (!row) {
         // Table does not exist
-        res
-          .status(404)
-          .json({ error: "Table classified_tracks does not exist" });
+        res.status(404).json({ error: "Table classified_tracks does not exist" });
         return;
       }
 
       // Table exists, proceed with retrieving tracks ordered by idx
-      // Ensure ALL necessary columns are selected here
       const query = `
         SELECT id, idx, path, artist, title, album, year, bpm, time, key, date,
-               features, -- This is the JSON blob of genre features
+               features, instrument_features,
                tag1, tag1_prob,
                tag2, tag2_prob,
                tag3, tag3_prob,
@@ -380,7 +377,7 @@ function initRoutes() {
                tag9, tag9_prob,
                tag10, tag10_prob,
                artwork_path, artwork_thumbnail_path,
-               x, y, -- if you plan to pre-calculate positions
+               x, y,
                spectral_centroid, spectral_bandwidth, spectral_rolloff,
                spectral_contrast, spectral_flatness, rms,
                happiness, party, aggressive, danceability,
@@ -388,11 +385,6 @@ function initRoutes() {
         FROM classified_tracks
         ORDER BY idx ASC
       `;
-      // Note: I replaced 'TIME' with 'time', 'DANCE' with 'danceability', 'KEY' with 'key', 'DATE' with 'date'
-      // to match common JS conventions and what's likely in your Python script's DB schema more accurately.
-      // Please double-check these column names against your actual 'classified_tracks' table schema
-      // created by the Python script. The Python script uses lowercase names for moods.
-      // 'BPM' was changed to 'bpm'.
 
       db.all(query, [], (err, rows) => {
         if (err) {
@@ -400,18 +392,20 @@ function initRoutes() {
           res.status(500).json({ error: "Failed to retrieve tracks" });
           return;
         }
-        // Parse the 'features' JSON string into an object for each track
+        // Parse the 'features' and 'instrument_features' JSON strings into objects for each track
         const tracksWithParsedFeatures = rows.map(track => {
           try {
             return {
               ...track,
-              features: track.features ? JSON.parse(track.features) : null
+              features: track.features ? JSON.parse(track.features) : null,
+              instrument_features: track.instrument_features ? JSON.parse(track.instrument_features) : null
             };
           } catch (e) {
             console.error(`Error parsing features for track ID ${track.id}:`, e);
             return {
               ...track,
-              features: null // or some default error state
+              features: null,
+              instrument_features: null
             };
           }
         });

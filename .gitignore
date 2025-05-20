@@ -4,9 +4,9 @@ matrix/
 scripts/venv/
 *.DS_Store
 assets/artworks/*
-
+db/*
 waveforms/
-
+*.db
 # Ignore all files and subdirectories inside the folder
 db/
 scripts/build

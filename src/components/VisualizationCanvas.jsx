@@ -11,56 +11,29 @@ import { PCA } from 'ml-pca';
 
 /*
 * IMPORTANT NOTE FOR ELECTRON USERS (Content Security Policy - CSP):
-* If you see errors related to "blob:" URLs, "worker-src", or "Content Security Policy"
-* blocking images (covers) or potentially other assets, you likely need to adjust
-* your Electron app's Content Security Policy in your main process file (e.g., main.js).
-* PixiJS's asset loader and other libraries might use Web Workers, which Electron's
-* default CSP can block.
-*
-* Example CSP modification in your Electron main process:
-*
-* const { session } = require('electron');
-* // After app is ready:
-* session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-* callback({
-* responseHeaders: {
-* ...details.responseHeaders,
-* // THIS IS AN EXAMPLE - TIGHTEN IT FOR PRODUCTION AS MUCH AS POSSIBLE
-* 'Content-Security-Policy': [
-* "default-src 'self';" +
-* "script-src 'self' 'unsafe-inline' 'unsafe-eval';" + // 'unsafe-eval' for Pixi/libs
-* "style-src 'self' 'unsafe-inline';" +
-* "img-src 'self' data: http://localhost:3000 blob:;" +  // Allow blob: for images
-* "media-src 'self' http://localhost:3000 blob:;" + // Allow blob: for media
-* "worker-src 'self' blob:;" + // CRITICAL for Pixi Assets & potentially others
-* "connect-src 'self' http://localhost:3000;" // For API calls
-* ]
-* }
-* });
-* });
-*
-* Ensure this is correctly integrated into your Electron application's lifecycle.
+* (CSP Note remains the same)
 */
 
-
-// Default numerical features
-const defaultNumericFeatures = [
+// Core feature configurations (moods, spectral, bpm)
+// Instrument and genre features will be added dynamically.
+const coreFeaturesConfig = [
   { value: 'bpm', label: 'BPM', axisTitleStyle: { fill: 0xe74c3c, fontWeight: 'bold' }, isNumeric: true },
   { value: 'danceability', label: 'Danceability', axisTitleStyle: { fill: 0x3498db }, isNumeric: true },
   { value: 'happiness', label: 'Happiness', axisTitleStyle: { fill: 0xf1c40f }, isNumeric: true },
-  { value: 'party', label: 'Party Vibe', isNumeric: true },
+  { value: 'party', label: 'Party Vibe', isNumeric: true, axisTitleStyle: { fill: 0x9b59b6} },
   { value: 'aggressive', label: 'Aggressiveness', axisTitleStyle: { fill: 0xc0392b }, isNumeric: true },
   { value: 'relaxed', label: 'Relaxed Vibe', axisTitleStyle: { fill: 0x2ecc71 }, isNumeric: true },
-  { value: 'sad', label: 'Sadness', isNumeric: true },
-  { value: 'engagement', label: 'Engagement', isNumeric: true },
-  { value: 'approachability', label: 'Approachability', isNumeric: true },
-  { value: 'rms', label: 'RMS (Loudness)', isNumeric: true },
-  { value: 'spectral_centroid', label: 'Spectral Centroid (Brightness)', isNumeric: true },
-  { value: 'spectral_bandwidth', label: 'Spectral Bandwidth', isNumeric: true },
-  { value: 'spectral_rolloff', label: 'Spectral Rolloff', isNumeric: true },
-  { value: 'spectral_contrast', label: 'Spectral Contrast (Peakiness)', isNumeric: true },
-  { value: 'spectral_flatness', label: 'Spectral Flatness (Noisiness)', isNumeric: true },
+  { value: 'sad', label: 'Sadness', isNumeric: true, axisTitleStyle: { fill: 0x7f8c8d } },
+  { value: 'engagement', label: 'Engagement', isNumeric: true, axisTitleStyle: { fill: 0x1abc9c } },
+  { value: 'approachability', label: 'Approachability', isNumeric: true, axisTitleStyle: { fill: 0x34495e } },
+  { value: 'rms', label: 'RMS (Loudness)', isNumeric: true, axisTitleStyle: { fill: 0x16a085 } },
+  { value: 'spectral_centroid', label: 'Spectral Centroid (Brightness)', isNumeric: true, axisTitleStyle: { fill: 0x27ae60 } },
+  { value: 'spectral_bandwidth', label: 'Spectral Bandwidth', isNumeric: true, axisTitleStyle: { fill: 0x2980b9 } },
+  { value: 'spectral_rolloff', label: 'Spectral Rolloff', isNumeric: true, axisTitleStyle: { fill: 0x8e44ad } },
+  { value: 'spectral_contrast', label: 'Spectral Contrast (Peakiness)', isNumeric: true, axisTitleStyle: { fill: 0xf39c12 } },
+  { value: 'spectral_flatness', label: 'Spectral Flatness (Noisiness)', isNumeric: true, axisTitleStyle: { fill: 0xd35400 } },
 ];
+
 
 // Style constants
 const PADDING = 70; const AXIS_COLOR = 0xAAAAAA; const TEXT_COLOR = 0xE0E0E0;
@@ -68,7 +41,7 @@ const DOT_RADIUS = 5; const DOT_RADIUS_HOVER = 7; const DEFAULT_DOT_COLOR = 0x00
 const HAPPINESS_COLOR = 0xFFD700; const AGGRESSIVE_COLOR = 0xFF4136; const RELAXED_COLOR = 0x2ECC40;
 const TOOLTIP_BG_COLOR = 0x333333; const TOOLTIP_TEXT_COLOR = 0xFFFFFF;
 const TOOLTIP_PADDING = 10; const COVER_ART_SIZE = 80;
-const MIN_ZOOM = 0.1; const MAX_ZOOM = 5; const ZOOM_SENSITIVITY = 0.0005;
+const MIN_ZOOM = 1; const MAX_ZOOM = 5; const ZOOM_SENSITIVITY = 0.0005;
 const PLAY_BUTTON_COLOR = 0x6A82FB;
 const PLAY_BUTTON_HOVER_COLOR = 0x8BA3FF;
 const PLAY_BUTTON_SIZE = 24;
@@ -95,9 +68,9 @@ const VisualizationCanvas = () => {
 
   const waveformContainerRef = useRef(null);
 
-  const [selectableFeatures, setSelectableFeatures] = useState([...defaultNumericFeatures]);
-  const [xAxisFeature, setXAxisFeature] = useState(defaultNumericFeatures[0]?.value || '');
-  const [yAxisFeature, setYAxisFeature] = useState(defaultNumericFeatures[1]?.value || '');
+  const [selectableFeatures, setSelectableFeatures] = useState([...coreFeaturesConfig]);
+  const [xAxisFeature, setXAxisFeature] = useState(coreFeaturesConfig[0]?.value || '');
+  const [yAxisFeature, setYAxisFeature] = useState(coreFeaturesConfig[1]?.value || '');
   
   const [axisMinMax, setAxisMinMax] = useState({ x: null, y: null });
   const [isPixiAppReady, setIsPixiAppReady] = useState(false);
@@ -114,103 +87,148 @@ const VisualizationCanvas = () => {
   const playButtonRef = useRef(null);
   const playIconRef = useRef(null);
 
-  const [tsneData, setTsneData] = useState(null);
+  const [tsneData, setTsneData] = useState(null); // For PCA/t-SNE results
   const [isTsneCalculating, setIsTsneCalculating] = useState(false);
 
   useEffect(() => {
     const fetchTracksAndPrepareFeatures = async () => {
       console.log("🚀 Fetching tracks and preparing features...");
-      setIsLoadingTracks(true); setError(null); setAxisMinMax({ x: null, y: null });
-      try {
-        const response = await fetch('http://localhost:3000/tracks');
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        let data = await response.json();
-        
-        console.log(`📊 Received ${data.length} tracks from API.`);
-        if (data.length > 0) {
-            console.log("🔍 First track data sample (for features, audioUrl, artwork):", {
-                id: data[0].id,
-                features_type: typeof data[0].features,
-                features_value_preview: data[0].features ? (typeof data[0].features === 'string' ? data[0].features.substring(0,100) + "..." : Object.keys(data[0].features).slice(0,5).join(', ') + "...") : "N/A",
-                audioUrl: data[0].audioUrl, // CRITICAL FOR WAVESURFER
-                artwork_thumbnail_path: data[0].artwork_thumbnail_path, // For covers
-                coverArtUrl: data[0].coverArtUrl // Alternative for covers
-            });
-        }
+      setIsLoadingTracks(true); setError(null);
 
-        const genreFrequencies = {}; const allGenreKeys = new Set();
-        const processedTracks = data.map((track) => {
-          let parsedFeatures = {};
-          if (track.features) {
-            let featuresSource = track.features;
-            if (typeof featuresSource === 'string') {
-              try { featuresSource = JSON.parse(featuresSource); } 
-              catch (e) { console.warn(`⚠️ Could not parse features JSON for track ${track.id || track.path}`); featuresSource = {}; }
+      try {
+        const response = await fetch("http://localhost:3000/tracks");
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const rawTracks = await response.json();
+
+        const allDiscoveredFeatureKeys = new Set(coreFeaturesConfig.map(f => f.value));
+
+        const processedTracks = rawTracks.map(track => {
+          const currentParsedFeatures = {};
+
+          // 1. Process core features from top-level of track object
+          coreFeaturesConfig.forEach(coreFeatureConf => {
+            const featureKey = coreFeatureConf.value;
+            if (track[featureKey] !== undefined && track[featureKey] !== null) {
+              const val = parseFloat(track[featureKey]);
+              if (!isNaN(val)) currentParsedFeatures[featureKey] = val;
             }
-            if (typeof featuresSource === 'object' && featuresSource !== null) {
-              parsedFeatures = featuresSource;
-              Object.keys(parsedFeatures).forEach(key => {
-                const value = parsedFeatures[key];
-                if (typeof value === 'number' && value > 0.01) {
-                  allGenreKeys.add(key);
-                  genreFrequencies[key] = (genreFrequencies[key] || 0) + 1;
+          });
+
+          // 2. Process genre features (from track.features blob)
+          //    These keys might overlap with coreFeatures if names are similar (e.g. 'sad' as a genre vs mood)
+          //    The order here means genre blob could overwrite a core feature if names clash.
+          if (track.features) {
+            try {
+              const genreObject = typeof track.features === 'string' ? JSON.parse(track.features) : track.features;
+              Object.entries(genreObject).forEach(([genreKey, value]) => {
+                const val = parseFloat(value);
+                if (!isNaN(val)) {
+                    currentParsedFeatures[genreKey] = val;
+                    allDiscoveredFeatureKeys.add(genreKey);
                 }
               });
-            }
+            } catch (e) { console.error("Error parsing genre features for track:", track.id, e); }
           }
-          // Ensure audioUrl is set from path if not present
-          const audioUrl = track.audioUrl || (track.path ? `file://${track.path}` : '');
-          return { ...track, parsedFeatures, audioUrl };
+
+          // 3. Process instrument features (from track.instrument_features blob)
+          if (track.instrument_features) {
+            try {
+              const instrumentObject = typeof track.instrument_features === 'string'
+                ? JSON.parse(track.instrument_features)
+                : track.instrument_features;
+              Object.entries(instrumentObject).forEach(([instrumentKey, probability]) => {
+                const val = parseFloat(probability);
+                 if (!isNaN(val)) {
+                    currentParsedFeatures[instrumentKey] = val;
+                    allDiscoveredFeatureKeys.add(instrumentKey);
+                 }
+              });
+            } catch (e) { console.error("Error parsing instrument features for track:", track.id, e); }
+          }
+          
+          // Log a sample of parsed features for the first track
+          if (rawTracks.indexOf(track) === 0) {
+            console.log("Sample parsedFeatures for first track:", currentParsedFeatures);
+          }
+
+          return { ...track, parsedFeatures: currentParsedFeatures };
         });
-        setTracks(processedTracks);
-        console.log("✅ Processed tracks. Genre Frequencies:", genreFrequencies);
-
-        const sortedGenreKeys = Array.from(allGenreKeys).sort((a, b) => genreFrequencies[b] - genreFrequencies[a]);
-        console.log("🎶 Sorted Genre Keys by Frequency:", sortedGenreKeys);
-
-        let currentSelectableFeatures = [...defaultNumericFeatures];
-        let newXAxisFeature = defaultNumericFeatures[0]?.value || '';
-        let newYAxisFeature = defaultNumericFeatures[1]?.value || '';
-
-        if (sortedGenreKeys.length > 0) { /* ... (same logic for setting selectable features and default axes) ... */ 
-          const genreFeatures = sortedGenreKeys.map(genreKey => ({
-            value: genreKey,
-            label: `${genreKey.charAt(0).toUpperCase() + genreKey.slice(1).replace(/_/g, ' ')} (${genreFrequencies[genreKey]})`,
-            isNumeric: false,
-            axisTitleStyle: { fill: 0x95a5a6 } 
-          }));
-          currentSelectableFeatures = [...defaultNumericFeatures, ...genreFeatures];
-          if (genreFeatures.length >= 2) {
-            newXAxisFeature = genreFeatures[0].value; newYAxisFeature = genreFeatures[1].value;
-          } else if (genreFeatures.length === 1) {
-            newXAxisFeature = genreFeatures[0].value; newYAxisFeature = defaultNumericFeatures[0]?.value || genreFeatures[0].value;
-          }
-        } else { console.log("🤷 No significant genre keys found."); }
         
-        setSelectableFeatures(currentSelectableFeatures);
-        setXAxisFeature(newXAxisFeature); setYAxisFeature(newYAxisFeature);
-        console.log(`🎯 Initial X-axis: ${newXAxisFeature}, Y-axis: ${newYAxisFeature}`);
-      } catch (e) { console.error("💥 Failed to fetch/process tracks:", e); setError(e.message); /* Reset to defaults */ } 
-      finally { setIsLoadingTracks(false); console.log("🏁 Finished fetching and preparing features.");}
+        // 4. Build the final selectableFeatures list
+        const finalSelectableFeatures = Array.from(allDiscoveredFeatureKeys).sort().map(featureKey => {
+          const existingConfig = coreFeaturesConfig.find(f => f.value === featureKey);
+          if (existingConfig) return existingConfig; // Use predefined label and style
+
+          // For new dynamic features (genres, instruments)
+          const label = featureKey
+            .replace(/_/g, ' ') // Replace underscores with spaces
+            .replace(/---/g, ' - ') // Replace '---' with ' - ' for genres
+            .split(/[\s-]+/) 
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ');
+          return {
+            value: featureKey,
+            label: label,
+            isNumeric: true, // Assume all parsed features are numeric for plotting
+            axisTitleStyle: { fill: 0x95a5a6 } // Default color for dynamic features
+          };
+        });
+
+        setSelectableFeatures(finalSelectableFeatures);
+        if (finalSelectableFeatures.length > 0 && !finalSelectableFeatures.find(f => f.value === xAxisFeature)) {
+            setXAxisFeature(finalSelectableFeatures[0].value);
+        }
+        if (finalSelectableFeatures.length > 1 && !finalSelectableFeatures.find(f => f.value === yAxisFeature)) {
+            setYAxisFeature(finalSelectableFeatures[1].value);
+        } else if (finalSelectableFeatures.length === 1 && !finalSelectableFeatures.find(f => f.value === yAxisFeature)) {
+            setYAxisFeature(finalSelectableFeatures[0].value); // Fallback if only one feature
+        }
+
+
+        setTracks(processedTracks);
+      } catch (error) {
+        console.error("Error fetching or processing tracks:", error);
+        setError(`Failed to load tracks: ${error.message}`);
+      } finally {
+        setIsLoadingTracks(false);
+      }
     };
     fetchTracksAndPrepareFeatures();
-  }, []);
+  }, []); // Runs once on mount
 
   useEffect(() => { // MinMax calculation
     if (isLoadingTracks || !tracks || tracks.length === 0 || !xAxisFeature || !yAxisFeature || selectableFeatures.length === 0) return;
-    const getFeatureInfo = (featureKey) => selectableFeatures.find(f => f.value === featureKey);
-    const calculateMinMax = (featureKey) => { /* ... (same logic) ... */ 
-      const featureInfo = getFeatureInfo(featureKey);
-      if (!featureInfo) { console.warn(`⚠️ Feature info not found for key: ${featureKey}`); return { min: 0, max: 1, range: 1, hasData: false, count: 0 };}
-      if (featureInfo.isNumeric) {
-        const values = tracks.map(t => t[featureKey]).filter(v => typeof v === 'number' && !isNaN(v));
-        if (values.length === 0) return { min: 0, max: 1, range: 1, hasData: false, count: 0 };
-        const min = Math.min(...values); const max = Math.max(...values);
-        const range = (max - min === 0) ? 1 : (max - min);
-        return { min, max, range, hasData: true, count: values.length };
-      } else { return { min: 0, max: 1, range: 1, hasData: true, count: tracks.length }; }
+    
+    const calculateMinMax = (featureKey, tracksToCalc) => {
+      let min = Infinity;
+      let max = -Infinity;
+      let hasValidValues = false;
+
+      tracksToCalc.forEach(track => {
+        const value = track.parsedFeatures?.[featureKey];
+        if (typeof value === 'number' && !isNaN(value)) {
+          min = Math.min(min, value);
+          max = Math.max(max, value);
+          hasValidValues = true;
+        }
+      });
+
+      if (!hasValidValues) {
+        console.warn(`No valid numeric values found for feature: ${featureKey}. Defaulting range to 0-1.`);
+        return { min: 0, max: 1, range: 1, hasData: false }; // Added hasData flag
+      }
+      const range = max - min;
+      return { min, max, range: range === 0 ? 1 : range, hasData: true }; // Avoid zero range for scaling
     };
-    setAxisMinMax({ x: calculateMinMax(xAxisFeature), y: calculateMinMax(yAxisFeature) });
+
+    const xRange = calculateMinMax(xAxisFeature, tracks);
+    const yRange = calculateMinMax(yAxisFeature, tracks);
+
+    console.log(`🎯 Axis ranges calculated:`, {
+      xAxis: { feature: xAxisFeature, ...xRange },
+      yAxis: { feature: yAxisFeature, ...yRange }
+    });
+    setAxisMinMax({ x: xRange, y: yRange });
   }, [tracks, xAxisFeature, yAxisFeature, isLoadingTracks, selectableFeatures]);
 
   const updateAxesTextScale = useCallback((chartArea) => { /* ... (same logic) ... */ 
@@ -293,7 +311,8 @@ const VisualizationCanvas = () => {
             fontSize: 14,
             fill: 0xAAAAAA,
             wordWrap: true,
-            wordWrapWidth: 200
+            wordWrapWidth: 200,
+            lineHeight: 18
           }
         });
         trackFeaturesTextRef.current.position.set(100, 40);
@@ -318,8 +337,8 @@ const VisualizationCanvas = () => {
 
         // Create waveform container
         waveformContainerRef.current = new PIXI.Container();
-        waveformContainerRef.current.position.set(10, 100);
-        tooltipContainerRef.current.addChild(waveformContainerRef.current);
+        waveformContainerRef.current.position.set(10, 100); // Position for React Waveform
+        tooltipContainerRef.current.addChild(waveformContainerRef.current); // Add to tooltip
 
         // Add hover effect for play button
         playButtonRef.current.on('pointerover', () => {
@@ -338,135 +357,97 @@ const VisualizationCanvas = () => {
 
         // Add click handler for play button
         playButtonRef.current.on('pointerdown', async (event) => {
-          event.stopPropagation(); // Prevent event from bubbling to stage
-          if (currentHoverTrack && wavesurferRef.current) {
-            if (wavesurferRef.current.isPlaying()) {
+          event.stopPropagation(); 
+          const trackToPlay = currentTooltipTrackRef.current; // Use ref for track being shown in tooltip
+          if (trackToPlay && wavesurferRef.current) {
+            if (wavesurferRef.current.isPlaying() && activeAudioUrlRef.current === trackToPlay.path) {
               wavesurferRef.current.pause();
               setIsPlaying(false);
             } else {
-              if (activeAudioUrlRef.current !== currentHoverTrack.audioUrl) {
-                await wavesurferRef.current.load(currentHoverTrack.audioUrl);
-                activeAudioUrlRef.current = currentHoverTrack.audioUrl;
+              if (activeAudioUrlRef.current !== trackToPlay.path) {
+                console.log(`🌊 Loading new track for Wavesurfer: ${trackToPlay.path}`);
+                await wavesurferRef.current.load(trackToPlay.path); // Assuming track.path is the audio URL
+                activeAudioUrlRef.current = trackToPlay.path;
+              } else {
+                wavesurferRef.current.play(); // Play if already loaded but paused
               }
-              wavesurferRef.current.play();
-              setIsPlaying(true);
+              setIsPlaying(true); // Set playing state after load or play
             }
           }
         });
+        
+        wavesurferRef.current?.on('ready', () => {
+          const currentSrc = wavesurferRef.current?.getMediaElement()?.src;
+          console.log('🌊 Wavesurfer ready for URL:', currentSrc);
+          const tooltipTrack = currentTooltipTrackRef.current;
+          if (tooltipTrack && tooltipTrack.path === activeAudioUrlRef.current && tooltipContainerRef.current?.visible) {
+            console.log("🌊 Autoplaying on ready (tooltip is active for this track).");
+            wavesurferRef.current.play().catch(e => console.error("🌊 Error auto-playing on ready:", e));
+            setIsPlaying(true);
+          }
+        });
+
 
         // Add wheel event listener for zooming
         onWheelZoomRef.current = (event) => {
           event.preventDefault();
           if (!chartAreaRef.current) return;
 
-          // Get mouse position relative to the chart area
           const rect = pixiAppRef.current.canvas.getBoundingClientRect();
           const mouseX = event.clientX - rect.left;
           const mouseY = event.clientY - rect.top;
-
-          // Convert mouse position to chart coordinates
           const chartPoint = chartAreaRef.current.toLocal(new PIXI.Point(mouseX, mouseY));
-
-          // Calculate zoom factor with reduced sensitivity
           const zoomFactor = 1 - (event.deltaY * ZOOM_SENSITIVITY);
           const prevScale = chartAreaRef.current.scale.x;
           let newScale = prevScale * zoomFactor;
-          
-          // Clamp zoom level
           newScale = Math.max(MIN_ZOOM, Math.min(newScale, MAX_ZOOM));
           if (prevScale === newScale) return;
 
-          // Calculate new position to keep zoom centered on mouse
           const scaleFactor = newScale / prevScale;
           const newX = chartPoint.x - (chartPoint.x - chartAreaRef.current.x) * scaleFactor;
           const newY = chartPoint.y - (chartPoint.y - chartAreaRef.current.y) * scaleFactor;
 
-          // Apply new scale and position
           chartAreaRef.current.scale.set(newScale);
           chartAreaRef.current.position.set(newX, newY);
-
-          // Keep chart within bounds
-          const bounds = chartAreaRef.current.getBounds();
-          const screenBounds = new PIXI.Rectangle(0, 0, pixiAppRef.current.screen.width, pixiAppRef.current.screen.height);
-          
-          // Calculate padding to keep chart within screen
-          const padding = 50;
-          
-          if (bounds.left > screenBounds.left + padding) {
-            chartAreaRef.current.x += screenBounds.left + padding - bounds.left;
-          }
-          if (bounds.right < screenBounds.right - padding) {
-            chartAreaRef.current.x += screenBounds.right - padding - bounds.right;
-          }
-          if (bounds.top > screenBounds.top + padding) {
-            chartAreaRef.current.y += screenBounds.top + padding - bounds.top;
-          }
-          if (bounds.bottom < screenBounds.bottom - padding) {
-            chartAreaRef.current.y += screenBounds.bottom - padding - bounds.bottom;
-          }
-          
           updateAxesTextScale(chartAreaRef.current);
         };
 
         pixiAppRef.current.canvas.addEventListener('wheel', onWheelZoomRef.current, { passive: false });
 
-        // Add drag handlers
         app.stage.eventMode = 'static';
         app.stage.cursor = 'grab';
+        let localIsDragging = false; // Use local variable to avoid state update lag
+        let localDragStart = { x: 0, y: 0 };
+        let chartStartPos = { x: 0, y: 0 };
 
-        let isDragging = false;
-        let dragStart = { x: 0, y: 0 };
-        let chartStart = { x: 0, y: 0 };
 
         app.stage.on('pointerdown', (event) => {
-          if (event.target === app.stage) {
-            isDragging = true;
-            dragStart = { x: event.global.x, y: event.global.y };
-            chartStart = { x: chartAreaRef.current.x, y: chartAreaRef.current.y };
+          if (event.target === app.stage || event.target === chartAreaRef.current) { // Allow dragging on chart area too
+            localIsDragging = true;
+            localDragStart = { x: event.global.x, y: event.global.y };
+            chartStartPos = { x: chartAreaRef.current.x, y: chartAreaRef.current.y };
             app.stage.cursor = 'grabbing';
           }
         });
 
         app.stage.on('pointermove', (event) => {
-          if (isDragging && chartAreaRef.current) {
-            const dx = event.global.x - dragStart.x;
-            const dy = event.global.y - dragStart.y;
-            
-            // Update chart position
-            chartAreaRef.current.x = chartStart.x + dx;
-            chartAreaRef.current.y = chartStart.y + dy;
-
-            // Keep chart within bounds
-            const bounds = chartAreaRef.current.getBounds();
-            const screenBounds = new PIXI.Rectangle(0, 0, app.screen.width, app.screen.height);
-            const padding = 50;
-
-            if (bounds.left > screenBounds.left + padding) {
-              chartAreaRef.current.x = screenBounds.left + padding - bounds.width;
-            }
-            if (bounds.right < screenBounds.right - padding) {
-              chartAreaRef.current.x = screenBounds.right - padding;
-            }
-            if (bounds.top > screenBounds.top + padding) {
-              chartAreaRef.current.y = screenBounds.top + padding - bounds.height;
-            }
-            if (bounds.bottom < screenBounds.bottom - padding) {
-              chartAreaRef.current.y = screenBounds.bottom - padding;
-            }
+          if (localIsDragging) {
+            const dx = event.global.x - localDragStart.x;
+            const dy = event.global.y - localDragStart.y;
+            chartAreaRef.current.x = chartStartPos.x + dx;
+            chartAreaRef.current.y = chartStartPos.y + dy;
           }
         });
 
-        app.stage.on('pointerup', () => {
-          isDragging = false;
-          app.stage.cursor = 'grab';
-        });
-
-        app.stage.on('pointerupoutside', () => {
-          isDragging = false;
-          app.stage.cursor = 'grab';
-        });
-
-        // Add hover handlers for the tooltip
+        const onPointerUp = () => {
+          if (localIsDragging) {
+            localIsDragging = false;
+            app.stage.cursor = 'grab';
+          }
+        };
+        app.stage.on('pointerup', onPointerUp);
+        app.stage.on('pointerupoutside', onPointerUp);
+        
         tooltipContainerRef.current.on('pointerover', () => {
           if (tooltipTimeoutRef.current) {
             clearTimeout(tooltipTimeoutRef.current);
@@ -477,13 +458,11 @@ const VisualizationCanvas = () => {
         tooltipContainerRef.current.on('pointerout', () => {
           if (!tooltipTimeoutRef.current) {
             tooltipTimeoutRef.current = setTimeout(() => {
-              setCurrentHoverTrack(null);
-              if (tooltipContainerRef.current) {
-                tooltipContainerRef.current.visible = false;
-              }
+              setCurrentHoverTrack(null); // This will hide tooltip via useEffect
+              currentTooltipTrackRef.current = null;
+              if (tooltipContainerRef.current) tooltipContainerRef.current.visible = false;
               if (wavesurferRef.current && wavesurferRef.current.isPlaying()) {
-                wavesurferRef.current.pause();
-                setIsPlaying(false);
+                wavesurferRef.current.pause(); setIsPlaying(false);
               }
             }, 300);
           }
@@ -520,343 +499,342 @@ const VisualizationCanvas = () => {
       currentTooltipTrackRef.current = null;
       setIsPixiAppReady(false);
     };
-  }, [isDragging, dragStart, updateAxesTextScale]);
+  }, [updateAxesTextScale]); // Add other dependencies if initPrimaryApp uses them from outer scope
 
   // Update tooltip content when track changes
   useEffect(() => {
-    if (!currentHoverTrack || !tooltipContainerRef.current) {
-      // Clean up any existing waveform containers when tooltip is hidden
-      const existingContainers = pixiCanvasContainerRef.current?.querySelectorAll('.waveform-react-container');
-      existingContainers?.forEach(container => {
-        if (container.parentElement) {
-          container.parentElement.removeChild(container);
-        }
-      });
+    if (!currentHoverTrack || !tooltipContainerRef.current || !pixiAppRef.current) {
+      if (tooltipContainerRef.current) tooltipContainerRef.current.visible = false;
+      const existingReactContainers = pixiCanvasContainerRef.current?.querySelectorAll('.waveform-react-container');
+      existingReactContainers?.forEach(container => container.remove());
       return;
     }
+    currentTooltipTrackRef.current = currentHoverTrack; // Keep track of which track is in tooltip
 
-    const updateTooltip = async () => {
+    const updateTooltipVisuals = async () => {
       try {
-        // Clean up any existing waveform containers first
-        const existingContainers = pixiCanvasContainerRef.current?.querySelectorAll('.waveform-react-container');
-        existingContainers?.forEach(container => {
-          if (container.parentElement) {
-            container.parentElement.removeChild(container);
-          }
-        });
-
-        // Update title and features
         trackTitleTextRef.current.text = currentHoverTrack.title || 'Unknown Title';
-        const xFeatureLabel = selectableFeatures.find(f => f.value === xAxisFeature)?.label || xAxisFeature;
-        const yFeatureLabel = selectableFeatures.find(f => f.value === yAxisFeature)?.label || yAxisFeature;
-        trackFeaturesTextRef.current.text = `${xFeatureLabel}: ${formatTickValue(currentHoverTrack[xAxisFeature])}\n${yFeatureLabel}: ${formatTickValue(currentHoverTrack[yAxisFeature])}`;
+        const xFeat = selectableFeatures.find(f => f.value === xAxisFeature);
+        const yFeat = selectableFeatures.find(f => f.value === yAxisFeature);
+        const xFeatureLabel = xFeat?.label || xAxisFeature;
+        const yFeatureLabel = yFeat?.label || yAxisFeature;
+        
+        trackFeaturesTextRef.current.text = 
+          `${xFeatureLabel}: ${formatTickValue(currentHoverTrack.parsedFeatures?.[xAxisFeature])}\n` +
+          `${yFeatureLabel}: ${formatTickValue(currentHoverTrack.parsedFeatures?.[yAxisFeature])}`;
 
-        // Load cover art with error handling
         const artworkPath = currentHoverTrack.artwork_thumbnail_path || defaultArtwork;
-        console.log("🎨 Loading cover art from:", artworkPath);
-        
-        // Create a new Image to preload the artwork
         const img = new Image();
-        img.onload = () => {
-          const texture = PIXI.Texture.from(img);
-          coverArtSpriteRef.current.texture = texture;
-        };
-        img.onerror = () => {
-          console.warn("⚠️ Failed to load cover art, using default");
-          coverArtSpriteRef.current.texture = PIXI.Texture.from(defaultArtwork);
-        };
+        img.onload = () => { coverArtSpriteRef.current.texture = PIXI.Texture.from(img); };
+        img.onerror = () => { coverArtSpriteRef.current.texture = PIXI.Texture.from(defaultArtwork); };
         img.src = artworkPath;
-
-        // Create waveform container
-        waveformContainerRef.current.removeChildren();
         
-        // Add background
-        const bg = new PIXI.Graphics()
-          .rect(0, 0, 150, 40)
-          .fill({ color: 0x1A1A1A });
-        waveformContainerRef.current.addChild(bg);
+        tooltipContainerRef.current.visible = true; // Make sure it's visible
 
-        // Create a container for the React Waveform component
-        const waveformReactContainer = document.createElement('div');
-        waveformReactContainer.className = 'waveform-react-container';
-        waveformReactContainer.style.width = '150px';
-        waveformReactContainer.style.height = '40px';
-        waveformReactContainer.style.position = 'absolute';
-        waveformReactContainer.style.top = '0';
-        waveformReactContainer.style.left = '0';
-        waveformReactContainer.style.pointerEvents = 'auto';
+        // Manage Waveform React component rendering
+        const existingReactContainers = pixiCanvasContainerRef.current?.querySelectorAll('.waveform-react-container');
+        existingReactContainers?.forEach(container => container.remove());
+
+        const waveformHostElement = document.createElement('div');
+        waveformHostElement.className = 'waveform-react-container';
+        waveformHostElement.style.width = '150px'; // Match Pixi placeholder bg
+        waveformHostElement.style.height = '40px';
+        waveformHostElement.style.position = 'absolute'; // Positioned relative to pixiCanvasContainerRef
+        waveformHostElement.style.pointerEvents = 'auto'; // Allow interaction
+
+        const tooltipGlobalPos = tooltipContainerRef.current.getGlobalPosition(new PIXI.Point());
+        const canvasRect = pixiCanvasContainerRef.current.getBoundingClientRect();
+
+        // Position relative to canvas container, then add Pixi local offsets
+        waveformHostElement.style.left = `${tooltipGlobalPos.x - canvasRect.left + waveformContainerRef.current.x}px`;
+        waveformHostElement.style.top = `${tooltipGlobalPos.y - canvasRect.top + waveformContainerRef.current.y}px`;
         
-        // Create a container for the React component
-        const reactContainer = document.createElement('div');
-        reactContainer.style.width = '100%';
-        reactContainer.style.height = '100%';
-        waveformReactContainer.appendChild(reactContainer);
+        pixiCanvasContainerRef.current.appendChild(waveformHostElement);
         
-        // Add the container to the DOM
-        const canvasContainer = pixiCanvasContainerRef.current;
-        if (canvasContainer) {
-          canvasContainer.appendChild(waveformReactContainer);
-          
-          // Position the waveform container
-          const tooltipPos = tooltipContainerRef.current.position;
-          waveformReactContainer.style.transform = `translate(${tooltipPos.x + 10}px, ${tooltipPos.y + 100}px)`;
+        const root = ReactDOM.createRoot(waveformHostElement);
+        const playbackContextValue = {
+          setPlayingWaveSurfer: (ws) => { /* wavesurferRef.current = ws; */ }, // Let Waveform manage its own instance
+          currentTrack: currentHoverTrack,
+          setCurrentTrack: () => {},
+        };
+        
+        root.render(
+          <PlaybackContext.Provider value={playbackContextValue}>
+            <Waveform
+              key={currentHoverTrack.id} // Ensure re-mount for new track
+              trackId={currentHoverTrack.id.toString()}
+              audioPath={currentHoverTrack.path} // Use main track path for audio
+              isInteractive={true}
+              wavesurferInstanceRef={wavesurferRef} // Pass the global wavesurfer for control
+              onPlay={() => {
+                setIsPlaying(true);
+                activeAudioUrlRef.current = currentHoverTrack.path;
+              }}
+              onPause={() => setIsPlaying(false)}
+              onReadyToPlay={(ws) => { // Callback when Waveform's WS is ready
+                if (activeAudioUrlRef.current === currentHoverTrack.path && tooltipContainerRef.current?.visible) {
+                   ws.play();
+                   setIsPlaying(true);
+                }
+              }}
+            />
+          </PlaybackContext.Provider>
+        );
+        
+        return () => { // Cleanup function
+          root.unmount();
+          if (waveformHostElement.parentElement) {
+            waveformHostElement.remove();
+          }
+        };
 
-          // Create a context value for the Waveform component
-          const playbackContextValue = {
-            setPlayingWaveSurfer: (wavesurfer) => {
-              if (wavesurferRef.current) {
-                wavesurferRef.current.stop();
-              }
-              wavesurferRef.current = wavesurfer;
-            },
-            currentTrack: currentHoverTrack,
-            setCurrentTrack: () => {} // No-op since we handle track selection differently
-          };
-
-          // Render the Waveform component with context
-          const root = ReactDOM.createRoot(reactContainer);
-          root.render(
-            <PlaybackContext.Provider value={playbackContextValue}>
-              <Waveform
-                trackId={currentHoverTrack.id.toString()}
-                audioPath={currentHoverTrack.audioUrl}
-                isInteractive={true}
-                onPlay={() => {
-                  if (wavesurferRef.current) {
-                    wavesurferRef.current.play();
-                    setIsPlaying(true);
-                  }
-                }}
-              />
-            </PlaybackContext.Provider>
-          );
-
-          // Return cleanup function
-          return () => {
-            root.unmount();
-            if (waveformReactContainer.parentElement) {
-              waveformReactContainer.parentElement.removeChild(waveformReactContainer);
-            }
-          };
-        }
       } catch (error) {
         console.error("💥 Error updating tooltip:", error);
-        coverArtSpriteRef.current.texture = PIXI.Texture.from(defaultArtwork);
+        if (coverArtSpriteRef.current) coverArtSpriteRef.current.texture = PIXI.Texture.from(defaultArtwork);
       }
-      return () => {};
+      return () => {}; // Default cleanup
     };
 
-    let cleanup = updateTooltip();
-    return () => {
-      if (typeof cleanup === 'function') {
-        cleanup();
-      }
+    let cleanupFunc = updateTooltipVisuals();
+    // if (cleanupFunc && typeof cleanupFunc.then === 'function') { // If it's a promise
+    //     cleanupFunc.then(actualCleanup => {
+    //         return () => { if(typeof actualCleanup === 'function') actualCleanup(); };
+    //     });
+    // } else if (typeof cleanupFunc === 'function') {
+    //      return cleanupFunc;
+    // }
+    // Simpler:
+     return () => {
+        if (typeof cleanupFunc === 'function') cleanupFunc();
+        else if (cleanupFunc && typeof cleanupFunc.then === 'function') {
+            cleanupFunc.then(actualCleanup => {
+                if(typeof actualCleanup === 'function') actualCleanup();
+            });
+        }
     };
+
+
   }, [currentHoverTrack, xAxisFeature, yAxisFeature, selectableFeatures, formatTickValue]);
+
 
   const formatTickValue = useCallback((value, isGenreAxis) => {
     if (value === null || value === undefined) return 'N/A';
-    if (isGenreAxis) return parseFloat(value.toFixed(1)).toString();
-    if (Math.abs(value) < 0.01 && value !== 0) return value.toExponential(1);
-    if (Math.abs(value) > 10000) return value.toExponential(1);
-    return parseFloat(value.toFixed(1)).toString();
+    if (typeof value !== 'number' || isNaN(value)) return String(value); // Handle non-numeric if they slip through
+    // if (isGenreAxis) return parseFloat(value.toFixed(1)).toString(); // Genres/instruments are often 0-1 probs
+    if (Math.abs(value) < 0.001 && value !== 0) return value.toExponential(1);
+    if (Math.abs(value) >= 10000) return value.toExponential(1);
+    const numStr = value.toFixed(2); // Use 2 decimal places for better precision for probabilities
+    return parseFloat(numStr).toString(); // Remove trailing zeros like .00 or .50
   }, []);
-  const drawAxes = useCallback((chartArea, currentXAxisFeatureKey, currentYAxisFeatureKey, xRange, yRange, currentCanvasSize) => { /* ... (same) ... */ 
+
+  const drawAxes = useCallback((chartArea, currentXAxisFeatureKey, currentYAxisFeatureKey, xRange, yRange, currentCanvasSize) => { 
     if (!chartArea || !xRange || !yRange || !currentCanvasSize.width || !currentCanvasSize.height || selectableFeatures.length === 0) return;
     const graphics = new PIXI.Graphics();
     const { width: canvasWidth, height: canvasHeight } = currentCanvasSize;
     const drawableWidth = canvasWidth - 2 * PADDING; const drawableHeight = canvasHeight - 2 * PADDING;
     if (drawableWidth <=0 || drawableHeight <=0) return;
-    const defaultAxisTextStyle = { fontFamily: 'Arial, sans-serif', fontSize: 12, fill: TEXT_COLOR, align: 'center' };
-    const defaultTitleTextStyle = { fontFamily: 'Arial, sans-serif', fontSize: 14, fontWeight: 'bold', fill: TEXT_COLOR, align: 'center'};
+    
     const xFeatureInfo = selectableFeatures.find(f => f.value === currentXAxisFeatureKey);
     const yFeatureInfo = selectableFeatures.find(f => f.value === currentYAxisFeatureKey);
+
+    const defaultAxisTextStyle = { fontFamily: 'Arial, sans-serif', fontSize: 12, fill: TEXT_COLOR, align: 'center' };
+    const defaultTitleTextStyle = { fontFamily: 'Arial, sans-serif', fontSize: 14, fontWeight: 'bold', fill: TEXT_COLOR, align: 'center'};
+    
     const xTitleStyle = {...defaultTitleTextStyle, ...(xFeatureInfo?.axisTitleStyle || {})};
     const yTitleStyle = {...defaultTitleTextStyle, ...(yFeatureInfo?.axisTitleStyle || {})};
-    const isXAxisGenre = xFeatureInfo && !xFeatureInfo.isNumeric;
-    const isYAxisGenre = yFeatureInfo && !yFeatureInfo.isNumeric;
+
     graphics.moveTo(PADDING, canvasHeight - PADDING).lineTo(canvasWidth - PADDING, canvasHeight - PADDING).stroke({width:1, color:AXIS_COLOR});
     graphics.moveTo(PADDING, PADDING).lineTo(PADDING, canvasHeight - PADDING).stroke({width:1, color:AXIS_COLOR});
-    const xTitle = new PIXI.Text({text:(xFeatureInfo?.label || currentXAxisFeatureKey), style:xTitleStyle});
+    
+    const xTitleText = xFeatureInfo?.label || currentXAxisFeatureKey;
+    const yTitleText = yFeatureInfo?.label || currentYAxisFeatureKey;
+
+    const xTitle = new PIXI.Text({text: xTitleText, style:xTitleStyle});
     xTitle.isAxisTextElement = true; xTitle.anchor.set(0.5, 0); xTitle.position.set(PADDING + drawableWidth / 2, canvasHeight - PADDING + 25);
     chartArea.addChild(xTitle);
-    const yTitle = new PIXI.Text({text:(yFeatureInfo?.label || currentYAxisFeatureKey), style:yTitleStyle});
+    
+    const yTitle = new PIXI.Text({text: yTitleText, style:yTitleStyle});
     yTitle.isAxisTextElement = true; yTitle.anchor.set(0.5, 1); yTitle.rotation = -Math.PI / 2; yTitle.position.set(PADDING - 45, PADDING + drawableHeight / 2);
     chartArea.addChild(yTitle);
-    const numTicks = isXAxisGenre || isYAxisGenre ? 4 : 5;
+    
+    const numTicks = 5; // Fixed number of ticks for simplicity
     for (let i = 0; i <= numTicks; i++) {
         const xVal = xRange.min + (xRange.range / numTicks) * i;
         const xTickPos = PADDING + (i / numTicks) * drawableWidth;
         graphics.moveTo(xTickPos, canvasHeight - PADDING).lineTo(xTickPos, canvasHeight - PADDING + 5).stroke({width:1, color:AXIS_COLOR});
-        const xLabel = new PIXI.Text({text:formatTickValue(xVal, isXAxisGenre), style:defaultAxisTextStyle});
+        const xLabel = new PIXI.Text({text:formatTickValue(xVal), style:defaultAxisTextStyle});
         xLabel.isAxisTextElement = true; xLabel.anchor.set(0.5, 0); xLabel.position.set(xTickPos, canvasHeight - PADDING + 8);
         chartArea.addChild(xLabel);
+        
         const yVal = yRange.min + (yRange.range / numTicks) * i;
         const yTickPos = canvasHeight - PADDING - (i / numTicks) * drawableHeight;
         graphics.moveTo(PADDING, yTickPos).lineTo(PADDING - 5, yTickPos).stroke({width:1, color:AXIS_COLOR});
-        const yLabel = new PIXI.Text({text:formatTickValue(yVal, isYAxisGenre), style:defaultAxisTextStyle});
+        const yLabel = new PIXI.Text({text:formatTickValue(yVal), style:defaultAxisTextStyle});
         yLabel.isAxisTextElement = true; yLabel.anchor.set(1, 0.5); yLabel.position.set(PADDING - 8, yTickPos);
         chartArea.addChild(yLabel);
     }
     chartArea.addChild(graphics);
   }, [formatTickValue, selectableFeatures]);
 
-  // Function to prepare data for PCA
-  const preparePcaData = useCallback((tracks) => {
-    if (!tracks || tracks.length === 0) return null;
+  const preparePcaData = useCallback((tracksToProcess, allSelectableFeaturesForPca) => {
+    if (!tracksToProcess || tracksToProcess.length === 0) {
+        console.warn("PCA: No tracks provided.");
+        return null;
+    }
+    if (!allSelectableFeaturesForPca || allSelectableFeaturesForPca.length === 0) {
+        console.warn("PCA: No selectable features defined.");
+        return null;
+    }
 
-    console.log("📊 Preparing PCA data for", tracks.length, "tracks");
-    
-    // First pass: collect all features and their min/max values
-    const featureStats = {};
-    
-    // Initialize stats for numeric features
-    defaultNumericFeatures.forEach(feature => {
-      if (feature.isNumeric) {
-        featureStats[feature.value] = { min: Infinity, max: -Infinity };
-      }
-    });
+    const featureOrder = allSelectableFeaturesForPca
+        .filter(f => f.isNumeric) 
+        .map(f => f.value)
+        .sort(); 
 
-    // Initialize stats for genre features
-    const genreFeatures = new Set();
-    tracks.forEach(track => {
-      if (track.parsedFeatures) {
-        Object.keys(track.parsedFeatures).forEach(key => {
-          genreFeatures.add(key);
-          featureStats[key] = { min: Infinity, max: -Infinity };
-        });
-      }
-    });
+    if (featureOrder.length === 0) {
+        console.warn("PCA: No numeric features identified from selectableFeatures for PCA.");
+        return null;
+    }
+    console.log("PCA: Using features in order:", featureOrder.join(", "));
 
-    // First pass: find min/max for each feature
-    tracks.forEach(track => {
-      // Process numeric features
-      defaultNumericFeatures.forEach(feature => {
-        if (feature.isNumeric) {
-          const value = track[feature.value];
-          if (typeof value === 'number' && !isNaN(value)) {
-            featureStats[feature.value].min = Math.min(featureStats[feature.value].min, value);
-            featureStats[feature.value].max = Math.max(featureStats[feature.value].max, value);
-          }
+    const featureVectors = [];
+    const trackIdsForPca = [];
+
+    tracksToProcess.forEach(track => {
+      const vector = [];
+      let hasAnyValidData = false;
+      featureOrder.forEach(featureKey => {
+        const value = track.parsedFeatures?.[featureKey];
+        if (typeof value === 'number' && !isNaN(value)) {
+          vector.push(value);
+          hasAnyValidData = true;
+        } else {
+          vector.push(0); // Impute missing/non-numeric with 0
         }
       });
 
-      // Process genre features
-      if (track.parsedFeatures) {
-        Object.entries(track.parsedFeatures).forEach(([key, value]) => {
-          if (typeof value === 'number' && !isNaN(value)) {
-            featureStats[key].min = Math.min(featureStats[key].min, value);
-            featureStats[key].max = Math.max(featureStats[key].max, value);
-          }
-        });
+      if (hasAnyValidData || featureOrder.length === 0) { // Include if has data or if no features (edge case)
+          featureVectors.push(vector);
+          trackIdsForPca.push(track.id);
       }
     });
 
-    // Second pass: normalize features and create feature vectors
-    const features = [];
-    const trackIds = [];
-    
-    tracks.forEach(track => {
-      const trackFeatures = [];
-      
-      // Add normalized numeric features
-      defaultNumericFeatures.forEach(feature => {
-        if (feature.isNumeric) {
-          const value = track[feature.value];
-          if (typeof value === 'number' && !isNaN(value)) {
-            const { min, max } = featureStats[feature.value];
-            const range = max - min;
-            const normalizedValue = range === 0 ? 0 : (value - min) / range;
-            trackFeatures.push(normalizedValue);
-          } else {
-            trackFeatures.push(0);
-          }
+    if (featureVectors.length === 0) {
+        console.warn("PCA: No tracks with valid data for PCA after filtering.");
+        return null;
+    }
+    if (featureVectors.length < 2) {
+        console.warn("PCA: Need at least 2 data points for PCA. Got:", featureVectors.length);
+        return null; // PCA typically needs more than N components + 1 samples.
+    }
+     if (featureVectors[0].length < 2 ) {
+        console.warn(`PCA: Need at least 2 features (dimensions) for 2-component PCA. Got: ${featureVectors[0].length}`);
+        // If you want to proceed with 1D data and project to 1D, ml-pca might handle it or you might need to adjust nComponents.
+        // For 2D viz, this is problematic.
+        if (featureVectors[0].length === 1) { // Handle 1D data case: make second component zero
+             const oneDdata = {
+                features: featureVectors.map(v => [v[0], 0.0]), // Pad with a zero component
+                trackIds: trackIdsForPca,
+                featureNames: [featureOrder[0], " искусственный_второй_компонент"]
+            };
+            console.log("PCA: Handling 1D data by padding with a zero component.");
+            return oneDdata;
         }
-      });
-      
-      // Add normalized genre features
-      if (track.parsedFeatures) {
-        Object.entries(track.parsedFeatures).forEach(([key, value]) => {
-          if (typeof value === 'number' && !isNaN(value)) {
-            const { min, max } = featureStats[key];
-            const range = max - min;
-            const normalizedValue = range === 0 ? 0 : (value - min) / range;
-            trackFeatures.push(normalizedValue);
-          } else {
-            trackFeatures.push(0);
-          }
-        });
-      }
-      
-      features.push(trackFeatures);
-      trackIds.push(track.id);
-    });
+        return null;
+    }
 
-    console.log("✅ PCA data prepared with", features.length, "tracks and", features[0]?.length || 0, "normalized features per track");
-    console.log("📊 Feature ranges:", Object.entries(featureStats).map(([key, stats]) => 
-      `${key}: [${stats.min.toFixed(2)}, ${stats.max.toFixed(2)}]`
-    ).join('\n'));
+
+    // Normalization (Min-Max scaling for each feature column)
+    const numFeatures = featureOrder.length;
+    const normalizedFeatureVectors = JSON.parse(JSON.stringify(featureVectors)); 
+
+    for (let j = 0; j < numFeatures; j++) { 
+      let minVal = Infinity;
+      let maxVal = -Infinity;
+      for (let i = 0; i < normalizedFeatureVectors.length; i++) { 
+        minVal = Math.min(minVal, normalizedFeatureVectors[i][j]);
+        maxVal = Math.max(maxVal, normalizedFeatureVectors[i][j]);
+      }
+      const range = maxVal - minVal;
+      if (range === 0) { 
+        for (let i = 0; i < normalizedFeatureVectors.length; i++) {
+          normalizedFeatureVectors[i][j] = 0.5; // If no variance, map to midpoint
+        }
+      } else {
+        for (let i = 0; i < normalizedFeatureVectors.length; i++) {
+          normalizedFeatureVectors[i][j] = (normalizedFeatureVectors[i][j] - minVal) / range;
+        }
+      }
+    }
     
-    return { features, trackIds };
+    console.log("PCA: Data prepared with", normalizedFeatureVectors.length, "tracks and", numFeatures, "normalized features per track.");
+    return { features: normalizedFeatureVectors, trackIds: trackIdsForPca, featureNames: featureOrder };
   }, []);
 
-  // Calculate PCA when similarity mode is active
-  useEffect(() => {
-    console.log("🔄 Checking PCA conditions:", {
-      hasTracks: !!tracks && tracks.length > 0,
-      isSimilarityMode,
-      shouldShowPCA: isSimilarityMode,
-      trackCount: tracks?.length || 0
-    });
 
+  useEffect(() => { // Calculate PCA when similarity mode is active
     if (!tracks || tracks.length === 0) {
-      console.log("❌ No tracks available for PCA");
-      setTsneData(null);
-      return;
+      setTsneData(null); return;
     }
-
     if (!isSimilarityMode) {
-      console.log("❌ Similarity mode inactive, skipping PCA");
-      setTsneData(null);
-      return;
+      setTsneData(null); return;
     }
 
-    console.log("✅ Starting PCA calculation for all tracks");
+    console.log("✅ Requesting PCA calculation for all tracks in similarity mode.");
     setIsTsneCalculating(true);
     
-    // Use setTimeout to prevent UI blocking
     setTimeout(() => {
-      const data = preparePcaData(tracks);
-      if (data) {
-        calculatePca(data);
+      const dataForPca = preparePcaData(tracks, selectableFeatures);
+      if (dataForPca && dataForPca.features.length > 0) {
+        console.log("PCA: Data prepared, proceeding to calculatePca.", dataForPca.features.length, "tracks,", dataForPca.features[0].length, "features.");
+        calculatePca(dataForPca);
+      } else {
+        console.warn("PCA: Data preparation failed or yielded no usable data. Clearing t-SNE data.");
+        setIsTsneCalculating(false);
+        setTsneData(null);
       }
     }, 0);
-  }, [tracks, isSimilarityMode, preparePcaData, calculatePca]);
+  }, [tracks, isSimilarityMode, preparePcaData, selectableFeatures, calculatePca]); // Added calculatePca
 
-  // Function to calculate PCA
+  // Function to calculate PCA (memoized with useCallback)
   const calculatePca = useCallback((data) => {
     if (!data || !data.features || data.features.length === 0) {
-      console.log("❌ Invalid data for PCA");
+      console.warn("PCA: Invalid or empty data provided to calculatePca.");
       setIsTsneCalculating(false);
-      return null;
+      setTsneData(null);
+      return;
     }
+    // Ensure we have enough features for 2 components. If not, PCA might fail or give unexpected results.
+    const nActualFeatures = data.features[0]?.length || 0;
+    if (nActualFeatures < 1) { // PCA needs at least one feature.
+        console.warn(`PCA: Not enough features (${nActualFeatures}) to perform PCA for 2 components.`);
+        setIsTsneCalculating(false);
+        setTsneData(null);
+        return;
+    }
+    const nComponentsToUse = Math.min(2, nActualFeatures); // Don't request more components than features
 
-    console.log("🔄 Starting PCA calculation with", data.features.length, "tracks");
+    console.log(`🔄 Starting PCA calculation with ${data.features.length} tracks, ${nActualFeatures} features, for ${nComponentsToUse} components.`);
     
     try {
-      // Create PCA instance
       const pca = new PCA(data.features);
-      console.log("✅ PCA instance created");
+      const result = pca.predict(data.features, { nComponents: nComponentsToUse });
+      let resultArray = result.data || result; // Adapt to ml-pca result structure
+
+      // If only 1 component was possible/requested, pad with zeros for the second component for 2D plot
+      if (nComponentsToUse === 1 && resultArray.every(p => typeof p[0] === 'number')) {
+          resultArray = resultArray.map(point => [point[0], 0.0]);
+          console.log("PCA: Result was 1D, padded to 2D for visualization.");
+      }
+
+
+      if (!resultArray || resultArray.length === 0 || !resultArray[0] || resultArray[0].length < nComponentsToUse ) {
+          console.error("PCA: Prediction did not return expected 2D data. Result:", resultArray);
+          setIsTsneCalculating(false);
+          setTsneData(null);
+          return;
+      }
       
-      // Get the first two principal components
-      const result = pca.predict(data.features, { nComponents: 2 });
-      console.log("✅ PCA prediction complete, result:", result);
-      
-      // Extract the data from the result object
-      const resultArray = result.data || result;
-      console.log("✅ Extracted result data, length:", resultArray.length);
-      
-      // Normalize the results to fit in our visualization space
       const xValues = resultArray.map(point => point[0]);
       const yValues = resultArray.map(point => point[1]);
       
@@ -865,447 +843,243 @@ const VisualizationCanvas = () => {
       const yMin = Math.min(...yValues);
       const yMax = Math.max(...yValues);
       
+      const xRangePCA = (xMax - xMin) === 0 ? 1 : (xMax - xMin); // Avoid division by zero
+      const yRangePCA = (yMax - yMin) === 0 ? 1 : (yMax - yMin);
+
       const normalizedResult = resultArray.map((point, index) => ({
-        x: (point[0] - xMin) / (xMax - xMin),
-        y: (point[1] - yMin) / (yMax - yMin),
+        x: (point[0] - xMin) / xRangePCA,
+        y: (point[1] - yMin) / yRangePCA,
         trackId: data.trackIds[index]
       }));
 
-      console.log("✅ PCA results normalized for", normalizedResult.length, "tracks");
+      console.log("✅ PCA results normalized for", normalizedResult.length, "tracks.");
       setTsneData(normalizedResult);
     } catch (error) {
       console.error("❌ Error calculating PCA:", error);
       console.error("Error details:", error.stack);
+      setTsneData(null);
     } finally {
       setIsTsneCalculating(false);
     }
-  }, []);
+  }, []); // Empty dependency array as it's a stable function definition
 
-  // Function to calculate optimal scale and offset for visualization
   const calculateVisualizationBounds = useCallback((points, padding = 0.1) => {
-    if (!points || points.length === 0) return null;
+    if (!points || points.length === 0) return { xMin:0, xMax:1, yMin:0, yMax:1, xRange:1, yRange:1 };
 
-    // Calculate bounds
     const xValues = points.map(p => p.x);
     const yValues = points.map(p => p.y);
     
-    const xMin = Math.min(...xValues);
-    const xMax = Math.max(...xValues);
-    const yMin = Math.min(...yValues);
-    const yMax = Math.max(...yValues);
+    let xMin = Math.min(...xValues); let xMax = Math.max(...xValues);
+    let yMin = Math.min(...yValues); let yMax = Math.max(...yValues);
     
-    // Add padding
-    const xRange = xMax - xMin;
-    const yRange = yMax - yMin;
+    let xRange = xMax - xMin; let yRange = yMax - yMin;
+
+    if (xRange === 0) { xRange = 1; xMin -= 0.5; xMax += 0.5; } // Handle case where all x are same
+    if (yRange === 0) { yRange = 1; yMin -= 0.5; yMax += 0.5; } // Handle case where all y are same
+
     const xPadding = xRange * padding;
     const yPadding = yRange * padding;
     
     return {
-      xMin: xMin - xPadding,
-      xMax: xMax + xPadding,
-      yMin: yMin - yPadding,
-      yMax: yMax + yPadding,
-      xRange: xRange + (2 * xPadding),
-      yRange: yRange + (2 * yPadding)
+      xMin: xMin - xPadding, xMax: xMax + xPadding,
+      yMin: yMin - yPadding, yMax: yMax + yPadding,
+      xRange: xRange + (2 * xPadding), yRange: yRange + (2 * yPadding)
     };
   }, []);
 
-  // Update drawing logic to handle similarity mode
-  useEffect(() => {
+  useEffect(() => { // Main Drawing Logic
     if (!isPixiAppReady || !pixiAppRef.current || !chartAreaRef.current || isLoadingTracks || error || !tracks || !canvasSize.width || !canvasSize.height) return;
     
     const app = pixiAppRef.current;
     const chartArea = chartAreaRef.current;
     chartArea.removeChildren();
+    // chartArea.scale.set(MIN_ZOOM); // Reset zoom on redraw might be too aggressive, manage externally or on mode change
 
-    if (tracks.length === 0) {
-      const msgText = new PIXI.Text({
-        text: "No tracks to display.",
-        style: new PIXI.TextStyle({ fill: 'orange', fontSize: 16, align: 'center'})
-      });
-      msgText.anchor.set(0.5);
-      msgText.position.set(app.screen.width / 2, app.screen.height / 2);
-      msgText.isAxisTextElement = true;
-      chartArea.addChild(msgText);
-      updateAxesTextScale(chartArea);
-      return;
+    if (tracks.length === 0 && !isLoadingTracks) {
+      const msgText = new PIXI.Text({text: "No tracks to display.", style: new PIXI.TextStyle({ fill: 'orange', fontSize: 16, align: 'center'})});
+      msgText.anchor.set(0.5); msgText.position.set(app.screen.width / 2, app.screen.height / 2);
+      msgText.isAxisTextElement = true; chartArea.addChild(msgText); updateAxesTextScale(chartArea); return;
     }
 
-    // If similarity mode is active and PCA is calculating, show loading message
     if (isSimilarityMode && isTsneCalculating) {
-      const loadingText = new PIXI.Text({
-        text: "Calculating similarity visualization...",
-        style: new PIXI.TextStyle({ fill: 'orange', fontSize: 16, align: 'center'})
-      });
-      loadingText.anchor.set(0.5);
-      loadingText.position.set(app.screen.width / 2, app.screen.height / 2);
-      loadingText.isAxisTextElement = true;
-      chartArea.addChild(loadingText);
-      updateAxesTextScale(chartArea);
-      return;
+      const loadingText = new PIXI.Text({text: "Calculating similarity visualization...", style: new PIXI.TextStyle({ fill: 'orange', fontSize: 16, align: 'center'})});
+      loadingText.anchor.set(0.5); loadingText.position.set(app.screen.width / 2, app.screen.height / 2);
+      loadingText.isAxisTextElement = true; chartArea.addChild(loadingText); updateAxesTextScale(chartArea); return;
     }
 
     const { width: currentCanvasWidth, height: currentCanvasHeight } = app.screen;
     const drawableWidth = currentCanvasWidth - 2 * PADDING;
     const drawableHeight = currentCanvasHeight - 2 * PADDING;
-
     if (drawableWidth <= 0 || drawableHeight <= 0) return;
 
-    // If similarity mode is active and PCA data is available, use PCA visualization
-    if (isSimilarityMode && tsneData) {
-      console.log("🎯 Drawing PCA visualization");
-      
-      // Calculate bounds for PCA data
-      const bounds = calculateVisualizationBounds(tsneData);
-      if (!bounds) return;
-
-      // Draw axes
-      const graphics = new PIXI.Graphics();
-      graphics.moveTo(PADDING, currentCanvasHeight - PADDING)
-        .lineTo(currentCanvasWidth - PADDING, currentCanvasHeight - PADDING)
-        .stroke({width: 1, color: AXIS_COLOR});
-      graphics.moveTo(PADDING, PADDING)
-        .lineTo(PADDING, currentCanvasHeight - PADDING)
-        .stroke({width: 1, color: AXIS_COLOR});
-
-      // Add axis labels
-      const xTitle = new PIXI.Text({
-        text: "Principal Component 1",
-        style: { fontFamily: 'Arial', fontSize: 14, fontWeight: 'bold', fill: TEXT_COLOR, align: 'center' }
-      });
-      xTitle.isAxisTextElement = true;
-      xTitle.anchor.set(0.5, 0);
-      xTitle.position.set(PADDING + drawableWidth / 2, currentCanvasHeight - PADDING + 25);
-      chartArea.addChild(xTitle);
-
-      const yTitle = new PIXI.Text({
-        text: "Principal Component 2",
-        style: { fontFamily: 'Arial', fontSize: 14, fontWeight: 'bold', fill: TEXT_COLOR, align: 'center' }
-      });
-      yTitle.isAxisTextElement = true;
-      yTitle.anchor.set(0.5, 1);
-      yTitle.rotation = -Math.PI / 2;
-      yTitle.position.set(PADDING - 45, PADDING + drawableHeight / 2);
-      chartArea.addChild(yTitle);
-
-      chartArea.addChild(graphics);
-
-      // Draw dots using PCA coordinates with proper scaling
-      tsneData.forEach(({ x, y, trackId }) => {
-        const track = tracks.find(t => t.id === trackId);
-        if (!track) return;
-
-        // Scale coordinates to fit the drawable area
-        const screenX = PADDING + ((x - bounds.xMin) / bounds.xRange) * drawableWidth;
-        const screenY = PADDING + (1 - ((y - bounds.yMin) / bounds.yRange)) * drawableHeight;
-
+    const commonDotLogic = (track, screenX, screenY) => {
         let fillColor = DEFAULT_DOT_COLOR;
-        const happinessVal = track.parsedFeatures?.happiness ?? track.happiness;
-        const aggressiveVal = track.parsedFeatures?.aggressive ?? track.aggressive;
-        const relaxedVal = track.parsedFeatures?.relaxed ?? track.relaxed;
-        if (typeof happinessVal === 'number' && happinessVal > 0.75) fillColor = HAPPINESS_COLOR;
-        else if (typeof aggressiveVal === 'number' && aggressiveVal > 0.65) fillColor = AGGRESSIVE_COLOR;
-        else if (typeof relaxedVal === 'number' && relaxedVal > 0.75) fillColor = RELAXED_COLOR;
+        const happinessVal = track.parsedFeatures?.happiness;
+        const aggressiveVal = track.parsedFeatures?.aggressive;
+        const relaxedVal = track.parsedFeatures?.relaxed;
 
-        // Create dot container
+        if (typeof happinessVal === 'number' && happinessVal > 0.7) fillColor = HAPPINESS_COLOR;
+        else if (typeof aggressiveVal === 'number' && aggressiveVal > 0.6) fillColor = AGGRESSIVE_COLOR;
+        else if (typeof relaxedVal === 'number' && relaxedVal > 0.7) fillColor = RELAXED_COLOR;
+
         const dotContainer = new PIXI.Container();
         dotContainer.position.set(screenX, screenY);
-        dotContainer.eventMode = 'static';
-        dotContainer.cursor = 'pointer';
-
-        // Create visual dot
-        const dataDot = new PIXI.Graphics()
-          .circle(0, 0, DOT_RADIUS)
-          .fill({ color: fillColor });
+        dotContainer.eventMode = 'static'; dotContainer.cursor = 'pointer';
+        const dataDot = new PIXI.Graphics().circle(0, 0, DOT_RADIUS).fill({ color: fillColor });
         dotContainer.addChild(dataDot);
-
-        // Create hit area
-        const hitArea = new PIXI.Graphics()
-          .circle(0, 0, DOT_RADIUS * 2)
-          .fill({ color: 0xFFFFFF, alpha: 0 });
+        const hitArea = new PIXI.Graphics().circle(0, 0, DOT_RADIUS * 1.5).fill({ color: 0xFFFFFF, alpha: 0.001 }); // Slightly larger hit area
         dotContainer.addChild(hitArea);
 
-        // Add hover handlers
-        dotContainer.on('pointerover', async (event) => {
-          event.stopPropagation();
-          dataDot.scale.set(DOT_RADIUS_HOVER / DOT_RADIUS);
+        dotContainer.on('pointerover', (event) => {
+          event.stopPropagation(); dataDot.scale.set(DOT_RADIUS_HOVER / DOT_RADIUS);
           setCurrentHoverTrack(track);
+          if (tooltipTimeoutRef.current) { clearTimeout(tooltipTimeoutRef.current); tooltipTimeoutRef.current = null; }
           
-          if (tooltipTimeoutRef.current) {
-            clearTimeout(tooltipTimeoutRef.current);
-            tooltipTimeoutRef.current = null;
-          }
+          const mousePosition = event.global; const tooltipWidth = 300; const tooltipHeight = 200; // Tooltip with waveform
+          let x = mousePosition.x + 20; let y = mousePosition.y - tooltipHeight / 2;
+          if (x + tooltipWidth > app.screen.width) x = mousePosition.x - tooltipWidth - 20;
+          if (y + tooltipHeight > app.screen.height) y = app.screen.height - tooltipHeight - 10;
+          if (y < 0) y = 10;
           
-          const mousePosition = event.global;
-          const tooltipWidth = 300;
-          const tooltipHeight = 200;
-          
-          let x = mousePosition.x + 15;
-          let y = mousePosition.y - tooltipHeight / 2;
-          
-          if (x + tooltipWidth > app.screen.width) {
-            x = mousePosition.x - tooltipWidth - 15;
-          }
-          if (y + tooltipHeight > app.screen.height) {
-            y = app.screen.height - tooltipHeight - 10;
-          }
-          if (y < 0) {
-            y = 10;
-          }
-          
-          if (tooltipContainerRef.current) {
-            tooltipContainerRef.current.position.set(x, y);
-            tooltipContainerRef.current.visible = true;
-          }
+          if (tooltipContainerRef.current) { tooltipContainerRef.current.position.set(x, y); tooltipContainerRef.current.visible = true; }
         });
-
         dotContainer.on('pointerout', (event) => {
-          event.stopPropagation();
-          dataDot.scale.set(1.0);
-          
+          event.stopPropagation(); dataDot.scale.set(1.0);
           tooltipTimeoutRef.current = setTimeout(() => {
-            setCurrentHoverTrack(null);
-            if (tooltipContainerRef.current) {
-              tooltipContainerRef.current.visible = false;
-            }
-            if (wavesurferRef.current && wavesurferRef.current.isPlaying()) {
-              wavesurferRef.current.pause();
-              setIsPlaying(false);
-            }
+            setCurrentHoverTrack(null); currentTooltipTrackRef.current = null;
+            if (tooltipContainerRef.current) tooltipContainerRef.current.visible = false;
+            // if (wavesurferRef.current && wavesurferRef.current.isPlaying()) { wavesurferRef.current.pause(); setIsPlaying(false); }
           }, 300);
         });
-
         chartArea.addChild(dotContainer);
+    };
+
+
+    if (isSimilarityMode && tsneData && tsneData.length > 0) {
+      const pcaBounds = calculateVisualizationBounds(tsneData);
+      if (!pcaBounds) return;
+
+      const graphics = new PIXI.Graphics(); /* Draw PCA axes */
+      graphics.moveTo(PADDING, currentCanvasHeight - PADDING).lineTo(currentCanvasWidth - PADDING, currentCanvasHeight - PADDING).stroke({width:1, color:AXIS_COLOR});
+      graphics.moveTo(PADDING, PADDING).lineTo(PADDING, currentCanvasHeight - PADDING).stroke({width:1, color:AXIS_COLOR});
+      const xTitle = new PIXI.Text({text: "Principal Component 1", style: { fontFamily: 'Arial', fontSize: 14, fontWeight: 'bold', fill: TEXT_COLOR, align: 'center' }});
+      xTitle.isAxisTextElement = true; xTitle.anchor.set(0.5,0); xTitle.position.set(PADDING + drawableWidth/2, currentCanvasHeight - PADDING + 25); chartArea.addChild(xTitle);
+      const yTitle = new PIXI.Text({text: "Principal Component 2", style: { fontFamily: 'Arial', fontSize: 14, fontWeight: 'bold', fill: TEXT_COLOR, align: 'center' }});
+      yTitle.isAxisTextElement = true; yTitle.anchor.set(0.5,1); yTitle.rotation = -Math.PI/2; yTitle.position.set(PADDING - 45, PADDING + drawableHeight/2); chartArea.addChild(yTitle);
+      chartArea.addChild(graphics);
+
+      tsneData.forEach(({ x: pcaX, y: pcaY, trackId }) => {
+        const track = tracks.find(t => t.id === trackId);
+        if (!track) return;
+        const screenX = PADDING + ((pcaX - pcaBounds.xMin) / pcaBounds.xRange) * drawableWidth;
+        const screenY = PADDING + (1 - ((pcaY - pcaBounds.yMin) / pcaBounds.yRange)) * drawableHeight; // Invert Y for typical screen coords
+        commonDotLogic(track, screenX, screenY);
       });
-    } else {
-      // Use existing axis-based visualization
+    //   const chartBounds = chartArea.getBounds(true); // Get accurate bounds after drawing
+    //   chartArea.x = (app.screen.width - chartBounds.width * chartArea.scale.x) / 2 + chartBounds.x * chartArea.scale.x;
+    //   chartArea.y = (app.screen.height - chartBounds.height* chartArea.scale.y) / 2 + chartBounds.y * chartArea.scale.y;
+
+
+    } else if (!isSimilarityMode) {
       if (!axisMinMax.x || !axisMinMax.y || !axisMinMax.x.hasData || !axisMinMax.y.hasData) {
-        const msgText = new PIXI.Text({
-          text: "Calculating axis ranges...",
-          style: new PIXI.TextStyle({ fill: 'orange', fontSize: 16, align: 'center'})
-        });
-        msgText.anchor.set(0.5);
-        msgText.position.set(app.screen.width / 2, app.screen.height / 2);
-        msgText.isAxisTextElement = true;
-        chartArea.addChild(msgText);
-        updateAxesTextScale(chartArea);
-        return;
+        const msgText = new PIXI.Text({ text: "Select features or wait for axis range calculation.", style: new PIXI.TextStyle({ fill: 'orange', fontSize: 16, align: 'center'})});
+        msgText.anchor.set(0.5); msgText.position.set(app.screen.width / 2, app.screen.height / 2);
+        msgText.isAxisTextElement = true; chartArea.addChild(msgText); updateAxesTextScale(chartArea); return;
       }
-
       const { x: xRange, y: yRange } = axisMinMax;
-      
-      // Calculate bounds with padding
-      const bounds = {
-        xMin: xRange.min,
-        xMax: xRange.max,
-        yMin: yRange.min,
-        yMax: yRange.max,
-        xRange: xRange.range,
-        yRange: yRange.range
-      };
-
       drawAxes(chartArea, xAxisFeature, yAxisFeature, xRange, yRange, {width: currentCanvasWidth, height: currentCanvasHeight});
-      const xFeatureInfo = selectableFeatures.find(f => f.value === xAxisFeature);
-      const yFeatureInfo = selectableFeatures.find(f => f.value === yAxisFeature);
 
       tracks.forEach((track) => {
-        let rawXVal, rawYVal;
-        if (xFeatureInfo && !xFeatureInfo.isNumeric) { 
-          rawXVal = track.parsedFeatures?.[xAxisFeature] || 0; 
-        } else { 
-          rawXVal = track[xAxisFeature]; 
-          if (typeof rawXVal !== 'number' || isNaN(rawXVal)) rawXVal = xRange.min; 
+        const rawXVal = track.parsedFeatures?.[xAxisFeature];
+        const rawYVal = track.parsedFeatures?.[yAxisFeature];
+        if (typeof rawXVal !== 'number' || isNaN(rawXVal) || typeof rawYVal !== 'number' || isNaN(rawYVal)) {
+          // console.warn(`Track ${track.id} missing data for ${xAxisFeature} or ${yAxisFeature}`);
+          return; 
         }
-        if (yFeatureInfo && !yFeatureInfo.isNumeric) { 
-          rawYVal = track.parsedFeatures?.[yAxisFeature] || 0; 
-        } else { 
-          rawYVal = track[yAxisFeature]; 
-          if (typeof rawYVal !== 'number' || isNaN(rawYVal)) rawYVal = yRange.min; 
-        }
-
-        // Scale coordinates to fit the drawable area with padding
-        const x = PADDING + ((rawXVal - bounds.xMin) / bounds.xRange) * drawableWidth;
-        const y = PADDING + (1 - ((rawYVal - bounds.yMin) / bounds.yRange)) * drawableHeight;
-
-        let fillColor = DEFAULT_DOT_COLOR;
-        const happinessVal = track.parsedFeatures?.happiness ?? track.happiness;
-        const aggressiveVal = track.parsedFeatures?.aggressive ?? track.aggressive;
-        const relaxedVal = track.parsedFeatures?.relaxed ?? track.relaxed;
-        if (typeof happinessVal === 'number' && happinessVal > 0.75) fillColor = HAPPINESS_COLOR;
-        else if (typeof aggressiveVal === 'number' && aggressiveVal > 0.65) fillColor = AGGRESSIVE_COLOR;
-        else if (typeof relaxedVal === 'number' && relaxedVal > 0.75) fillColor = RELAXED_COLOR;
-
-        // Create dot container
-        const dotContainer = new PIXI.Container();
-        dotContainer.position.set(x, y);
-        dotContainer.eventMode = 'static';
-        dotContainer.cursor = 'pointer';
-
-        // Create visual dot
-        const dataDot = new PIXI.Graphics()
-          .circle(0, 0, DOT_RADIUS)
-          .fill({ color: fillColor });
-        dotContainer.addChild(dataDot);
-
-        // Create hit area
-        const hitArea = new PIXI.Graphics()
-          .circle(0, 0, DOT_RADIUS * 2)
-          .fill({ color: 0xFFFFFF, alpha: 0 });
-        dotContainer.addChild(hitArea);
-
-        // Add hover handlers
-        dotContainer.on('pointerover', async (event) => {
-          event.stopPropagation();
-          dataDot.scale.set(DOT_RADIUS_HOVER / DOT_RADIUS);
-          setCurrentHoverTrack(track);
-          
-          if (tooltipTimeoutRef.current) {
-            clearTimeout(tooltipTimeoutRef.current);
-            tooltipTimeoutRef.current = null;
-          }
-          
-          const mousePosition = event.global;
-          const tooltipWidth = 300;
-          const tooltipHeight = 200;
-          
-          let x = mousePosition.x + 15;
-          let y = mousePosition.y - tooltipHeight / 2;
-          
-          if (x + tooltipWidth > app.screen.width) {
-            x = mousePosition.x - tooltipWidth - 15;
-          }
-          if (y + tooltipHeight > app.screen.height) {
-            y = app.screen.height - tooltipHeight - 10;
-          }
-          if (y < 0) {
-            y = 10;
-          }
-          
-          if (tooltipContainerRef.current) {
-            tooltipContainerRef.current.position.set(x, y);
-            tooltipContainerRef.current.visible = true;
-          }
-        });
-
-        dotContainer.on('pointerout', (event) => {
-          event.stopPropagation();
-          dataDot.scale.set(1.0);
-          
-          tooltipTimeoutRef.current = setTimeout(() => {
-            setCurrentHoverTrack(null);
-            if (tooltipContainerRef.current) {
-              tooltipContainerRef.current.visible = false;
-            }
-            if (wavesurferRef.current && wavesurferRef.current.isPlaying()) {
-              wavesurferRef.current.pause();
-              setIsPlaying(false);
-            }
-          }, 300);
-        });
-
-        chartArea.addChild(dotContainer);
+        const screenX = PADDING + ((rawXVal - xRange.min) / xRange.range) * drawableWidth;
+        const screenY = PADDING + (1 - ((rawYVal - yRange.min) / yRange.range)) * drawableHeight; // Invert Y
+        commonDotLogic(track, screenX, screenY);
       });
     }
-
     updateAxesTextScale(chartArea);
   }, [isPixiAppReady, tracks, axisMinMax, xAxisFeature, yAxisFeature, isLoadingTracks, error, drawAxes, formatTickValue, canvasSize, updateAxesTextScale, selectableFeatures, setCurrentHoverTrack, setIsPlaying, tsneData, isTsneCalculating, isSimilarityMode, calculateVisualizationBounds]);
 
-  // Clean up timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (tooltipTimeoutRef.current) {
-        clearTimeout(tooltipTimeoutRef.current);
-      }
-    };
+  useEffect(() => { // Clean up timeout on unmount
+    return () => { if (tooltipTimeoutRef.current) clearTimeout(tooltipTimeoutRef.current); };
   }, []);
 
   useEffect(() => { // Window Resize
-    const handleResize = () => { /* ... */ }; // same
+    const handleResize = () => {
+      if (pixiAppRef.current && pixiCanvasContainerRef.current) {
+        const { clientWidth, clientHeight } = pixiCanvasContainerRef.current;
+        pixiAppRef.current.renderer.resize(clientWidth, clientHeight);
+        setCanvasSize({ width: clientWidth, height: clientHeight });
+      }
+    };
     window.addEventListener('resize', handleResize);
-    if (isPixiAppReady && pixiAppRef.current && pixiCanvasContainerRef.current) { /* ... */ } // same
+    handleResize(); // Initial call
     return () => window.removeEventListener('resize', handleResize);
-  }, [isPixiAppReady]);
+  }, [isPixiAppReady]); // Add isPixiAppReady dependency
 
-  // Initialize WaveSurfer when the component mounts
+  // Initialize WaveSurfer when the component mounts - for the tooltip playback
   useEffect(() => {
-    if (wavesurferContainerRef.current) {
-      wavesurferRef.current = WaveSurfer.create({
-        container: wavesurferContainerRef.current,
-        waveColor: '#6A82FB',
-        progressColor: '#3B4D9A',
-        height: 40,
-        barWidth: 1,
-        barGap: 1,
-        cursorWidth: 0,
-        interact: false,
-        backend: 'MediaElement',
-        normalize: true,
-        autoCenter: true,
-        partialRender: true,
-        responsive: false,
-        splitChannels: false,
-        xhr: {
-          mode: 'no-cors',
-          credentials: 'same-origin',
-          cache: 'force-cache'
-        }
+    // This wavesurfer is now mainly controlled by the <Waveform> component instance passed via ref
+    // The global one is mainly for a fallback or if direct control is needed outside React tree
+    if (wavesurferContainerRef.current && !wavesurferRef.current) { // Only init if not already done
+      const wsInstance = WaveSurfer.create({
+        container: wavesurferContainerRef.current, // Hidden container
+        waveColor: '#6A82FB', progressColor: '#3B4D9A', height: 40, barWidth: 1,
+        barGap: 1, cursorWidth: 0, interact: false, backend: 'MediaElement',
+        normalize: true, autoCenter: true, partialRender: true, responsive: false,
       });
-      
-      console.log("🌊 Wavesurfer instance created.");
-      wavesurferRef.current.on('error', (err) => console.error('🌊 Wavesurfer Global Error:', err, "Attempted URL:", activeAudioUrlRef.current));
-      wavesurferRef.current.on('warn', (warn) => console.warn('🌊 Wavesurfer Global Warning:', warn));
-      wavesurferRef.current.on('ready', () => {
-        const currentSrc = wavesurferRef.current?.getMediaElement()?.src;
-        console.log('🌊 Wavesurfer ready for URL:', currentSrc);
-        const tooltipTrack = currentTooltipTrackRef.current;
-        if (tooltipTrack && tooltipTrack.audioUrl === currentSrc && tooltipContainerRef.current?.visible) {
-          console.log("🌊 Autoplaying on ready (tooltip is active for this track).");
-          wavesurferRef.current.play().catch(e => console.error("🌊 Error auto-playing on ready:", e));
-        }
-      });
-      wavesurferRef.current.on('play', () => console.log('🌊 Wavesurfer playing.'));
-      wavesurferRef.current.on('pause', () => console.log('🌊 Wavesurfer paused.'));
+      wavesurferRef.current = wsInstance;
+      console.log("🌊 Global Wavesurfer instance created for tooltip potential control.");
+      wsInstance.on('error', (err) => console.error('🌊 Global WS Error:', err, "Attempted URL:", activeAudioUrlRef.current));
+      // Ready, play, pause events are better handled by the Waveform component instance
     }
-
     return () => {
-      if (wavesurferRef.current) {
-        wavesurferRef.current.destroy();
-        wavesurferRef.current = null;
+      if (wavesurferRef.current && wavesurferRef.current.destroy) {
+        // wavesurferRef.current.destroy(); // Don't destroy if managed by Waveform component
+        // wavesurferRef.current = null;
       }
     };
   }, []);
 
+
   return ( 
     <div className="visualization-outer-container">
-      <div className="controls-panel" style={{ position: 'absolute', top: '10px', left: '10px', zIndex: 1000 }}>
+      <div className="controls-panel" style={{ position: 'absolute', top: '10px', left: '10px', zIndex: 1000, backgroundColor: "rgba(30,30,30,0.8)", padding: "10px", borderRadius: "5px" }}>
         <div className="mode-toggle" style={{ marginBottom: '10px' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#E0E0E0' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#E0E0E0', cursor: 'pointer' }}>
             <input
               type="checkbox"
               checked={isSimilarityMode}
-              onChange={(e) => setIsSimilarityMode(e.target.checked)}
+              onChange={(e) => {
+                setIsSimilarityMode(e.target.checked);
+                if(chartAreaRef.current) chartAreaRef.current.scale.set(MIN_ZOOM); // Reset zoom on mode change
+              }}
               style={{ width: '16px', height: '16px' }}
             />
             Similarity Mode
           </label>
         </div>
         {!isSimilarityMode && (
-          <div className="axis-selectors">
+          <div className="axis-selectors" style={{display: "flex", gap: "10px"}}>
             <div className="axis-selector">
-              <label>X-Axis:</label>
-              <select value={xAxisFeature} onChange={(e) => setXAxisFeature(e.target.value)}>
+              <label htmlFor="xAxisSelect" style={{color: "#ccc", marginRight:"5px"}}>X-Axis:</label>
+              <select id="xAxisSelect" value={xAxisFeature} onChange={(e) => setXAxisFeature(e.target.value)} style={{padding:"3px"}}>
                 {selectableFeatures.map((feature) => (
-                  <option key={feature.value} value={feature.value}>
+                  <option key={`x-${feature.value}`} value={feature.value}>
                     {feature.label}
                   </option>
                 ))}
               </select>
             </div>
             <div className="axis-selector">
-              <label>Y-Axis:</label>
-              <select value={yAxisFeature} onChange={(e) => setYAxisFeature(e.target.value)}>
+              <label htmlFor="yAxisSelect" style={{color: "#ccc", marginRight:"5px"}}>Y-Axis:</label>
+              <select id="yAxisSelect" value={yAxisFeature} onChange={(e) => setYAxisFeature(e.target.value)} style={{padding:"3px"}}>
                 {selectableFeatures.map((feature) => (
-                  <option key={feature.value} value={feature.value}>
+                  <option key={`y-${feature.value}`} value={feature.value}>
                     {feature.label}
                   </option>
                 ))}
@@ -1316,8 +1090,12 @@ const VisualizationCanvas = () => {
       </div>
       <div className="canvas-wrapper">
         <div ref={pixiCanvasContainerRef} className="pixi-canvas-target" />
-        <div ref={wavesurferContainerRef} className="wavesurfer-container-hidden"></div>
-        {isLoadingTracks && <div className="loading-overlay">Loading tracks...</div>}
+        <div ref={wavesurferContainerRef} className="wavesurfer-container-hidden" style={{ display: 'none' }}></div>
+        {(isLoadingTracks || (isSimilarityMode && isTsneCalculating)) && 
+            <div className="loading-overlay">
+                {isLoadingTracks ? "Loading tracks..." : "Calculating similarity..."}
+            </div>
+        }
         {error && <div className="error-overlay">{error}</div>}
       </div>
     </div>
