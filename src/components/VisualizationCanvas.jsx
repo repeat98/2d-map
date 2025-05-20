@@ -109,29 +109,35 @@ const VisualizationCanvas = () => {
         const processedTracks = rawTracks.map(track => {
           const currentParsedFeatures = {};
 
+          // Process core features with threshold
           coreFeaturesConfig.forEach(coreFeatureConf => {
             const featureKey = coreFeatureConf.value;
             if (track[featureKey] !== undefined && track[featureKey] !== null) {
               const val = parseFloat(track[featureKey]);
-              if (!isNaN(val)) currentParsedFeatures[featureKey] = val;
+              if (!isNaN(val) && val >= styleThreshold) {
+                currentParsedFeatures[featureKey] = val;
+                allDiscoveredFeatureKeys.add(featureKey);
+                featureFrequencies[featureKey] = (featureFrequencies[featureKey] || 0) + 1;
+              }
             }
-            allDiscoveredFeatureKeys.add(featureKey);
           });
 
+          // Process genre features
           if (track.features) {
             try {
               const genreObject = typeof track.features === 'string' ? JSON.parse(track.features) : track.features;
               Object.entries(genreObject).forEach(([genreKey, value]) => {
                 const val = parseFloat(value);
                 if (!isNaN(val) && val >= styleThreshold) {
-                    currentParsedFeatures[genreKey] = val;
-                    allDiscoveredFeatureKeys.add(genreKey);
-                    featureFrequencies[genreKey] = (featureFrequencies[genreKey] || 0) + 1;
+                  currentParsedFeatures[genreKey] = val;
+                  allDiscoveredFeatureKeys.add(genreKey);
+                  featureFrequencies[genreKey] = (featureFrequencies[genreKey] || 0) + 1;
                 }
               });
             } catch (e) { console.error("Error parsing genre features for track:", track.id, e); }
           }
 
+          // Process instrument features
           if (track.instrument_features) {
             try {
               const instrumentObject = typeof track.instrument_features === 'string'
@@ -139,11 +145,11 @@ const VisualizationCanvas = () => {
                 : track.instrument_features;
               Object.entries(instrumentObject).forEach(([instrumentKey, probability]) => {
                 const val = parseFloat(probability);
-                 if (!isNaN(val)) {
-                    currentParsedFeatures[instrumentKey] = val;
-                    allDiscoveredFeatureKeys.add(instrumentKey);
-                    featureFrequencies[instrumentKey] = (featureFrequencies[instrumentKey] || 0) + 1;
-                 }
+                if (!isNaN(val) && val >= styleThreshold) {
+                  currentParsedFeatures[instrumentKey] = val;
+                  allDiscoveredFeatureKeys.add(instrumentKey);
+                  featureFrequencies[instrumentKey] = (featureFrequencies[instrumentKey] || 0) + 1;
+                }
               });
             } catch (e) { console.error("Error parsing instrument features for track:", track.id, e); }
           }
@@ -1065,7 +1071,7 @@ const VisualizationCanvas = () => {
         </div>
         <div className="style-threshold" style={{ marginBottom: '10px' }}>
           <label style={{ color: '#E0E0E0', display: 'block', marginBottom: '5px' }}>
-            Style Threshold: {(styleThreshold * 100).toFixed(0)}%
+            Feature Threshold: {(styleThreshold * 100).toFixed(0)}%
           </label>
           <input
             type="range"
