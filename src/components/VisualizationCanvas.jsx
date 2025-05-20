@@ -1,43 +1,48 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
-import 'pixi.js/unsafe-eval'; // For PixiJS v7+, often needed for certain features/performance.
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import 'pixi.js/unsafe-eval';
 import * as PIXI from 'pixi.js';
-import WaveSurfer from 'wavesurfer.js'; // Ensure Wavesurfer.js is installed
+import WaveSurfer from 'wavesurfer.js';
 import './VisualizationCanvas.scss';
 import defaultArtwork from "../../assets/default-artwork.png";
 import Waveform from './Waveform';
 import ReactDOM from 'react-dom/client';
 import { PlaybackContext } from '../context/PlaybackContext';
 import { PCA } from 'ml-pca';
+import { kmeans } from 'ml-kmeans';
 
 /*
 * IMPORTANT NOTE FOR ELECTRON USERS (Content Security Policy - CSP):
 * (CSP Note remains the same)
 */
 
-// Core feature configurations (moods, spectral, bpm)
-// Instrument and genre features will be added dynamically.
+// --- FEATURE CATEGORIES ---
+const FEATURE_CATEGORIES = {
+  MOOD: 'Mood',
+  SPECTRAL: 'Spectral',
+  TECHNICAL: 'Technical',
+  STYLE: 'Style',
+  INSTRUMENT: 'Instrument'
+};
+
 const coreFeaturesConfig = [
-  { value: 'bpm', label: 'BPM', axisTitleStyle: { fill: 0xe74c3c, fontWeight: 'bold' }, isNumeric: true },
-  { value: 'danceability', label: 'Danceability', axisTitleStyle: { fill: 0x3498db }, isNumeric: true },
-  { value: 'happiness', label: 'Happiness', axisTitleStyle: { fill: 0xf1c40f }, isNumeric: true },
-  { value: 'party', label: 'Party Vibe', isNumeric: true, axisTitleStyle: { fill: 0x9b59b6} },
-  { value: 'aggressive', label: 'Aggressiveness', axisTitleStyle: { fill: 0xc0392b }, isNumeric: true },
-  { value: 'relaxed', label: 'Relaxed Vibe', axisTitleStyle: { fill: 0x2ecc71 }, isNumeric: true },
-  { value: 'sad', label: 'Sadness', isNumeric: true, axisTitleStyle: { fill: 0x7f8c8d } },
-  { value: 'engagement', label: 'Engagement', isNumeric: true, axisTitleStyle: { fill: 0x1abc9c } },
-  { value: 'approachability', label: 'Approachability', isNumeric: true, axisTitleStyle: { fill: 0x34495e } },
-  { value: 'rms', label: 'RMS (Loudness)', isNumeric: true, axisTitleStyle: { fill: 0x16a085 } },
-  { value: 'spectral_centroid', label: 'Spectral Centroid (Brightness)', isNumeric: true, axisTitleStyle: { fill: 0x27ae60 } },
-  { value: 'spectral_bandwidth', label: 'Spectral Bandwidth', isNumeric: true, axisTitleStyle: { fill: 0x2980b9 } },
-  { value: 'spectral_rolloff', label: 'Spectral Rolloff', isNumeric: true, axisTitleStyle: { fill: 0x8e44ad } },
-  { value: 'spectral_contrast', label: 'Spectral Contrast (Peakiness)', isNumeric: true, axisTitleStyle: { fill: 0xf39c12 } },
-  { value: 'spectral_flatness', label: 'Spectral Flatness (Noisiness)', isNumeric: true, axisTitleStyle: { fill: 0xd35400 } },
+  { value: 'bpm', label: 'BPM', axisTitleStyle: { fill: 0xe74c3c, fontWeight: 'bold' }, isNumeric: true, category: FEATURE_CATEGORIES.TECHNICAL },
+  { value: 'danceability', label: 'Danceability', axisTitleStyle: { fill: 0x3498db }, isNumeric: true, category: FEATURE_CATEGORIES.MOOD },
+  { value: 'happiness', label: 'Happiness', axisTitleStyle: { fill: 0xf1c40f }, isNumeric: true, category: FEATURE_CATEGORIES.MOOD },
+  { value: 'party', label: 'Party Vibe', isNumeric: true, axisTitleStyle: { fill: 0x9b59b6}, category: FEATURE_CATEGORIES.MOOD },
+  { value: 'aggressive', label: 'Aggressiveness', axisTitleStyle: { fill: 0xc0392b }, isNumeric: true, category: FEATURE_CATEGORIES.MOOD },
+  { value: 'relaxed', label: 'Relaxed Vibe', axisTitleStyle: { fill: 0x2ecc71 }, isNumeric: true, category: FEATURE_CATEGORIES.MOOD },
+  { value: 'sad', label: 'Sadness', isNumeric: true, axisTitleStyle: { fill: 0x7f8c8d }, category: FEATURE_CATEGORIES.MOOD },
+  { value: 'engagement', label: 'Engagement', isNumeric: true, axisTitleStyle: { fill: 0x1abc9c }, category: FEATURE_CATEGORIES.MOOD },
+  { value: 'approachability', label: 'Approachability', isNumeric: true, axisTitleStyle: { fill: 0x34495e }, category: FEATURE_CATEGORIES.MOOD },
+  { value: 'rms', label: 'RMS (Loudness)', isNumeric: true, axisTitleStyle: { fill: 0x16a085 }, category: FEATURE_CATEGORIES.SPECTRAL },
+  { value: 'spectral_centroid', label: 'Spectral Centroid (Brightness)', isNumeric: true, axisTitleStyle: { fill: 0x27ae60 }, category: FEATURE_CATEGORIES.SPECTRAL },
+  { value: 'spectral_bandwidth', label: 'Spectral Bandwidth', isNumeric: true, axisTitleStyle: { fill: 0x2980b9 }, category: FEATURE_CATEGORIES.SPECTRAL },
+  { value: 'spectral_rolloff', label: 'Spectral Rolloff', isNumeric: true, axisTitleStyle: { fill: 0x8e44ad }, category: FEATURE_CATEGORIES.SPECTRAL },
+  { value: 'spectral_contrast', label: 'Spectral Contrast (Peakiness)', isNumeric: true, axisTitleStyle: { fill: 0xf39c12 }, category: FEATURE_CATEGORIES.SPECTRAL },
+  { value: 'spectral_flatness', label: 'Spectral Flatness (Noisiness)', isNumeric: true, axisTitleStyle: { fill: 0xd35400 }, category: FEATURE_CATEGORIES.SPECTRAL },
 ];
 
-// Add probability threshold constant
-const STYLE_PROBABILITY_THRESHOLD = 0.3; // Only count styles that appear with at least 30% probability
-
-// Style constants
+const DYNAMIC_FEATURE_MIN_PROBABILITY = 0.3; // Renamed for clarity
 const PADDING = 70; const AXIS_COLOR = 0xAAAAAA; const TEXT_COLOR = 0xE0E0E0;
 const DOT_RADIUS = 5; const DOT_RADIUS_HOVER = 7; const DEFAULT_DOT_COLOR = 0x00A9FF;
 const HAPPINESS_COLOR = 0xFFD700; const AGGRESSIVE_COLOR = 0xFF4136; const RELAXED_COLOR = 0x2ECC40;
@@ -48,17 +53,41 @@ const PLAY_BUTTON_COLOR = 0x6A82FB;
 const PLAY_BUTTON_HOVER_COLOR = 0x8BA3FF;
 const PLAY_BUTTON_SIZE = 24;
 
+// Helper for generating distinct colors for clusters
+const generateClusterColors = (numColors) => {
+  const colors = [];
+  if (numColors <=0) return [0xCCCCCC]; // Default color if k is 0 or invalid
+  for (let i = 0; i < numColors; i++) {
+    const hue = (i * (360 / numColors)) % 360;
+    const hex = hslToHex(hue, 70, 60);
+    colors.push(parseInt(hex.replace('#', ''), 16));
+  }
+  return colors;
+};
+
+function hslToHex(h, s, l) {
+  l /= 100;
+  const a = s * Math.min(l, 1 - l) / 100;
+  const f = n => {
+    const k = (n + h / 30) % 12;
+    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+    return Math.round(255 * color).toString(16).padStart(2, '0');
+  };
+  return `#${f(0)}${f(8)}${f(4)}`;
+}
+
+
 const VisualizationCanvas = () => {
   const [tracks, setTracks] = useState([]);
   const [error, setError] = useState(null);
   const [isLoadingTracks, setIsLoadingTracks] = useState(true);
   const [isSimilarityMode, setIsSimilarityMode] = useState(false);
-  const [styleThreshold, setStyleThreshold] = useState(0.3);
-  
+  const [styleThreshold, setStyleThreshold] = useState(DYNAMIC_FEATURE_MIN_PROBABILITY); // Initialize with constant
+
   const pixiCanvasContainerRef = useRef(null);
   const pixiAppRef = useRef(null);
   const chartAreaRef = useRef(null);
-  
+
   const tooltipContainerRef = useRef(null);
   const coverArtSpriteRef = useRef(null);
   const trackTitleTextRef = useRef(null);
@@ -74,7 +103,7 @@ const VisualizationCanvas = () => {
   const [selectableFeatures, setSelectableFeatures] = useState([...coreFeaturesConfig]);
   const [xAxisFeature, setXAxisFeature] = useState(coreFeaturesConfig[0]?.value || '');
   const [yAxisFeature, setYAxisFeature] = useState(coreFeaturesConfig[1]?.value || '');
-  
+
   const [axisMinMax, setAxisMinMax] = useState({ x: null, y: null });
   const [isPixiAppReady, setIsPixiAppReady] = useState(false);
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0});
@@ -86,12 +115,28 @@ const VisualizationCanvas = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
   const tooltipTimeoutRef = useRef(null);
-
   const playButtonRef = useRef(null);
   const playIconRef = useRef(null);
 
-  const [tsneData, setTsneData] = useState(null); // For PCA/t-SNE results
-  const [isTsneCalculating, setIsTsneCalculating] = useState(false);
+  // --- CLUSTERING STATE ---
+  const [clusterSettings, setClusterSettings] = useState({
+    [FEATURE_CATEGORIES.MOOD]: 1.0,
+    [FEATURE_CATEGORIES.SPECTRAL]: 0.8,
+    [FEATURE_CATEGORIES.TECHNICAL]: 1.0,
+    [FEATURE_CATEGORIES.STYLE]: 1.0,
+    [FEATURE_CATEGORIES.INSTRUMENT]: 0.7,
+    enabled: true,
+  });
+  const [numClustersControl, setNumClustersControl] = useState(7); // User-configurable k
+  const clusterColors = useMemo(() => generateClusterColors(numClustersControl > 0 ? numClustersControl : 1), [numClustersControl]);
+
+  const [clusters, setClusters] = useState([]);
+  const [isClusteringCalculating, setIsClusteringCalculating] = useState(false);
+  // --- END CLUSTERING STATE ---
+
+  const [tsneData, setTsneData] = useState(null);
+  const [isPcaCalculating, setIsPcaCalculating] = useState(false);
+
 
   useEffect(() => {
     const fetchTracksAndPrepareFeatures = async () => {
@@ -104,124 +149,83 @@ const VisualizationCanvas = () => {
         const rawTracks = await response.json();
 
         const allDiscoveredFeatureKeys = new Set();
-        const featureFrequencies = {}; // To store frequencies of dynamic features
+        const featureFrequencies = {};
+        const dynamicFeatureSourceMap = new Map(); // featureKey -> original category
 
         const processedTracks = rawTracks.map(track => {
           const currentParsedFeatures = {};
-
-          // Process core features with threshold
           coreFeaturesConfig.forEach(coreFeatureConf => {
             const featureKey = coreFeatureConf.value;
             if (track[featureKey] !== undefined && track[featureKey] !== null) {
               const val = parseFloat(track[featureKey]);
-              if (!isNaN(val) && val >= styleThreshold) {
+              if (!isNaN(val)) {
                 currentParsedFeatures[featureKey] = val;
-                allDiscoveredFeatureKeys.add(featureKey);
+                allDiscoveredFeatureKeys.add(featureKey); // Still add here for dynamicFeatureConfigs loop
+                // dynamicFeatureSourceMap.set(featureKey, coreFeatureConf.category); // Core features already have category
                 featureFrequencies[featureKey] = (featureFrequencies[featureKey] || 0) + 1;
               }
             }
           });
 
-          // Process genre features
-          if (track.features) {
-            try {
-              const genreObject = typeof track.features === 'string' ? JSON.parse(track.features) : track.features;
-              Object.entries(genreObject).forEach(([genreKey, value]) => {
-                const val = parseFloat(value);
-                if (!isNaN(val) && val >= styleThreshold) {
-                  currentParsedFeatures[genreKey] = val;
-                  allDiscoveredFeatureKeys.add(genreKey);
-                  featureFrequencies[genreKey] = (featureFrequencies[genreKey] || 0) + 1;
-                }
-              });
-            } catch (e) { console.error("Error parsing genre features for track:", track.id, e); }
-          }
+          const processDynamicFeatures = (featureObject, category) => {
+             if (featureObject) {
+                try {
+                    const parsedObj = typeof featureObject === 'string' ? JSON.parse(featureObject) : featureObject;
+                    Object.entries(parsedObj).forEach(([key, value]) => {
+                        const val = parseFloat(value);
+                        if (!isNaN(val) && val >= styleThreshold) { // Use component state styleThreshold
+                            currentParsedFeatures[key] = val;
+                            allDiscoveredFeatureKeys.add(key);
+                            dynamicFeatureSourceMap.set(key, category); // Store source category for dynamic keys
+                            featureFrequencies[key] = (featureFrequencies[key] || 0) + 1;
+                        }
+                    });
+                } catch (e) { console.error(`Error parsing ${category} features for track:`, track.id, e); }
+            }
+          };
 
-          // Process instrument features
-          if (track.instrument_features) {
-            try {
-              const instrumentObject = typeof track.instrument_features === 'string'
-                ? JSON.parse(track.instrument_features)
-                : track.instrument_features;
-              Object.entries(instrumentObject).forEach(([instrumentKey, probability]) => {
-                const val = parseFloat(probability);
-                if (!isNaN(val) && val >= styleThreshold) {
-                  currentParsedFeatures[instrumentKey] = val;
-                  allDiscoveredFeatureKeys.add(instrumentKey);
-                  featureFrequencies[instrumentKey] = (featureFrequencies[instrumentKey] || 0) + 1;
-                }
-              });
-            } catch (e) { console.error("Error parsing instrument features for track:", track.id, e); }
-          }
-          
+          processDynamicFeatures(track.features, FEATURE_CATEGORIES.STYLE);
+          processDynamicFeatures(track.instrument_features, FEATURE_CATEGORIES.INSTRUMENT); // Corrected category
+
+
           if (rawTracks.indexOf(track) === 0) {
             console.log("Sample parsedFeatures for first track:", currentParsedFeatures);
           }
-
-          return { ...track, parsedFeatures: currentParsedFeatures };
+          return { ...track, parsedFeatures: currentParsedFeatures, id: track.id.toString() };
         });
-        
-        console.log("Collected Feature Frequencies:", JSON.parse(JSON.stringify(featureFrequencies)));
 
         const coreFeatureValues = new Set(coreFeaturesConfig.map(f => f.value));
         const dynamicFeatureConfigs = [];
 
         Array.from(allDiscoveredFeatureKeys).forEach(featureKey => {
-          if (coreFeatureValues.has(featureKey)) {
-            return;
-          }
+          if (coreFeatureValues.has(featureKey)) return; // Skip core features already defined
 
           let label = featureKey;
-          if (featureKey.includes("---")) { 
+          if (featureKey.includes("---")) {
             label = featureKey.substring(featureKey.indexOf("---") + 3);
           }
-          
-          label = label
-            .replace(/_/g, ' ') 
-            .split(/[\s-]+/) 
-            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-            .join(' ');
-
+          label = label.replace(/_/g, ' ').split(/[\s-]+/).map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
           const frequency = featureFrequencies[featureKey] || 0;
-          if (frequency > 0) { // Only add features that have a frequency
+          const determinedCategory = dynamicFeatureSourceMap.get(featureKey) || FEATURE_CATEGORIES.STYLE; // Fallback
+
+          if (frequency > 0) {
             dynamicFeatureConfigs.push({
               value: featureKey,
-              label: `${label} (${frequency})`, // Add frequency to label
-              isNumeric: true, 
-              axisTitleStyle: { fill: 0x95a5a6 }, 
-              frequency: frequency
+              label: `${label} (${frequency})`,
+              isNumeric: true,
+              axisTitleStyle: { fill: 0x95a5a6 },
+              frequency: frequency,
+              category: determinedCategory // Use the determined category
             });
           }
         });
 
-        // Log before sorting
-        console.log("Dynamic Feature Configs (before sort - label, freq):", 
-            JSON.parse(JSON.stringify(dynamicFeatureConfigs.map(f => ({label: f.label, freq: f.frequency, val: f.value})))));
-
         dynamicFeatureConfigs.sort((a, b) => {
-          if (b.frequency !== a.frequency) {
-            return b.frequency - a.frequency; // Sort by frequency descending
-          }
-          return a.label.localeCompare(b.label); // Then by label ascending
+          if (b.frequency !== a.frequency) return b.frequency - a.frequency;
+          return a.label.localeCompare(b.label);
         });
-        
-        // Log after sorting
-        console.log("Dynamic Feature Configs (after sort - label, freq):", 
-            JSON.parse(JSON.stringify(dynamicFeatureConfigs.map(f => ({label: f.label, freq: f.frequency, val: f.value})))));
-        
+
         const finalSelectableFeatures = [...coreFeaturesConfig, ...dynamicFeatureConfigs];
-
-        // Log final list sample
-        console.log("Final Selectable Features (first 20 entries with freq):", 
-            finalSelectableFeatures.slice(0, 20).map(f => ({
-                label: f.label, 
-                value: f.value, 
-                // For core features, frequency might be undefined, show N/A
-                frequency: f.frequency !== undefined ? f.frequency : 'N/A (core)' 
-            }))
-        );
-
-
         setSelectableFeatures(finalSelectableFeatures);
 
         if (finalSelectableFeatures.length > 0 && !finalSelectableFeatures.find(f => f.value === xAxisFeature)) {
@@ -229,15 +233,13 @@ const VisualizationCanvas = () => {
         }
         if (finalSelectableFeatures.length > 1 && !finalSelectableFeatures.find(f => f.value === yAxisFeature)) {
             setYAxisFeature(finalSelectableFeatures[1].value);
-        } else if (finalSelectableFeatures.length === 1 && xAxisFeature !== finalSelectableFeatures[0].value) { 
+        } else if (finalSelectableFeatures.length === 1 && xAxisFeature !== finalSelectableFeatures[0].value) {
             setYAxisFeature(finalSelectableFeatures[0].value);
         } else if (finalSelectableFeatures.length > 0 && yAxisFeature === xAxisFeature && finalSelectableFeatures.length > 1) {
             const secondFeature = finalSelectableFeatures.find(f => f.value !== xAxisFeature);
             if (secondFeature) setYAxisFeature(secondFeature.value);
-            else setYAxisFeature(finalSelectableFeatures[0].value); 
+            else setYAxisFeature(finalSelectableFeatures[0].value);
         }
-
-
         setTracks(processedTracks);
       } catch (error) {
         console.error("Error fetching or processing tracks:", error);
@@ -249,445 +251,350 @@ const VisualizationCanvas = () => {
     fetchTracksAndPrepareFeatures();
   }, [styleThreshold]);
 
-  useEffect(() => { 
+  // Axis Min/Max Calculation (Unchanged)
+  useEffect(() => {
     if (isLoadingTracks || !tracks || tracks.length === 0 || !xAxisFeature || !yAxisFeature || selectableFeatures.length === 0) return;
-    
     const calculateMinMax = (featureKey, tracksToCalc) => {
-      let min = Infinity;
-      let max = -Infinity;
-      let hasValidValues = false;
-
+      let min = Infinity; let max = -Infinity; let hasValidValues = false;
       tracksToCalc.forEach(track => {
         const value = track.parsedFeatures?.[featureKey];
         if (typeof value === 'number' && !isNaN(value)) {
-          min = Math.min(min, value);
-          max = Math.max(max, value);
-          hasValidValues = true;
+          min = Math.min(min, value); max = Math.max(max, value); hasValidValues = true;
         }
       });
-
-      if (!hasValidValues) {
-        console.warn(`No valid numeric values found for feature: ${featureKey}. Defaulting range to 0-1.`);
-        return { min: 0, max: 1, range: 1, hasData: false }; 
-      }
+      if (!hasValidValues) return { min: 0, max: 1, range: 1, hasData: false };
       const range = max - min;
-      return { min, max, range: range === 0 ? 1 : range, hasData: true }; 
+      return { min, max, range: range === 0 ? 1 : range, hasData: true };
     };
-
     const xRange = calculateMinMax(xAxisFeature, tracks);
     const yRange = calculateMinMax(yAxisFeature, tracks);
-
-    console.log(`🎯 Axis ranges calculated:`, {
-      xAxis: { feature: xAxisFeature, ...xRange },
-      yAxis: { feature: yAxisFeature, ...yRange }
-    });
     setAxisMinMax({ x: xRange, y: yRange });
   }, [tracks, xAxisFeature, yAxisFeature, isLoadingTracks, selectableFeatures]);
 
-  const updateAxesTextScale = useCallback((chartArea) => { 
-    if (!chartArea || !chartArea.scale) return;
-    const currentChartScale = chartArea.scale.x; const inverseScale = 1 / currentChartScale;
-    for (const child of chartArea.children) { if (child.isAxisTextElement) { child.scale.set(inverseScale); } }
-  }, []);
-
-  useEffect(() => { 
+  // Pixi App Initialization (Largely unchanged)
+  useEffect(() => {
+    // ... (Full Pixi init from the original code should be here) ...
+    // This includes: app creation, tooltip setup, play button, wavesurfer global instance, zoom/pan listeners
+    // For brevity, I'm omitting the full copy-paste of the lengthy Pixi setup from the problem description.
+    // Ensure the existing PIXI setup logic is present.
+    // --- START OF COPIED PIXI INIT (FROM ORIGINAL, MINUS WAVESURFER PART MOVED) ---
     if (!pixiCanvasContainerRef.current || pixiAppRef.current) return;
     let app = new PIXI.Application();
     const initPrimaryApp = async (retryCount = 0) => {
       try {
         const { clientWidth: cw, clientHeight: ch } = pixiCanvasContainerRef.current;
-        if (cw <= 0 || ch <= 0) { 
-          if (retryCount < 5) { 
-            setTimeout(() => initPrimaryApp(retryCount + 1), 250); 
-            return; 
-          } 
-          throw new Error("Container zero dimensions"); 
+        if (cw <= 0 || ch <= 0) {
+          if (retryCount < 5) { setTimeout(() => initPrimaryApp(retryCount + 1), 250); return; }
+          throw new Error("Container zero dimensions");
         }
-
-        await app.init({ 
-          width: cw, 
-          height: ch, 
-          backgroundColor: 0x101010, 
-          antialias: true, 
-          resolution: window.devicePixelRatio || 1, 
-          autoDensity: true 
-        });
-
+        await app.init({ width: cw, height: ch, backgroundColor: 0x101010, antialias: true, resolution: window.devicePixelRatio || 1, autoDensity: true });
         pixiCanvasContainerRef.current.appendChild(app.canvas);
         pixiAppRef.current = app;
         setCanvasSize({width: app.screen.width, height: app.screen.height});
-        
         chartAreaRef.current = new PIXI.Container();
         app.stage.addChild(chartAreaRef.current);
-
         tooltipContainerRef.current = new PIXI.Container();
         tooltipContainerRef.current.visible = false;
         tooltipContainerRef.current.eventMode = 'static';
         tooltipContainerRef.current.cursor = 'default';
         app.stage.addChild(tooltipContainerRef.current);
-
-        const tooltipBg = new PIXI.Graphics()
-          .roundRect(0, 0, 300, 200, 8)
-          .fill({ color: 0x333333 });
+        const tooltipBg = new PIXI.Graphics().roundRect(0, 0, 300, 200, 8).fill({ color: 0x333333 }); // Adjusted size slightly for potential longer labels
         tooltipContainerRef.current.addChild(tooltipBg);
-
         coverArtSpriteRef.current = new PIXI.Sprite(PIXI.Texture.EMPTY);
         coverArtSpriteRef.current.position.set(10, 10);
         coverArtSpriteRef.current.width = 80;
         coverArtSpriteRef.current.height = 80;
         tooltipContainerRef.current.addChild(coverArtSpriteRef.current);
-
-        trackTitleTextRef.current = new PIXI.Text({
-          text: '',
-          style: {
-            fontFamily: 'Arial',
-            fontSize: 16,
-            fontWeight: 'bold',
-            fill: 0xFFFFFF,
-            wordWrap: true,
-            wordWrapWidth: 200
-          }
-        });
+        trackTitleTextRef.current = new PIXI.Text({ text: '', style: { fontFamily: 'Arial', fontSize: 16, fontWeight: 'bold', fill: 0xFFFFFF, wordWrap: true, wordWrapWidth: 200 }});
         trackTitleTextRef.current.position.set(100, 10);
         tooltipContainerRef.current.addChild(trackTitleTextRef.current);
-
-        trackFeaturesTextRef.current = new PIXI.Text({
-          text: '',
-          style: {
-            fontFamily: 'Arial',
-            fontSize: 14,
-            fill: 0xAAAAAA,
-            wordWrap: true,
-            wordWrapWidth: 200,
-            lineHeight: 18
-          }
-        });
-        trackFeaturesTextRef.current.position.set(100, 40);
+        trackFeaturesTextRef.current = new PIXI.Text({ text: '', style: { fontFamily: 'Arial', fontSize: 14, fill: 0xAAAAAA, wordWrap: true, wordWrapWidth: 200, lineHeight: 18 }});
+        trackFeaturesTextRef.current.position.set(100, 40); // Adjusted y for potentially more feature text
         tooltipContainerRef.current.addChild(trackFeaturesTextRef.current);
-
-        playButtonRef.current = new PIXI.Graphics()
-          .circle(0, 0, 12)
-          .fill({ color: 0x6A82FB });
-        playButtonRef.current.position.set(280, 30);
+        playButtonRef.current = new PIXI.Graphics().circle(0, 0, 12).fill({ color: 0x6A82FB });
+        playButtonRef.current.position.set(280, 30); // Position within new tooltip size
         playButtonRef.current.eventMode = 'static';
         playButtonRef.current.cursor = 'pointer';
         tooltipContainerRef.current.addChild(playButtonRef.current);
-
         playIconRef.current = new PIXI.Graphics();
-        playIconRef.current.fill({ color: 0xFFFFFF })
-          .moveTo(-4, -6)
-          .lineTo(-4, 6)
-          .lineTo(6, 0);
+        playIconRef.current.fill({ color: 0xFFFFFF }).moveTo(-4, -6).lineTo(-4, 6).lineTo(6, 0);
         playButtonRef.current.addChild(playIconRef.current);
-
         waveformContainerRef.current = new PIXI.Container();
-        waveformContainerRef.current.position.set(10, 100); 
-        tooltipContainerRef.current.addChild(waveformContainerRef.current); 
-
-        playButtonRef.current.on('pointerover', () => {
-          playButtonRef.current.clear()
-            .circle(0, 0, 12)
-            .fill({ color: 0x8BA3FF });
-          playButtonRef.current.addChild(playIconRef.current);
-        });
-
-        playButtonRef.current.on('pointerout', () => {
-          playButtonRef.current.clear()
-            .circle(0, 0, 12)
-            .fill({ color: 0x6A82FB });
-          playButtonRef.current.addChild(playIconRef.current);
-        });
-
+        waveformContainerRef.current.position.set(10, 100);
+        tooltipContainerRef.current.addChild(waveformContainerRef.current);
+        playButtonRef.current.on('pointerover', () => { playButtonRef.current.clear().circle(0, 0, 12).fill({ color: 0x8BA3FF }); playButtonRef.current.addChild(playIconRef.current); });
+        playButtonRef.current.on('pointerout', () => { playButtonRef.current.clear().circle(0, 0, 12).fill({ color: 0x6A82FB }); playButtonRef.current.addChild(playIconRef.current); });
         playButtonRef.current.on('pointerdown', async (event) => {
-          event.stopPropagation(); 
-          const trackToPlay = currentTooltipTrackRef.current; 
+          event.stopPropagation();
+          const trackToPlay = currentTooltipTrackRef.current;
           if (trackToPlay && wavesurferRef.current) {
             if (wavesurferRef.current.isPlaying() && activeAudioUrlRef.current === trackToPlay.path) {
-              wavesurferRef.current.pause();
-              setIsPlaying(false);
+              wavesurferRef.current.pause(); setIsPlaying(false);
             } else {
               if (activeAudioUrlRef.current !== trackToPlay.path) {
                 console.log(`🌊 Loading new track for Wavesurfer: ${trackToPlay.path}`);
-                await wavesurferRef.current.load(trackToPlay.path); 
-                activeAudioUrlRef.current = trackToPlay.path;
+                activeAudioUrlRef.current = trackToPlay.path; // Set before load to prevent race conditions with ready handler
+                await wavesurferRef.current.load(trackToPlay.path);
+                // Play will be handled by 'ready' event if conditions match
               } else {
-                wavesurferRef.current.play(); 
+                 wavesurferRef.current.play().catch(e => console.error("Play error", e));
+                 setIsPlaying(true);
               }
-              setIsPlaying(true); 
             }
           }
         });
-        
-        wavesurferRef.current?.on('ready', () => {
-          const currentSrc = wavesurferRef.current?.getMediaElement()?.src;
-          console.log('🌊 Wavesurfer ready for URL:', currentSrc);
-          const tooltipTrack = currentTooltipTrackRef.current;
-          if (tooltipTrack && tooltipTrack.path === activeAudioUrlRef.current && tooltipContainerRef.current?.visible) {
-            console.log("🌊 Autoplaying on ready (tooltip is active for this track).");
-            wavesurferRef.current.play().catch(e => console.error("🌊 Error auto-playing on ready:", e));
-            setIsPlaying(true);
-          }
-        });
 
+        // Global Wavesurfer Instance Setup
+        if (wavesurferContainerRef.current && !wavesurferRef.current) {
+            const wsInstance = WaveSurfer.create({
+                container: wavesurferContainerRef.current,
+                waveColor: '#6A82FB', progressColor: '#3B4D9A', height: 40, barWidth: 1,
+                barGap: 1, cursorWidth: 0, interact: false,
+                backend: 'MediaElement', normalize: true, autoCenter: true, partialRender: true, responsive: false,
+            });
+            wavesurferRef.current = wsInstance;
+            console.log("🌊 Global Wavesurfer instance created.");
+            wsInstance.on('error', (err) => console.error('🌊 Global WS Error:', err, "Attempted URL:", activeAudioUrlRef.current));
+            wsInstance.on('ready', () => {
+              const currentSrc = wsInstance.getMediaElement()?.src;
+              console.log('🌊 Wavesurfer ready for URL:', currentSrc);
+              const tooltipTrack = currentTooltipTrackRef.current;
+              // Autoplay only if this track is the active one for the tooltip and tooltip is visible
+              if (tooltipTrack && tooltipTrack.path === activeAudioUrlRef.current && tooltipContainerRef.current?.visible) {
+                console.log("🌊 Autoplaying on ready (tooltip is active for this track).");
+                wsInstance.play().catch(e => console.error("🌊 Error auto-playing on ready:", e));
+                setIsPlaying(true);
+              }
+            });
+             wsInstance.on('play', () => setIsPlaying(true));
+             wsInstance.on('pause', () => setIsPlaying(false));
+             wsInstance.on('finish', () => setIsPlaying(false));
+        }
 
         onWheelZoomRef.current = (event) => {
-          event.preventDefault();
-          if (!chartAreaRef.current) return;
-
+          event.preventDefault(); if (!chartAreaRef.current) return;
           const rect = pixiAppRef.current.canvas.getBoundingClientRect();
-          const mouseX = event.clientX - rect.left;
-          const mouseY = event.clientY - rect.top;
+          const mouseX = event.clientX - rect.left; const mouseY = event.clientY - rect.top;
           const chartPoint = chartAreaRef.current.toLocal(new PIXI.Point(mouseX, mouseY));
           const zoomFactor = 1 - (event.deltaY * ZOOM_SENSITIVITY);
-          const prevScale = chartAreaRef.current.scale.x;
-          let newScale = prevScale * zoomFactor;
-          newScale = Math.max(MIN_ZOOM, Math.min(newScale, MAX_ZOOM));
-          if (prevScale === newScale) return;
-
+          const prevScale = chartAreaRef.current.scale.x; let newScale = prevScale * zoomFactor;
+          newScale = Math.max(MIN_ZOOM, Math.min(newScale, MAX_ZOOM)); if (prevScale === newScale) return;
           const scaleFactor = newScale / prevScale;
           const newX = chartPoint.x - (chartPoint.x - chartAreaRef.current.x) * scaleFactor;
           const newY = chartPoint.y - (chartPoint.y - chartAreaRef.current.y) * scaleFactor;
-
-          chartAreaRef.current.scale.set(newScale);
-          chartAreaRef.current.position.set(newX, newY);
+          chartAreaRef.current.scale.set(newScale); chartAreaRef.current.position.set(newX, newY);
           updateAxesTextScale(chartAreaRef.current);
         };
-
         pixiAppRef.current.canvas.addEventListener('wheel', onWheelZoomRef.current, { passive: false });
-
-        app.stage.eventMode = 'static';
-        app.stage.cursor = 'grab';
-        let localIsDragging = false; 
-        let localDragStart = { x: 0, y: 0 };
-        let chartStartPos = { x: 0, y: 0 };
-
-
+        app.stage.eventMode = 'static'; app.stage.cursor = 'grab';
+        let localIsDragging = false; let localDragStart = { x: 0, y: 0 }; let chartStartPos = { x: 0, y: 0 };
         app.stage.on('pointerdown', (event) => {
-          if (event.target === app.stage || event.target === chartAreaRef.current) { 
-            localIsDragging = true;
-            localDragStart = { x: event.global.x, y: event.global.y };
-            chartStartPos = { x: chartAreaRef.current.x, y: chartAreaRef.current.y };
-            app.stage.cursor = 'grabbing';
+          if (event.target === app.stage || event.target === chartAreaRef.current) {
+            localIsDragging = true; localDragStart = { x: event.global.x, y: event.global.y };
+            chartStartPos = { x: chartAreaRef.current.x, y: chartAreaRef.current.y }; app.stage.cursor = 'grabbing';
           }
         });
-
         app.stage.on('pointermove', (event) => {
           if (localIsDragging) {
-            const dx = event.global.x - localDragStart.x;
-            const dy = event.global.y - localDragStart.y;
-            chartAreaRef.current.x = chartStartPos.x + dx;
-            chartAreaRef.current.y = chartStartPos.y + dy;
+            const dx = event.global.x - localDragStart.x; const dy = event.global.y - localDragStart.y;
+            chartAreaRef.current.x = chartStartPos.x + dx; chartAreaRef.current.y = chartStartPos.y + dy;
           }
         });
-
-        const onPointerUp = () => {
-          if (localIsDragging) {
-            localIsDragging = false;
-            app.stage.cursor = 'grab';
-          }
-        };
-        app.stage.on('pointerup', onPointerUp);
-        app.stage.on('pointerupoutside', onPointerUp);
-        
-        tooltipContainerRef.current.on('pointerover', () => {
-          if (tooltipTimeoutRef.current) {
-            clearTimeout(tooltipTimeoutRef.current);
-            tooltipTimeoutRef.current = null;
-          }
-        });
-
+        const onPointerUp = () => { if (localIsDragging) { localIsDragging = false; app.stage.cursor = 'grab'; }};
+        app.stage.on('pointerup', onPointerUp); app.stage.on('pointerupoutside', onPointerUp);
+        tooltipContainerRef.current.on('pointerover', () => { if (tooltipTimeoutRef.current) { clearTimeout(tooltipTimeoutRef.current); tooltipTimeoutRef.current = null; }});
         tooltipContainerRef.current.on('pointerout', () => {
           if (!tooltipTimeoutRef.current) {
             tooltipTimeoutRef.current = setTimeout(() => {
-              setCurrentHoverTrack(null); 
-              currentTooltipTrackRef.current = null;
+              setCurrentHoverTrack(null); currentTooltipTrackRef.current = null;
               if (tooltipContainerRef.current) tooltipContainerRef.current.visible = false;
               if (wavesurferRef.current && wavesurferRef.current.isPlaying()) {
-                wavesurferRef.current.pause(); setIsPlaying(false);
+                // Only pause if the audio is not for the main player (if you had one)
+                // For now, tooltip pause is fine.
+                wavesurferRef.current.pause();
+                setIsPlaying(false);
               }
             }, 300);
           }
         });
-
-        setIsPixiAppReady(true);
-        console.log("✅ Pixi App, Tooltip Listeners, Wavesurfer, Zoom initialized.");
+        setIsPixiAppReady(true); console.log("✅ Pixi App, Tooltip, Wavesurfer, Zoom initialized.");
       } catch (initError) {
         console.error("💥 AppCreate: Failed to init Pixi App:", initError);
         setError(e => e || `Pixi Init Error: ${initError.message}`);
         if (app.destroy) app.destroy(true, {children:true, texture:true, basePath:true});
-        app = null;
-        pixiAppRef.current = null;
+        app = null; pixiAppRef.current = null;
       }
     };
     initPrimaryApp();
     return () => {
       const currentApp = pixiAppRef.current;
-      if (currentApp && currentApp.canvas && onWheelZoomRef.current) {
-        currentApp.canvas.removeEventListener('wheel', onWheelZoomRef.current);
-      }
-      if (currentApp && currentApp.destroy) {
-        currentApp.destroy(true, { children: true, texture: true, basePath: true });
-      }
+      if (currentApp && currentApp.canvas && onWheelZoomRef.current) { currentApp.canvas.removeEventListener('wheel', onWheelZoomRef.current); }
+      if (currentApp && currentApp.destroy) { currentApp.destroy(true, { children: true, texture: true, basePath: true });}
       pixiAppRef.current = null;
-      if (wavesurferRef.current) {
-        wavesurferRef.current.stop();
-        wavesurferRef.current.destroy();
-        wavesurferRef.current = null;
-        console.log("🌊 Wavesurfer instance destroyed.");
-      }
-      chartAreaRef.current = null;
-      tooltipContainerRef.current = null;
-      currentTooltipTrackRef.current = null;
-      setIsPixiAppReady(false);
+      if (wavesurferRef.current) { wavesurferRef.current.stop(); wavesurferRef.current.destroy(); wavesurferRef.current = null; console.log("🌊 Wavesurfer instance destroyed."); }
+      chartAreaRef.current = null; tooltipContainerRef.current = null; currentTooltipTrackRef.current = null; setIsPixiAppReady(false);
     };
-  }, [updateAxesTextScale]); 
+    // --- END OF COPIED PIXI INIT ---
+  }, [updateAxesTextScale]); // updateAxesTextScale is defined below.
 
+  const formatTickValue = useCallback((value, isGenreAxis) => {
+    if (value === null || value === undefined) return 'N/A';
+    if (typeof value !== 'number' || isNaN(value)) return String(value);
+    if (Math.abs(value) < 0.001 && value !== 0) return value.toExponential(1);
+    if (Math.abs(value) >= 10000) return value.toExponential(1);
+    const numStr = value.toFixed(2);
+    return parseFloat(numStr).toString();
+  }, []);
+
+  // Tooltip Update Logic (Add cluster label)
   useEffect(() => {
     if (!currentHoverTrack || !tooltipContainerRef.current || !pixiAppRef.current) {
       if (tooltipContainerRef.current) tooltipContainerRef.current.visible = false;
       const existingReactContainers = pixiCanvasContainerRef.current?.querySelectorAll('.waveform-react-container');
-      existingReactContainers?.forEach(container => container.remove());
+      existingReactContainers?.forEach(container => {
+        const root = container._reactRoot; // Retrieve stored root
+        if (root) root.unmount();
+        container.remove();
+      });
       return;
     }
-    currentTooltipTrackRef.current = currentHoverTrack; 
+    currentTooltipTrackRef.current = currentHoverTrack;
 
     const updateTooltipVisuals = async () => {
       try {
+        const existingReactContainers = pixiCanvasContainerRef.current?.querySelectorAll('.waveform-react-container');
+        existingReactContainers?.forEach(container => {
+          const root = container._reactRoot;
+          if (root) root.unmount();
+          container.remove();
+        });
+
         trackTitleTextRef.current.text = currentHoverTrack.title || 'Unknown Title';
+        let featuresText = '';
+        if (isSimilarityMode && currentHoverTrack.clusterId !== undefined && clusters.length > 0) {
+            const cluster = clusters.find(c => c.id === currentHoverTrack.clusterId);
+            featuresText = `Cluster: ${cluster ? cluster.label : 'N/A'}\n`; // Use improved label
+        }
+
         const xFeat = selectableFeatures.find(f => f.value === xAxisFeature);
         const yFeat = selectableFeatures.find(f => f.value === yAxisFeature);
-        const xFeatureLabel = xFeat?.label || xAxisFeature;
-        const yFeatureLabel = yFeat?.label || yAxisFeature;
-        
-        trackFeaturesTextRef.current.text = 
+        const xFeatureLabel = xFeat?.label.split('(')[0].trim() || xAxisFeature; // Cleaner label
+        const yFeatureLabel = yFeat?.label.split('(')[0].trim() || yAxisFeature; // Cleaner label
+
+        featuresText +=
           `${xFeatureLabel}: ${formatTickValue(currentHoverTrack.parsedFeatures?.[xAxisFeature])}\n` +
           `${yFeatureLabel}: ${formatTickValue(currentHoverTrack.parsedFeatures?.[yAxisFeature])}`;
+        trackFeaturesTextRef.current.text = featuresText;
 
         const artworkPath = currentHoverTrack.artwork_thumbnail_path || defaultArtwork;
-        const img = new Image();
-        img.onload = () => { coverArtSpriteRef.current.texture = PIXI.Texture.from(img); };
-        img.onerror = () => { coverArtSpriteRef.current.texture = PIXI.Texture.from(defaultArtwork); };
-        img.src = artworkPath;
-        
-        tooltipContainerRef.current.visible = true; 
+        // PIXI's texture cache handles image loading efficiently. Direct assignment is fine.
+        coverArtSpriteRef.current.texture = await PIXI.Assets.load(artworkPath).catch(() => PIXI.Texture.from(defaultArtwork));
 
-        const existingReactContainers = pixiCanvasContainerRef.current?.querySelectorAll('.waveform-react-container');
-        existingReactContainers?.forEach(container => container.remove());
+        tooltipContainerRef.current.visible = true;
 
         const waveformHostElement = document.createElement('div');
         waveformHostElement.className = 'waveform-react-container';
-        waveformHostElement.style.width = '150px'; 
+        waveformHostElement.style.width = '150px'; // Match Waveform component if it has fixed size
         waveformHostElement.style.height = '40px';
-        waveformHostElement.style.position = 'absolute'; 
-        waveformHostElement.style.pointerEvents = 'auto'; 
+        waveformHostElement.style.position = 'absolute'; // Relative to pixiCanvasContainerRef
+        waveformHostElement.style.pointerEvents = 'auto'; // Allow interaction with React component
 
         const tooltipGlobalPos = tooltipContainerRef.current.getGlobalPosition(new PIXI.Point());
         const canvasRect = pixiCanvasContainerRef.current.getBoundingClientRect();
 
         waveformHostElement.style.left = `${tooltipGlobalPos.x - canvasRect.left + waveformContainerRef.current.x}px`;
         waveformHostElement.style.top = `${tooltipGlobalPos.y - canvasRect.top + waveformContainerRef.current.y}px`;
-        
+
         pixiCanvasContainerRef.current.appendChild(waveformHostElement);
-        
+
         const root = ReactDOM.createRoot(waveformHostElement);
+        waveformHostElement._reactRoot = root; // Store root for unmounting
+
         const playbackContextValue = {
-          setPlayingWaveSurfer: (ws) => {  }, 
-          currentTrack: currentHoverTrack,
-          setCurrentTrack: () => {},
+          setPlayingWaveSurfer: (ws) => { /* Allow Waveform to control a global player if needed */ },
+          currentTrack: currentHoverTrack, // Pass current track for context
+          setCurrentTrack: () => { /* If Waveform needs to set global track */ },
         };
-        
+
         root.render(
           <PlaybackContext.Provider value={playbackContextValue}>
             <Waveform
-              key={currentHoverTrack.id} 
+              key={`${currentHoverTrack.id}-tooltip`} // Ensure re-render if track changes
               trackId={currentHoverTrack.id.toString()}
-              audioPath={currentHoverTrack.path} 
+              audioPath={currentHoverTrack.path}
               isInteractive={true}
-              wavesurferInstanceRef={wavesurferRef} 
+              wavesurferInstanceRef={wavesurferRef} // Pass the global ref
               onPlay={() => {
                 setIsPlaying(true);
                 activeAudioUrlRef.current = currentHoverTrack.path;
               }}
               onPause={() => setIsPlaying(false)}
-              onReadyToPlay={(ws) => { 
-                if (activeAudioUrlRef.current === currentHoverTrack.path && tooltipContainerRef.current?.visible) {
-                   ws.play();
-                   setIsPlaying(true);
+              onReadyToPlay={(wsInstance) => {
+                // Autoplay logic moved to global wavesurfer 'ready' handler to ensure it's the correct track
+                if (activeAudioUrlRef.current === currentHoverTrack.path &&
+                    tooltipContainerRef.current?.visible &&
+                    currentTooltipTrackRef.current?.id === currentHoverTrack.id) {
+                  wsInstance.play().catch(e => console.warn("Waveform play failed on ready:", e));
+                  setIsPlaying(true);
                 }
               }}
             />
           </PlaybackContext.Provider>
         );
-        
-        return () => { 
-          root.unmount();
-          if (waveformHostElement.parentElement) {
-            waveformHostElement.remove();
-          }
+         return () => { // Cleanup for this specific waveform render
+          if (root) root.unmount();
+          if (waveformHostElement.parentElement) waveformHostElement.remove();
         };
-
       } catch (error) {
         console.error("💥 Error updating tooltip:", error);
-        if (coverArtSpriteRef.current) coverArtSpriteRef.current.texture = PIXI.Texture.from(defaultArtwork);
+        if (coverArtSpriteRef.current) {
+          coverArtSpriteRef.current.texture = PIXI.Texture.from(defaultArtwork);
+        }
       }
-      return () => {}; 
     };
 
     let cleanupPromise = updateTooltipVisuals();
-     return () => { 
-        if (cleanupPromise && typeof cleanupPromise.then === 'function') {
-            cleanupPromise.then(actualCleanup => {
-                if(typeof actualCleanup === 'function') actualCleanup();
-            }).catch(e => console.warn("Error in async cleanup:", e));
-        } else if (typeof cleanupPromise === 'function') {
-            cleanupPromise(); 
-        }
+    return () => { // Main useEffect cleanup
+      if (cleanupPromise && typeof cleanupPromise.then === 'function') {
+        cleanupPromise.then(actualCleanup => {
+          if (typeof actualCleanup === 'function') actualCleanup();
+        }).catch(e => console.warn("Error in async tooltip cleanup:", e));
+      } else if (typeof cleanupPromise === 'function') { // If not async
+        cleanupPromise();
+      }
     };
+  }, [currentHoverTrack, xAxisFeature, yAxisFeature, selectableFeatures, formatTickValue, isSimilarityMode, clusters, isPlaying]); // Added isPlaying to re-evaluate play icon
 
-
-  }, [currentHoverTrack, xAxisFeature, yAxisFeature, selectableFeatures, formatTickValue]);
-
-
-  const formatTickValue = useCallback((value, isGenreAxis) => {
-    if (value === null || value === undefined) return 'N/A';
-    if (typeof value !== 'number' || isNaN(value)) return String(value); 
-    if (Math.abs(value) < 0.001 && value !== 0) return value.toExponential(1);
-    if (Math.abs(value) >= 10000) return value.toExponential(1);
-    const numStr = value.toFixed(2); 
-    return parseFloat(numStr).toString(); 
+  const updateAxesTextScale = useCallback((chartArea) => {
+    if (!chartArea || !chartArea.scale) return;
+    const currentChartScale = chartArea.scale.x; const inverseScale = 1 / currentChartScale;
+    for (const child of chartArea.children) { if (child.isAxisTextElement) { child.scale.set(inverseScale); } }
   }, []);
 
-  const drawAxes = useCallback((chartArea, currentXAxisFeatureKey, currentYAxisFeatureKey, xRange, yRange, currentCanvasSize) => { 
+  const drawAxes = useCallback((chartArea, currentXAxisFeatureKey, currentYAxisFeatureKey, xRange, yRange, currentCanvasSize) => {
     if (!chartArea || !xRange || !yRange || !currentCanvasSize.width || !currentCanvasSize.height || selectableFeatures.length === 0) return;
     const graphics = new PIXI.Graphics();
     const { width: canvasWidth, height: canvasHeight } = currentCanvasSize;
     const drawableWidth = canvasWidth - 2 * PADDING; const drawableHeight = canvasHeight - 2 * PADDING;
     if (drawableWidth <=0 || drawableHeight <=0) return;
-    
+
     const xFeatureInfo = selectableFeatures.find(f => f.value === currentXAxisFeatureKey);
     const yFeatureInfo = selectableFeatures.find(f => f.value === currentYAxisFeatureKey);
-
     const defaultAxisTextStyle = { fontFamily: 'Arial, sans-serif', fontSize: 12, fill: TEXT_COLOR, align: 'center' };
     const defaultTitleTextStyle = { fontFamily: 'Arial, sans-serif', fontSize: 14, fontWeight: 'bold', fill: TEXT_COLOR, align: 'center'};
-    
     const xTitleStyle = {...defaultTitleTextStyle, ...(xFeatureInfo?.axisTitleStyle || {})};
     const yTitleStyle = {...defaultTitleTextStyle, ...(yFeatureInfo?.axisTitleStyle || {})};
-
     graphics.moveTo(PADDING, canvasHeight - PADDING).lineTo(canvasWidth - PADDING, canvasHeight - PADDING).stroke({width:1, color:AXIS_COLOR});
     graphics.moveTo(PADDING, PADDING).lineTo(PADDING, canvasHeight - PADDING).stroke({width:1, color:AXIS_COLOR});
-    
-    const xTitleText = xFeatureInfo?.label || currentXAxisFeatureKey;
-    const yTitleText = yFeatureInfo?.label || currentYAxisFeatureKey;
-
+    const xTitleText = xFeatureInfo?.label.split('(')[0].trim() || currentXAxisFeatureKey;
+    const yTitleText = yFeatureInfo?.label.split('(')[0].trim() || currentYAxisFeatureKey;
     const xTitle = new PIXI.Text({text: xTitleText, style:xTitleStyle});
     xTitle.isAxisTextElement = true; xTitle.anchor.set(0.5, 0); xTitle.position.set(PADDING + drawableWidth / 2, canvasHeight - PADDING + 25);
     chartArea.addChild(xTitle);
-    
     const yTitle = new PIXI.Text({text: yTitleText, style:yTitleStyle});
     yTitle.isAxisTextElement = true; yTitle.anchor.set(0.5, 1); yTitle.rotation = -Math.PI / 2; yTitle.position.set(PADDING - 45, PADDING + drawableHeight / 2);
     chartArea.addChild(yTitle);
-    
-    const numTicks = 5; 
+    const numTicks = 5;
     for (let i = 0; i <= numTicks; i++) {
         const xVal = xRange.min + (xRange.range / numTicks) * i;
         const xTickPos = PADDING + (i / numTicks) * drawableWidth;
@@ -695,7 +602,6 @@ const VisualizationCanvas = () => {
         const xLabel = new PIXI.Text({text:formatTickValue(xVal), style:defaultAxisTextStyle});
         xLabel.isAxisTextElement = true; xLabel.anchor.set(0.5, 0); xLabel.position.set(xTickPos, canvasHeight - PADDING + 8);
         chartArea.addChild(xLabel);
-        
         const yVal = yRange.min + (yRange.range / numTicks) * i;
         const yTickPos = canvasHeight - PADDING - (i / numTicks) * drawableHeight;
         graphics.moveTo(PADDING, yTickPos).lineTo(PADDING - 5, yTickPos).stroke({width:1, color:AXIS_COLOR});
@@ -706,85 +612,73 @@ const VisualizationCanvas = () => {
     chartArea.addChild(graphics);
   }, [formatTickValue, selectableFeatures]);
 
-  const preparePcaData = useCallback((tracksToProcess, allSelectableFeaturesForPca) => {
-    if (!tracksToProcess || tracksToProcess.length === 0) {
-        console.warn("PCA: No tracks provided.");
-        return null;
-    }
-    if (!allSelectableFeaturesForPca || allSelectableFeaturesForPca.length === 0) {
-        console.warn("PCA: No selectable features defined.");
-        return null;
-    }
 
-    const featureOrder = allSelectableFeaturesForPca
-        .filter(f => f.isNumeric) 
-        .map(f => f.value)
-        .sort(); 
+  // --- DATA PREPARATION FOR CLUSTERING & PCA ---
+  const prepareFeatureData = useCallback((tracksToProcess, allSelectableFeatures, currentClusterSettings) => {
+    if (!tracksToProcess || tracksToProcess.length === 0) return null;
+    if (!allSelectableFeatures || allSelectableFeatures.length === 0) return null;
 
-    if (featureOrder.length === 0) {
-        console.warn("PCA: No numeric features identified from selectableFeatures for PCA.");
-        return null;
+    const activeFeatureConfigs = [];
+    allSelectableFeatures.forEach(featureConf => {
+        if (featureConf.isNumeric) {
+            const categoryWeight = currentClusterSettings[featureConf.category];
+            if (typeof categoryWeight === 'number' && categoryWeight > 0) {
+                activeFeatureConfigs.push({
+                    ...featureConf, // Includes value, label, category
+                    weight: categoryWeight
+                });
+            }
+        }
+    });
+
+    if (activeFeatureConfigs.length === 0) {
+      console.warn("DataPrep: No numeric features selected based on active categories weights.");
+      return null;
     }
-    console.log("PCA: Using features in order:", featureOrder.join(", "));
 
     const featureVectors = [];
-    const trackIdsForPca = [];
+    const trackIdsForProcessing = [];
+    const validTracksForProcessing = [];
 
     tracksToProcess.forEach(track => {
       const vector = [];
       let hasAnyValidData = false;
-      featureOrder.forEach(featureKey => {
-        const value = track.parsedFeatures?.[featureKey];
+      activeFeatureConfigs.forEach(fConfig => {
+        const value = track.parsedFeatures?.[fConfig.value];
         if (typeof value === 'number' && !isNaN(value)) {
-          vector.push(value);
+          vector.push(value * fConfig.weight); // Apply weight
           hasAnyValidData = true;
         } else {
-          vector.push(0); 
+          vector.push(0); // Impute with 0 if missing, after weighting this means 0
         }
       });
 
-      if (hasAnyValidData || featureOrder.length === 0) { 
-          featureVectors.push(vector);
-          trackIdsForPca.push(track.id);
+      if (hasAnyValidData) {
+        featureVectors.push(vector);
+        trackIdsForProcessing.push(track.id);
+        validTracksForProcessing.push(track);
       }
     });
 
-    if (featureVectors.length === 0) {
-        console.warn("PCA: No tracks with valid data for PCA after filtering.");
-        return null;
-    }
-    if (featureVectors.length < 2) {
-        console.warn("PCA: Need at least 2 data points for PCA. Got:", featureVectors.length);
-        return null; 
-    }
-     if (featureVectors[0].length < 2 ) {
-        console.warn(`PCA: Need at least 2 features (dimensions) for 2-component PCA. Got: ${featureVectors[0].length}`);
-        if (featureVectors[0].length === 1) { 
-             const oneDdata = {
-                features: featureVectors.map(v => [v[0], 0.0]), 
-                trackIds: trackIdsForPca,
-                featureNames: [featureOrder[0], " artificial_second_component"]
-            };
-            console.log("PCA: Handling 1D data by padding with a zero component.");
-            return oneDdata;
-        }
-        return null;
-    }
+    if (featureVectors.length === 0) return null;
 
-    const numFeatures = featureOrder.length;
-    const normalizedFeatureVectors = JSON.parse(JSON.stringify(featureVectors)); 
+    const numFeatures = activeFeatureConfigs.length;
+    const normalizedFeatureVectors = JSON.parse(JSON.stringify(featureVectors)); // Deep copy
+    const normalizationParams = []; // To store min/range for each feature
 
-    for (let j = 0; j < numFeatures; j++) { 
+    for (let j = 0; j < numFeatures; j++) {
       let minVal = Infinity;
       let maxVal = -Infinity;
-      for (let i = 0; i < normalizedFeatureVectors.length; i++) { 
+      for (let i = 0; i < normalizedFeatureVectors.length; i++) {
         minVal = Math.min(minVal, normalizedFeatureVectors[i][j]);
         maxVal = Math.max(maxVal, normalizedFeatureVectors[i][j]);
       }
       const range = maxVal - minVal;
-      if (range === 0) { 
+      normalizationParams.push({ min: minVal, range: range === 0 ? 1 : range });
+
+      if (range === 0) {
         for (let i = 0; i < normalizedFeatureVectors.length; i++) {
-          normalizedFeatureVectors[i][j] = 0.5; 
+          normalizedFeatureVectors[i][j] = 0.5; // Or 0, if range is 0
         }
       } else {
         for (let i = 0; i < normalizedFeatureVectors.length; i++) {
@@ -792,117 +686,266 @@ const VisualizationCanvas = () => {
         }
       }
     }
-    
-    console.log("PCA: Data prepared with", normalizedFeatureVectors.length, "tracks and", numFeatures, "normalized features per track.");
-    return { features: normalizedFeatureVectors, trackIds: trackIdsForPca, featureNames: featureOrder };
+
+    return {
+      features: normalizedFeatureVectors,
+      trackIds: trackIdsForProcessing,
+      originalTracks: validTracksForProcessing,
+      featureConfigsUsed: activeFeatureConfigs, // Full config with weight
+      normalizationParams // Min/max used for each feature's normalization
+    };
   }, []);
 
-  const calculatePca = useCallback((data) => {
+
+  // --- K-MEANS CLUSTERING ---
+  const runKMeansClustering = useCallback((data, kValue) => {
+    if (!data || !data.features || data.features.length === 0) return null;
+    let actualK = kValue;
+    if (data.features.length < actualK) {
+        console.warn(`KMeans: Not enough data points (${data.features.length}) for ${actualK} clusters. Reducing k.`);
+        actualK = Math.max(1, data.features.length);
+    }
+    if (actualK === 0 && data.features.length > 0) actualK = 1; // Ensure k is at least 1 if there's data
+    if (actualK === 0) return null;
+
+
+    console.log(`🔄 Starting K-Means with ${data.features.length} tracks, ${actualK} clusters.`);
+    try {
+      const ans = kmeans(data.features, actualK, {seed: 42});
+      const trackIdToClusterId = {};
+      ans.clusters.forEach((clusterIndex, trackIndex) => {
+        trackIdToClusterId[data.trackIds[trackIndex]] = clusterIndex;
+      });
+      console.log("✅ K-Means completed.");
+      return { assignments: ans.clusters, centroids: ans.centroids, trackIdToClusterId, actualKUsed: actualK };
+    } catch (error) {
+      console.error("❌ Error calculating K-Means:", error);
+      return null;
+    }
+  }, []);
+
+  // --- DESCRIPTIVE CLUSTER LABELING (IMPROVED) ---
+  const generateClusterLabels = useCallback((clusteringResult, dataForClustering, allSelectableFeatures, currentStyleThreshold) => {
+    if (!clusteringResult || !dataForClustering || !clusteringResult.assignments) return [];
+    console.log("🏷️ Generating improved cluster labels...");
+
+    const newClusters = [];
+    const { originalTracks, trackIds, featureConfigsUsed } = dataForClustering; // featureConfigsUsed has value, label, category, weight
+    const { assignments, actualKUsed } = clusteringResult;
+
+
+    for (let i = 0; i < actualKUsed; i++) {
+        const trackIndicesInCluster = [];
+        assignments.forEach((clusterId, index) => {
+            if (clusterId === i) trackIndicesInCluster.push(index);
+        });
+
+        if (trackIndicesInCluster.length === 0) continue;
+
+        const tracksInCluster = trackIndicesInCluster.map(idx => originalTracks[idx]);
+        let labelParts = [];
+
+        // 1. BPM Analysis
+        const bpmValues = tracksInCluster.map(t => t.parsedFeatures?.bpm).filter(v => typeof v === 'number');
+        if (bpmValues.length > 0) {
+            const avgBpm = bpmValues.reduce((sum, v) => sum + v, 0) / bpmValues.length;
+            if (avgBpm < 95) labelParts.push(`Slow (${Math.round(avgBpm)} BPM)`);
+            else if (avgBpm < 130) labelParts.push(`Mid-Tempo (${Math.round(avgBpm)} BPM)`);
+            else labelParts.push(`Fast (${Math.round(avgBpm)} BPM)`);
+        }
+
+        // 2. Characteristic Mood/Technical/Spectral Features
+        const moodTechSpectralDescriptors = [];
+        const relevantFeatureConfs = featureConfigsUsed
+            .map(fc => allSelectableFeatures.find(sf => sf.value === fc.value) || fc) // Get full feature info
+            .filter(featureConf => featureConf &&
+                (featureConf.category === FEATURE_CATEGORIES.MOOD ||
+                 featureConf.category === FEATURE_CATEGORIES.TECHNICAL || // Excluding BPM as it's handled
+                 featureConf.category === FEATURE_CATEGORIES.SPECTRAL) &&
+                 featureConf.value !== 'bpm' // Already handled
+            );
+
+        relevantFeatureConfs.forEach(featureConf => {
+            const values = tracksInCluster.map(t => t.parsedFeatures?.[featureConf.value]).filter(v => typeof v === 'number');
+            if (values.length === 0) return;
+            const avgValue = values.reduce((sum, v) => sum + v, 0) / values.length;
+
+            // Heuristic: consider "strong" if avgValue is high (e.g., > 0.6 for a typical 0-1 normalized Essentia feature)
+            // This threshold might need tuning or comparison to global averages for robustness
+            if (avgValue > 0.60) { // Threshold for a feature to be considered "characteristically high"
+                moodTechSpectralDescriptors.push({
+                    name: featureConf.label.split('(')[0].trim(), // Clean label
+                    score: avgValue
+                });
+            }
+        });
+        moodTechSpectralDescriptors.sort((a, b) => b.score - a.score); // Sort by strength
+        
+        // Add top 1 or 2 characteristic features to label parts
+        if (moodTechSpectralDescriptors.length > 0) labelParts.push(moodTechSpectralDescriptors[0].name);
+        if (moodTechSpectralDescriptors.length > 1 && labelParts.length < (bpmValues.length > 0 ? 3 : 2) + (bpmValues.length > 0 ? 0:1) ) { // Allow more if no BPM
+             labelParts.push(moodTechSpectralDescriptors[1].name);
+        }
+
+
+        // 3. Dominant Style/Instrument Features
+        const styleInstrumentCounts = {};
+        const styleInstrumentFeatureDefs = featureConfigsUsed
+            .map(fc => allSelectableFeatures.find(sf => sf.value === fc.value) || fc)
+            .filter(featureConf => featureConf &&
+                (featureConf.category === FEATURE_CATEGORIES.STYLE ||
+                 featureConf.category === FEATURE_CATEGORIES.INSTRUMENT)
+            );
+
+        styleInstrumentFeatureDefs.forEach(featureConf => {
+            let trackCountWithFeature = 0;
+            tracksInCluster.forEach(track => {
+                if (track.parsedFeatures?.[featureConf.value] >= currentStyleThreshold) {
+                    trackCountWithFeature++;
+                }
+            });
+            // Feature is considered dominant if present in a significant portion of cluster tracks
+            if (trackCountWithFeature / tracksInCluster.length > 0.3) { // At least 30% of tracks in cluster
+                styleInstrumentCounts[featureConf.label.split('(')[0].trim()] = trackCountWithFeature;
+            }
+        });
+
+        const sortedStylesInstruments = Object.entries(styleInstrumentCounts).sort((a,b) => b[1] - a[1]);
+        if (sortedStylesInstruments.length > 0) labelParts.push(sortedStylesInstruments[0][0]);
+        if (sortedStylesInstruments.length > 1 && labelParts.length < 4) labelParts.push(sortedStylesInstruments[1][0]);
+
+
+        let finalLabel = labelParts.slice(0, 3).join(' | '); // Max 3-4 parts for readability
+        if (!finalLabel) finalLabel = `Cluster ${i + 1}`;
+
+        newClusters.push({
+            id: i,
+            label: finalLabel,
+            trackIds: trackIndicesInCluster.map(idx => trackIds[idx]),
+            color: clusterColors[i % clusterColors.length] // Use dynamic colors
+        });
+    }
+    console.log("🏷️ Generated labels:", newClusters.map(c=> ({id: c.id, label: c.label, tracks: c.trackIds.length }) ));
+    return newClusters;
+
+  }, [selectableFeatures, styleThreshold, clusterColors]); // Added clusterColors
+
+
+  // --- PCA CALCULATION ---
+  const calculatePca = useCallback((data, forClusteringVis = false) => {
     if (!data || !data.features || data.features.length === 0) {
-      console.warn("PCA: Invalid or empty data provided to calculatePca.");
-      setIsTsneCalculating(false);
-      setTsneData(null);
-      return;
+      if (forClusteringVis) setIsPcaCalculating(false);
+      setTsneData(null); return;
     }
     const nActualFeatures = data.features[0]?.length || 0;
-    if (nActualFeatures < 1) { 
-        console.warn(`PCA: Not enough features (${nActualFeatures}) to perform PCA for 2 components.`);
-        setIsTsneCalculating(false);
-        setTsneData(null);
-        return;
+    if (nActualFeatures < 1) {
+        if (forClusteringVis) setIsPcaCalculating(false);
+        setTsneData(null); return;
     }
-    const nComponentsToUse = Math.min(2, nActualFeatures); 
+    const nComponentsToUse = Math.min(2, nActualFeatures);
 
     console.log(`🔄 Starting PCA calculation with ${data.features.length} tracks, ${nActualFeatures} features, for ${nComponentsToUse} components.`);
-    
     try {
       const pca = new PCA(data.features);
       const result = pca.predict(data.features, { nComponents: nComponentsToUse });
-      let resultArray = result.data || result; 
+      let resultArray = result.data || result;
 
       if (nComponentsToUse === 1 && resultArray.every(p => typeof p[0] === 'number')) {
-          resultArray = resultArray.map(point => [point[0], 0.0]);
-          console.log("PCA: Result was 1D, padded to 2D for visualization.");
+          resultArray = resultArray.map(point => [point[0], 0.0]); // Make it 2D for consistency
       }
-
 
       if (!resultArray || resultArray.length === 0 || !resultArray[0] || resultArray[0].length < nComponentsToUse ) {
-          console.error("PCA: Prediction did not return expected 2D data. Result:", resultArray);
-          setIsTsneCalculating(false);
-          setTsneData(null);
-          return;
+          if (forClusteringVis) setIsPcaCalculating(false);
+          setTsneData(null); return;
       }
-      
+
       const xValues = resultArray.map(point => point[0]);
       const yValues = resultArray.map(point => point[1]);
-      
-      const xMin = Math.min(...xValues);
-      const xMax = Math.max(...xValues);
-      const yMin = Math.min(...yValues);
-      const yMax = Math.max(...yValues);
-      
-      const xRangePCA = (xMax - xMin) === 0 ? 1 : (xMax - xMin); 
+      const xMin = Math.min(...xValues); const xMax = Math.max(...xValues);
+      const yMin = Math.min(...yValues); const yMax = Math.max(...yValues);
+      const xRangePCA = (xMax - xMin) === 0 ? 1 : (xMax - xMin);
       const yRangePCA = (yMax - yMin) === 0 ? 1 : (yMax - yMin);
 
       const normalizedResult = resultArray.map((point, index) => ({
         x: (point[0] - xMin) / xRangePCA,
-        y: (point[1] - yMin) / yRangePCA,
+        y: (point[1] - yMin) / yRangePCA, // Y is often inverted in scatter plots if needed, but raw PCA y is fine
         trackId: data.trackIds[index]
       }));
 
-      console.log("✅ PCA results normalized for", normalizedResult.length, "tracks.");
+      console.log("✅ PCA results normalized.");
       setTsneData(normalizedResult);
     } catch (error) {
       console.error("❌ Error calculating PCA:", error);
-      console.error("Error details:", error.stack);
       setTsneData(null);
     } finally {
-      setIsTsneCalculating(false);
+      if (forClusteringVis) setIsPcaCalculating(false);
     }
-  }, []); 
+  }, []);
 
-  useEffect(() => { 
-    if (!tracks || tracks.length === 0) {
-      setTsneData(null); return;
-    }
-    if (!isSimilarityMode) {
-      setTsneData(null); return;
+
+  // --- EFFECT FOR CLUSTERING & SUBSEQUENT PCA ---
+  useEffect(() => {
+    if (!isSimilarityMode || !clusterSettings.enabled || !tracks.length || !selectableFeatures.length || numClustersControl <= 0) {
+      setClusters([]);
+      setTsneData(null);
+      return;
     }
 
-    console.log("✅ Requesting PCA calculation for all tracks in similarity mode.");
-    setIsTsneCalculating(true);
-    
-    setTimeout(() => {
-      const dataForPca = preparePcaData(tracks, selectableFeatures);
-      if (dataForPca && dataForPca.features.length > 0) {
-        console.log("PCA: Data prepared, proceeding to calculatePca.", dataForPca.features.length, "tracks,", dataForPca.features[0].length, "features.");
-        calculatePca(dataForPca);
+    const activeCategoriesForClustering = Object.entries(clusterSettings)
+        .filter(([key, value]) => key !== 'enabled' && typeof value === 'number' && value > 0)
+        .reduce((obj, [key, value]) => { obj[key] = value; return obj; }, {}); // Pass weights directly
+
+    if (Object.keys(activeCategoriesForClustering).length === 0) {
+        setClusters([]); setTsneData(null); return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      setIsClusteringCalculating(true);
+      setIsPcaCalculating(true);
+
+      // Pass full clusterSettings to prepareFeatureData for weights
+      const dataForClustering = prepareFeatureData(tracks, selectableFeatures, clusterSettings);
+
+      if (dataForClustering && dataForClustering.features.length > 0) {
+        const clusteringResult = runKMeansClustering(dataForClustering, numClustersControl);
+
+        if (clusteringResult) {
+          const trackIdToClusterId = clusteringResult.trackIdToClusterId;
+          setTracks(prevTracks => prevTracks.map(t => ({...t, clusterId: trackIdToClusterId[t.id]})));
+
+          const labeledClusters = generateClusterLabels(clusteringResult, dataForClustering, selectableFeatures, styleThreshold);
+          setClusters(labeledClusters);
+
+          calculatePca(dataForClustering, true);
+        } else {
+          setClusters([]); setTsneData(null); setIsPcaCalculating(false);
+        }
       } else {
-        console.warn("PCA: Data preparation failed or yielded no usable data. Clearing t-SNE data.");
-        setIsTsneCalculating(false);
-        setTsneData(null);
+        setClusters([]); setTsneData(null); setIsPcaCalculating(false);
       }
-    }, 0);
-  }, [tracks, isSimilarityMode, preparePcaData, selectableFeatures, calculatePca]);
+      setIsClusteringCalculating(false);
+    }, 750); // Slightly longer debounce for more complex calcs / user changes
+
+    return () => clearTimeout(timeoutId);
+  }, [
+    isSimilarityMode,
+    clusterSettings, // Object itself, if any property changes, it's a new object or should be for deep compare
+    tracks.length, // Optimization: only re-run if track count changes significantly
+    selectableFeatures.length, // Optimization
+    numClustersControl, // User-defined k
+    prepareFeatureData, runKMeansClustering, generateClusterLabels, calculatePca, styleThreshold // Callbacks
+  ]);
 
 
   const calculateVisualizationBounds = useCallback((points, padding = 0.1) => {
     if (!points || points.length === 0) return { xMin:0, xMax:1, yMin:0, yMax:1, xRange:1, yRange:1 };
-
-    const xValues = points.map(p => p.x);
-    const yValues = points.map(p => p.y);
-    
+    const xValues = points.map(p => p.x); const yValues = points.map(p => p.y);
     let xMin = Math.min(...xValues); let xMax = Math.max(...xValues);
     let yMin = Math.min(...yValues); let yMax = Math.max(...yValues);
-    
     let xRange = xMax - xMin; let yRange = yMax - yMin;
-
-    if (xRange === 0) { xRange = 1; xMin -= 0.5; xMax += 0.5; } 
-    if (yRange === 0) { yRange = 1; yMin -= 0.5; yMax += 0.5; } 
-
-    const xPadding = xRange * padding;
-    const yPadding = yRange * padding;
-    
+    if (xRange === 0) { xRange = 1; xMin -= 0.5; xMax += 0.5; }
+    if (yRange === 0) { yRange = 1; yMin -= 0.5; yMax += 0.5; }
+    const xPadding = xRange * padding; const yPadding = yRange * padding;
     return {
       xMin: xMin - xPadding, xMax: xMax + xPadding,
       yMin: yMin - yPadding, yMax: yMax + yPadding,
@@ -910,21 +953,28 @@ const VisualizationCanvas = () => {
     };
   }, []);
 
-  useEffect(() => { 
+  // Main PIXI Rendering useEffect (Modified for Clustering)
+  useEffect(() => {
     if (!isPixiAppReady || !pixiAppRef.current || !chartAreaRef.current || isLoadingTracks || error || !tracks || !canvasSize.width || !canvasSize.height) return;
-    
+
     const app = pixiAppRef.current;
     const chartArea = chartAreaRef.current;
-    chartArea.removeChildren();
+    chartArea.removeChildren(); // Clear previous drawings
 
     if (tracks.length === 0 && !isLoadingTracks) {
-      const msgText = new PIXI.Text({text: "No tracks to display.", style: new PIXI.TextStyle({ fill: 'orange', fontSize: 16, align: 'center'})});
+      const msgText = new PIXI.Text({text:"No tracks to display.", style: new PIXI.TextStyle({ fill: 'orange', fontSize: 16, align: 'center'})});
       msgText.anchor.set(0.5); msgText.position.set(app.screen.width / 2, app.screen.height / 2);
       msgText.isAxisTextElement = true; chartArea.addChild(msgText); updateAxesTextScale(chartArea); return;
     }
 
-    if (isSimilarityMode && isTsneCalculating) {
-      const loadingText = new PIXI.Text({text: "Calculating similarity visualization...", style: new PIXI.TextStyle({ fill: 'orange', fontSize: 16, align: 'center'})});
+    let currentLoadingMessage = "";
+    if (isSimilarityMode) {
+        if (isClusteringCalculating) currentLoadingMessage = "Calculating clusters...";
+        else if (isPcaCalculating) currentLoadingMessage = "Calculating similarity projection...";
+    }
+
+    if (currentLoadingMessage) {
+      const loadingText = new PIXI.Text({text:currentLoadingMessage, style:new PIXI.TextStyle({ fill: 'orange', fontSize: 16, align: 'center'})});
       loadingText.anchor.set(0.5); loadingText.position.set(app.screen.width / 2, app.screen.height / 2);
       loadingText.isAxisTextElement = true; chartArea.addChild(loadingText); updateAxesTextScale(chartArea); return;
     }
@@ -936,33 +986,37 @@ const VisualizationCanvas = () => {
 
     const commonDotLogic = (track, screenX, screenY) => {
         let fillColor = DEFAULT_DOT_COLOR;
-        const happinessVal = track.parsedFeatures?.happiness;
-        const aggressiveVal = track.parsedFeatures?.aggressive;
-        const relaxedVal = track.parsedFeatures?.relaxed;
-
-        if (typeof happinessVal === 'number' && happinessVal > 0.7) fillColor = HAPPINESS_COLOR;
-        else if (typeof aggressiveVal === 'number' && aggressiveVal > 0.6) fillColor = AGGRESSIVE_COLOR;
-        else if (typeof relaxedVal === 'number' && relaxedVal > 0.7) fillColor = RELAXED_COLOR;
+        if (isSimilarityMode && clusterSettings.enabled && track.clusterId !== undefined && clusters.length > 0) {
+            const cluster = clusters.find(c => c.id === track.clusterId);
+            fillColor = cluster ? cluster.color : DEFAULT_DOT_COLOR; // Use cluster.color which is now from dynamic palette
+        } else {
+            const happinessVal = track.parsedFeatures?.happiness;
+            const aggressiveVal = track.parsedFeatures?.aggressive;
+            const relaxedVal = track.parsedFeatures?.relaxed;
+            if (typeof happinessVal === 'number' && happinessVal > 0.7) fillColor = HAPPINESS_COLOR;
+            else if (typeof aggressiveVal === 'number' && aggressiveVal > 0.6) fillColor = AGGRESSIVE_COLOR;
+            else if (typeof relaxedVal === 'number' && relaxedVal > 0.7) fillColor = RELAXED_COLOR;
+        }
 
         const dotContainer = new PIXI.Container();
         dotContainer.position.set(screenX, screenY);
         dotContainer.eventMode = 'static'; dotContainer.cursor = 'pointer';
         const dataDot = new PIXI.Graphics().circle(0, 0, DOT_RADIUS).fill({ color: fillColor });
         dotContainer.addChild(dataDot);
-        const hitArea = new PIXI.Graphics().circle(0, 0, DOT_RADIUS * 1.5).fill({ color: 0xFFFFFF, alpha: 0.001 }); 
+        const hitAreaSize = DOT_RADIUS * 1.8; // Slightly larger hit area
+        const hitArea = new PIXI.Graphics().circle(0,0, hitAreaSize).fill({color: 0xFFFFFF, alpha: 0.001}); // For better pointer events
         dotContainer.addChild(hitArea);
+
 
         dotContainer.on('pointerover', (event) => {
           event.stopPropagation(); dataDot.scale.set(DOT_RADIUS_HOVER / DOT_RADIUS);
           setCurrentHoverTrack(track);
           if (tooltipTimeoutRef.current) { clearTimeout(tooltipTimeoutRef.current); tooltipTimeoutRef.current = null; }
-          
-          const mousePosition = event.global; const tooltipWidth = 300; const tooltipHeight = 200; 
+          const mousePosition = event.global; const tooltipWidth = 300; const tooltipHeight = 200; // Tooltip dimensions
           let x = mousePosition.x + 20; let y = mousePosition.y - tooltipHeight / 2;
           if (x + tooltipWidth > app.screen.width) x = mousePosition.x - tooltipWidth - 20;
           if (y + tooltipHeight > app.screen.height) y = app.screen.height - tooltipHeight - 10;
           if (y < 0) y = 10;
-          
           if (tooltipContainerRef.current) { tooltipContainerRef.current.position.set(x, y); tooltipContainerRef.current.visible = true; }
         });
         dotContainer.on('pointerout', (event) => {
@@ -975,133 +1029,192 @@ const VisualizationCanvas = () => {
         chartArea.addChild(dotContainer);
     };
 
-
     if (isSimilarityMode && tsneData && tsneData.length > 0) {
-      const pcaBounds = calculateVisualizationBounds(tsneData);
+      const pcaBounds = calculateVisualizationBounds(tsneData, 0.05); // Slightly less padding for PCA
       if (!pcaBounds) return;
 
-      const graphics = new PIXI.Graphics(); 
+      const graphics = new PIXI.Graphics();
       graphics.moveTo(PADDING, currentCanvasHeight - PADDING).lineTo(currentCanvasWidth - PADDING, currentCanvasHeight - PADDING).stroke({width:1, color:AXIS_COLOR});
       graphics.moveTo(PADDING, PADDING).lineTo(PADDING, currentCanvasHeight - PADDING).stroke({width:1, color:AXIS_COLOR});
-      const xTitle = new PIXI.Text({text: "Principal Component 1", style: { fontFamily: 'Arial', fontSize: 14, fontWeight: 'bold', fill: TEXT_COLOR, align: 'center' }});
+
+      const activeCats = Object.entries(clusterSettings)
+        .filter(([,val]) => typeof val === 'number' && val > 0 && val <=1) // check if weight is active
+        .map(([key]) => FEATURE_CATEGORIES[Object.keys(FEATURE_CATEGORIES).find(k=>FEATURE_CATEGORIES[k] === key)] || key) // Get the label
+        .join('/') || "Selected";
+      const xTitleText = clusterSettings.enabled ? `PC1 (${activeCats} Features)` : "Principal Component 1";
+      const yTitleText = clusterSettings.enabled ? `PC2 (${activeCats} Features)` : "Principal Component 2";
+
+      const titleTextStyle = { fontFamily: 'Arial', fontSize: 14, fontWeight: 'bold', fill: TEXT_COLOR, align: 'center' };
+      const xTitle = new PIXI.Text({text:xTitleText, style: titleTextStyle});
       xTitle.isAxisTextElement = true; xTitle.anchor.set(0.5,0); xTitle.position.set(PADDING + drawableWidth/2, currentCanvasHeight - PADDING + 25); chartArea.addChild(xTitle);
-      const yTitle = new PIXI.Text({text: "Principal Component 2", style: { fontFamily: 'Arial', fontSize: 14, fontWeight: 'bold', fill: TEXT_COLOR, align: 'center' }});
+      const yTitle = new PIXI.Text({text:yTitleText, style: titleTextStyle});
       yTitle.isAxisTextElement = true; yTitle.anchor.set(0.5,1); yTitle.rotation = -Math.PI/2; yTitle.position.set(PADDING - 45, PADDING + drawableHeight/2); chartArea.addChild(yTitle);
       chartArea.addChild(graphics);
+
+      if (clusterSettings.enabled && clusters.length > 0) {
+        clusters.forEach(cluster => {
+            const pointsInCluster = tsneData.filter(p => tracks.find(t => t.id === p.trackId)?.clusterId === cluster.id);
+            if (pointsInCluster.length > 0) {
+                const avgX = pointsInCluster.reduce((sum, p) => sum + p.x, 0) / pointsInCluster.length;
+                const avgY = pointsInCluster.reduce((sum, p) => sum + p.y, 0) / pointsInCluster.length;
+                const screenX = PADDING + ((avgX - pcaBounds.xMin) / pcaBounds.xRange) * drawableWidth;
+                const screenY = PADDING + (1 - ((avgY - pcaBounds.yMin) / pcaBounds.yRange)) * drawableHeight;
+
+                const labelText = new PIXI.Text({
+                    text:cluster.label,
+                    style:{ fontFamily: 'Arial', fontSize: 10, fill: cluster.color, align: 'center', stroke: {color:0x000000, width:2, join:"round"}, miterLimit:10, wordWrap: true, wordWrapWidth: drawableWidth / clusters.length * 0.8 }
+                });
+                labelText.isAxisTextElement = true;
+                labelText.anchor.set(0.5);
+                labelText.position.set(screenX, screenY);
+                chartArea.addChild(labelText);
+            }
+        });
+      }
 
       tsneData.forEach(({ x: pcaX, y: pcaY, trackId }) => {
         const track = tracks.find(t => t.id === trackId);
         if (!track) return;
         const screenX = PADDING + ((pcaX - pcaBounds.xMin) / pcaBounds.xRange) * drawableWidth;
-        const screenY = PADDING + (1 - ((pcaY - pcaBounds.yMin) / pcaBounds.yRange)) * drawableHeight; 
+        const screenY = PADDING + (1 - ((pcaY - pcaBounds.yMin) / pcaBounds.yRange)) * drawableHeight;
         commonDotLogic(track, screenX, screenY);
       });
 
     } else if (!isSimilarityMode) {
       if (!axisMinMax.x || !axisMinMax.y || !axisMinMax.x.hasData || !axisMinMax.y.hasData) {
-        const msgText = new PIXI.Text({ text: "Select features or wait for axis range calculation.", style: new PIXI.TextStyle({ fill: 'orange', fontSize: 16, align: 'center'})});
+        const msgText = new PIXI.Text({text:"Select features or wait for axis range calculation.", style: new PIXI.TextStyle({ fill: 'orange', fontSize: 16, align: 'center'})});
         msgText.anchor.set(0.5); msgText.position.set(app.screen.width / 2, app.screen.height / 2);
         msgText.isAxisTextElement = true; chartArea.addChild(msgText); updateAxesTextScale(chartArea); return;
       }
       const { x: xRange, y: yRange } = axisMinMax;
       drawAxes(chartArea, xAxisFeature, yAxisFeature, xRange, yRange, {width: currentCanvasWidth, height: currentCanvasHeight});
-
       tracks.forEach((track) => {
         const rawXVal = track.parsedFeatures?.[xAxisFeature];
         const rawYVal = track.parsedFeatures?.[yAxisFeature];
-        if (typeof rawXVal !== 'number' || isNaN(rawXVal) || typeof rawYVal !== 'number' || isNaN(rawYVal)) {
-          return; 
-        }
+        if (typeof rawXVal !== 'number' || isNaN(rawXVal) || typeof rawYVal !== 'number' || isNaN(rawYVal)) return;
         const screenX = PADDING + ((rawXVal - xRange.min) / xRange.range) * drawableWidth;
-        const screenY = PADDING + (1 - ((rawYVal - yRange.min) / yRange.range)) * drawableHeight; 
+        const screenY = PADDING + (1 - ((rawYVal - yRange.min) / yRange.range)) * drawableHeight;
         commonDotLogic(track, screenX, screenY);
       });
     }
     updateAxesTextScale(chartArea);
-  }, [isPixiAppReady, tracks, axisMinMax, xAxisFeature, yAxisFeature, isLoadingTracks, error, drawAxes, formatTickValue, canvasSize, updateAxesTextScale, selectableFeatures, setCurrentHoverTrack, setIsPlaying, tsneData, isTsneCalculating, isSimilarityMode, calculateVisualizationBounds]);
+  }, [
+      isPixiAppReady, tracks, axisMinMax, xAxisFeature, yAxisFeature,
+      isLoadingTracks, error, drawAxes, canvasSize, updateAxesTextScale,
+      selectableFeatures,
+      tsneData, isPcaCalculating, isClusteringCalculating, isSimilarityMode, clusterSettings, clusters, // Clustering states
+      calculateVisualizationBounds, clusterColors // Added clusterColors
+  ]);
 
-  useEffect(() => { 
+  useEffect(() => {
     return () => { if (tooltipTimeoutRef.current) clearTimeout(tooltipTimeoutRef.current); };
   }, []);
 
-  useEffect(() => { 
+  useEffect(() => {
     const handleResize = () => {
       if (pixiAppRef.current && pixiCanvasContainerRef.current) {
         const { clientWidth, clientHeight } = pixiCanvasContainerRef.current;
-        pixiAppRef.current.renderer.resize(clientWidth, clientHeight);
-        setCanvasSize({ width: clientWidth, height: clientHeight });
+        if (clientWidth > 0 && clientHeight > 0) {
+            pixiAppRef.current.renderer.resize(clientWidth, clientHeight);
+            setCanvasSize({ width: clientWidth, height: clientHeight });
+        }
       }
     };
     window.addEventListener('resize', handleResize);
-    handleResize(); 
+    handleResize();
     return () => window.removeEventListener('resize', handleResize);
-  }, [isPixiAppReady]); 
+  }, [isPixiAppReady]);
 
-  useEffect(() => {
-    if (wavesurferContainerRef.current && !wavesurferRef.current) { 
-      const wsInstance = WaveSurfer.create({
-        container: wavesurferContainerRef.current, 
-        waveColor: '#6A82FB', progressColor: '#3B4D9A', height: 40, barWidth: 1,
-        barGap: 1, cursorWidth: 0, interact: false, backend: 'MediaElement',
-        normalize: true, autoCenter: true, partialRender: true, responsive: false,
-      });
-      wavesurferRef.current = wsInstance;
-      console.log("🌊 Global Wavesurfer instance created for tooltip potential control.");
-      wsInstance.on('error', (err) => console.error('🌊 Global WS Error:', err, "Attempted URL:", activeAudioUrlRef.current));
+
+  const handleClusterSettingChange = (category, value) => {
+    setClusterSettings(prev => ({ ...prev, [category]: value }));
+  };
+
+  const handleNumClustersChange = (e) => {
+    const val = parseInt(e.target.value, 10);
+    if (val > 0 && val <= 50) { // Max 50 clusters, min 1
+        setNumClustersControl(val);
+    } else if (e.target.value === "") { // Allow empty to type
+        setNumClustersControl(1); // Or some temp state
     }
-  }, []);
+  };
 
 
-  return ( 
+  return (
     <div className="visualization-outer-container">
-      <div className="controls-panel" style={{ position: 'absolute', top: '10px', left: '10px', zIndex: 1000, backgroundColor: "rgba(30,30,30,0.8)", padding: "10px", borderRadius: "5px" }}>
-        <div className="mode-toggle" style={{ marginBottom: '10px' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#E0E0E0', cursor: 'pointer' }}>
-            <input
-              type="checkbox"
-              checked={isSimilarityMode}
+      <div className="controls-panel" style={{ position: 'absolute', top: '10px', left: '10px', zIndex: 1000, backgroundColor: "rgba(30,30,30,0.85)", padding: "15px", borderRadius: "8px", color: '#E0E0E0', maxHeight: '90vh', overflowY: 'auto' }}>
+        <div className="mode-toggle" style={{ marginBottom: '15px' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '1.1em' }}>
+            <input type="checkbox" checked={isSimilarityMode}
               onChange={(e) => {
                 setIsSimilarityMode(e.target.checked);
-                if(chartAreaRef.current) chartAreaRef.current.scale.set(MIN_ZOOM); 
+                if(chartAreaRef.current) { // Reset zoom/pan on mode switch
+                    chartAreaRef.current.scale.set(MIN_ZOOM);
+                    chartAreaRef.current.position.set(0,0);
+                }
               }}
-              style={{ width: '16px', height: '16px' }}
-            />
-            Similarity Mode
+              style={{ width: '18px', height: '18px' }}/>
+            Similarity Mode (Clustering)
           </label>
         </div>
-        <div className="style-threshold" style={{ marginBottom: '10px' }}>
-          <label style={{ color: '#E0E0E0', display: 'block', marginBottom: '5px' }}>
-            Feature Threshold: {(styleThreshold * 100).toFixed(0)}%
+
+        {isSimilarityMode && (
+          <div className="clustering-controls" style={{ marginBottom: '15px', borderTop: '1px solid #555', paddingTop: '15px'}}>
+            <div style={{fontWeight: 'bold', marginBottom: '10px', fontSize: '1.05em'}}>Cluster Configuration:</div>
+
+            <div style={{marginBottom: '10px'}}>
+                <label htmlFor="numClustersInput" style={{display: 'block', marginBottom: '3px'}}>Number of Clusters (k):</label>
+                <input
+                    type="number"
+                    id="numClustersInput"
+                    value={numClustersControl}
+                    onChange={handleNumClustersChange}
+                    min="1"
+                    max="50" // Sensible max for visualization
+                    style={{width: '60px', padding: '5px'}}
+                />
+            </div>
+
+            <div style={{fontWeight: 'bold', marginBottom: '5px'}}>Feature Category Weights:</div>
+            {[FEATURE_CATEGORIES.MOOD, FEATURE_CATEGORIES.SPECTRAL, FEATURE_CATEGORIES.TECHNICAL, FEATURE_CATEGORIES.STYLE, FEATURE_CATEGORIES.INSTRUMENT].map(category => (
+              <div key={category} style={{marginBottom: '8px'}}>
+                <label style={{display: 'block', marginBottom: '2px', textTransform: 'capitalize'}}>
+                  {category.toLowerCase()}: {(clusterSettings[category] * 100).toFixed(0)}%
+                </label>
+                <input
+                  type="range"
+                  min="0" // Allow 0 to effectively disable a category for clustering
+                  max="100"
+                  value={(clusterSettings[category] || 0) * 100} // Default to 0 if undefined
+                  onChange={(e) => handleClusterSettingChange(category, parseInt(e.target.value) / 100)}
+                  style={{width: '100%'}}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="style-threshold" style={{ marginBottom: '15px', borderTop: isSimilarityMode ? 'none' : '1px solid #555', paddingTop: isSimilarityMode ? '0' : '15px' }}>
+          <label style={{ display: 'block', marginBottom: '5px' }}>
+            Dynamic Feature Min. Prob: {(styleThreshold * 100).toFixed(0)}%
           </label>
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value={styleThreshold * 100}
+          <input type="range" min="0" max="100" value={styleThreshold * 100}
             onChange={(e) => setStyleThreshold(parseInt(e.target.value) / 100)}
-            style={{ width: '100%' }}
-          />
+            style={{ width: '100%' }} />
         </div>
+
         {!isSimilarityMode && (
-          <div className="axis-selectors" style={{display: "flex", gap: "10px"}}>
+          <div className="axis-selectors" style={{display: "flex", flexDirection:"column", gap: "10px"}}>
             <div className="axis-selector">
-              <label htmlFor="xAxisSelect" style={{color: "#ccc", marginRight:"5px"}}>X-Axis:</label>
-              <select id="xAxisSelect" value={xAxisFeature} onChange={(e) => setXAxisFeature(e.target.value)} style={{padding:"3px"}}>
-                {selectableFeatures.map((feature) => (
-                  <option key={`x-${feature.value}`} value={feature.value}>
-                    {feature.label}
-                  </option>
-                ))}
+              <label htmlFor="xAxisSelect" style={{color: "#ccc", marginRight:"5px", display:'block', marginBottom:'3px'}}>X-Axis:</label>
+              <select id="xAxisSelect" value={xAxisFeature} onChange={(e) => setXAxisFeature(e.target.value)} style={{padding:"5px", width: '100%'}}>
+                {selectableFeatures.map((feature) => (<option key={`x-${feature.value}`} value={feature.value}>{feature.label}</option>))}
               </select>
             </div>
             <div className="axis-selector">
-              <label htmlFor="yAxisSelect" style={{color: "#ccc", marginRight:"5px"}}>Y-Axis:</label>
-              <select id="yAxisSelect" value={yAxisFeature} onChange={(e) => setYAxisFeature(e.target.value)} style={{padding:"3px"}}>
-                {selectableFeatures.map((feature) => (
-                  <option key={`y-${feature.value}`} value={feature.value}>
-                    {feature.label}
-                  </option>
-                ))}
+              <label htmlFor="yAxisSelect" style={{color: "#ccc", marginRight:"5px", display:'block', marginBottom:'3px'}}>Y-Axis:</label>
+              <select id="yAxisSelect" value={yAxisFeature} onChange={(e) => setYAxisFeature(e.target.value)} style={{padding:"5px", width: '100%'}}>
+                {selectableFeatures.map((feature) => (<option key={`y-${feature.value}`} value={feature.value}>{feature.label}</option>))}
               </select>
             </div>
           </div>
@@ -1110,9 +1223,11 @@ const VisualizationCanvas = () => {
       <div className="canvas-wrapper">
         <div ref={pixiCanvasContainerRef} className="pixi-canvas-target" />
         <div ref={wavesurferContainerRef} className="wavesurfer-container-hidden" style={{ display: 'none' }}></div>
-        {(isLoadingTracks || (isSimilarityMode && isTsneCalculating)) && 
+        {(isLoadingTracks || (isSimilarityMode && (isClusteringCalculating || isPcaCalculating))) &&
             <div className="loading-overlay">
-                {isLoadingTracks ? "Loading tracks..." : "Calculating similarity..."}
+                {isLoadingTracks ? "Loading tracks..." :
+                 isClusteringCalculating ? "Calculating clusters..." :
+                 isPcaCalculating ? "Calculating similarity projection..." : ""}
             </div>
         }
         {error && <div className="error-overlay">{error}</div>}
