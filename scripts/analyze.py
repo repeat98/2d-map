@@ -523,14 +523,15 @@ def init_spectral_columns():
     existing_cols_info = {row[1]: row[2] for row in cursor.fetchall()} # col_name: col_type
 
     # New columns that should exist (name, type)
-    # (lufs is TEXT)
     new_feature_cols = [
         ("noisy", "REAL"), ("tonal", "REAL"), ("dark", "REAL"), ("bright", "REAL"),
         ("percussive", "REAL"), ("smooth", "REAL"), ("lufs", "TEXT"),
         ("happiness", "REAL"), ("party", "REAL"), ("aggressive", "REAL"),
         ("danceability", "REAL"), ("relaxed", "REAL"), ("sad", "REAL"),
         ("engagement", "REAL"), ("approachability", "REAL"),
-        ("instrument_features", "BLOB") # Blob for all instrument scores
+        ("instrument_features", "BLOB"), # Blob for all instrument scores
+        ("mfcc_features", "BLOB"), # Store MFCC features as JSON blob
+        ("chroma_features", "BLOB") # Store chroma features as JSON blob
     ]
     for i in range(1, 11): # Top N instrument names and probabilities
         new_feature_cols.append((f"instrument{i}", "TEXT"))
@@ -681,6 +682,21 @@ def analyze_spectral_features(file_path):
             else:
                 lufs_value_str = "-inf (RMS)"
 
+        # 5. MFCC Features (13 coefficients)
+        mfcc_features = {
+            'mean': mfccs.mean(axis=1).tolist(),  # Mean of each coefficient
+            'std': mfccs.std(axis=1).tolist(),    # Std of each coefficient
+            'delta': librosa.feature.delta(mfccs).mean(axis=1).tolist()  # Delta features
+        }
+
+        # 6. Chroma Features
+        chroma = librosa.feature.chroma_cqt(y=y, sr=sr)
+        chroma_features = {
+            'mean': chroma.mean(axis=1).tolist(),  # Mean of each chroma bin
+            'std': chroma.std(axis=1).tolist(),    # Std of each chroma bin
+            'max': chroma.max(axis=1).tolist()     # Max of each chroma bin
+        }
+
         return {
             "noisy": noisy_score,
             "tonal": tonal_score,
@@ -688,7 +704,9 @@ def analyze_spectral_features(file_path):
             "bright": bright_score,
             "percussive": percussive_score,
             "smooth": smooth_score,
-            "lufs": lufs_value_str
+            "lufs": lufs_value_str,
+            "mfcc_features": json.dumps(mfcc_features),
+            "chroma_features": json.dumps(chroma_features)
         }
 
     except Exception as e:
@@ -708,11 +726,13 @@ def update_spectral_features_in_db(track_id, features_dict):
             cursor.execute('''
                 UPDATE classified_tracks
                 SET noisy = ?, tonal = ?, dark = ?, bright = ?,
-                    percussive = ?, smooth = ?, lufs = ?
+                    percussive = ?, smooth = ?, lufs = ?,
+                    mfcc_features = ?, chroma_features = ?
                 WHERE id = ?
             ''', (
                 features_dict["noisy"], features_dict["tonal"], features_dict["dark"], features_dict["bright"],
                 features_dict["percussive"], features_dict["smooth"], features_dict["lufs"],
+                features_dict["mfcc_features"], features_dict["chroma_features"],
                 track_id
             ))
             conn.commit()
@@ -844,7 +864,8 @@ def process_audio_file_path(file_path_to_process):
         if perceptual_spectral_features is None:
             perceptual_spectral_features = {
                 "noisy": None, "tonal": None, "dark": None, "bright": None,
-                "percussive": None, "smooth": None, "lufs": None
+                "percussive": None, "smooth": None, "lufs": None,
+                "mfcc_features": None, "chroma_features": None
             }
 
         # Extract artwork first
@@ -877,8 +898,9 @@ def process_audio_file_path(file_path_to_process):
                     {instrument_col_names_str},
                     artwork_path, artwork_thumbnail_path,
                     noisy, tonal, dark, bright, percussive, smooth, lufs,
+                    mfcc_features, chroma_features,
                     happiness, party, aggressive, danceability, relaxed, sad, engagement, approachability
-                ) VALUES ({", ".join(["?"] * (31 + len(instrument_values_for_tuple_list) + 2 + 7 + 8))})
+                ) VALUES ({", ".join(["?"] * (31 + len(instrument_values_for_tuple_list) + 2 + 9 + 8))})
             '''
 
             values_tuple = (
@@ -891,11 +913,12 @@ def process_audio_file_path(file_path_to_process):
                 *instrument_values_for_tuple_list,
                 # Artwork paths
                 artwork_original_path, artwork_thumb_path,
-                # New spectral features (7 values)
+                # New spectral features (9 values)
                 perceptual_spectral_features["noisy"], perceptual_spectral_features["tonal"],
                 perceptual_spectral_features["dark"], perceptual_spectral_features["bright"],
                 perceptual_spectral_features["percussive"], perceptual_spectral_features["smooth"],
                 perceptual_spectral_features["lufs"],
+                perceptual_spectral_features["mfcc_features"], perceptual_spectral_features["chroma_features"],
                 # Mood features (8 values)
                 happiness_sc, party_sc, aggressive_sc, danceability_sc,
                 relaxed_sc, sad_sc, engagement_sc, approachability_sc
