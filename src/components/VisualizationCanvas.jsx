@@ -10,17 +10,12 @@ import { PlaybackContext } from '../context/PlaybackContext'; // Ensure this pat
 import { PCA } from 'ml-pca';
 import { kmeans } from 'ml-kmeans';
 
-/*
-* IMPORTANT NOTE FOR ELECTRON USERS (Content Security Policy - CSP):
-* (Original CSP note is preserved)
-*/
-
 // --- FEATURE CATEGORIES ---
 const FEATURE_CATEGORIES = {
   MOOD: 'Mood',
   SPECTRAL: 'Spectral',
   TECHNICAL: 'Technical',
-  STYLE: 'Style', // Genre and Subgenre will likely fall under this
+  STYLE: 'Style',
   INSTRUMENT: 'Instrument'
 };
 
@@ -42,10 +37,11 @@ const coreFeaturesConfig = [
   { value: 'spectral_flatness', label: 'Spectral Flatness (Noisiness)', isNumeric: true, axisTitleStyle: { fill: 0xd35400 }, category: FEATURE_CATEGORIES.SPECTRAL },
 ];
 
-const DYNAMIC_FEATURE_MIN_PROBABILITY = 0.3;
+const FIXED_STYLE_THRESHOLD = 0.0;
 const PADDING = 70; const AXIS_COLOR = 0xAAAAAA; const TEXT_COLOR = 0xE0E0E0;
-const DOT_RADIUS = 5; const DOT_RADIUS_HOVER = 7; const DEFAULT_DOT_COLOR = 0x00A9FF;
-const HAPPINESS_COLOR = 0xFFD700; const AGGRESSIVE_COLOR = 0xFF4136; const RELAXED_COLOR = 0x2ECC40;
+const DOT_RADIUS = 5; const DOT_RADIUS_HOVER = 7; const DEFAULT_DOT_COLOR = 0xFFFFFF;
+const HIGHLIGHT_COLORS = [0x87CEFA, 0x32CD32, 0xFF7F50, 0xDAA520, 0xBA55D3, 0xFF69B4, 0x00CED1];
+
 const TOOLTIP_BG_COLOR = 0x333333; const TOOLTIP_TEXT_COLOR = 0xFFFFFF;
 const TOOLTIP_PADDING = 10; const COVER_ART_SIZE = 80;
 const MIN_ZOOM = 1; const MAX_ZOOM = 5; const ZOOM_SENSITIVITY = 0.0005;
@@ -53,14 +49,11 @@ const PLAY_BUTTON_COLOR = 0x6A82FB;
 const PLAY_BUTTON_HOVER_COLOR = 0x8BA3FF;
 const PLAY_BUTTON_SIZE = 24;
 
-// --- HIERARCHICAL CLUSTERING CONSTANTS ---
-// K values are kConfig: {min, max}. Adjusted based on previous feedback and reinforced by analysis.
 const HIERARCHY_LEVELS = [
   { name: 'Spectral', kConfig: {min: 2, max: 3}, category: FEATURE_CATEGORIES.SPECTRAL, labelPrefix: 'Spec' },
   { name: 'Mood',     kConfig: {min: 2, max: 3}, category: FEATURE_CATEGORIES.MOOD,     labelPrefix: 'Mood' },
   { name: 'Instrument', kConfig: {min: 2, max: 2}, category: FEATURE_CATEGORIES.INSTRUMENT, labelPrefix: 'Inst' },
 ];
-// --- END HIERARCHICAL CLUSTERING CONSTANTS ---
 
 const generateClusterColors = (numColors) => {
   const colors = [];
@@ -84,25 +77,17 @@ function hslToHex(h, s, l) {
   return `#${f(0)}${f(8)}${f(4)}`;
 }
 
-// --- HELPER FUNCTIONS FOR CLUSTERING ---
 function euclideanDistance(point1, point2) {
-    if (!point1 || !point2 || point1.length !== point2.length) {
-        return Infinity;
-    }
+    if (!point1 || !point2 || point1.length !== point2.length) return Infinity;
     let sum = 0;
-    for (let i = 0; i < point1.length; i++) {
-        sum += Math.pow(point1[i] - point2[i], 2);
-    }
+    for (let i = 0; i < point1.length; i++) sum += Math.pow(point1[i] - point2[i], 2);
     return Math.sqrt(sum);
 }
 
 function calculateSilhouetteScore(points, assignments, numClusters) {
-    if (numClusters <= 1 || points.length < numClusters || points.length === 0 || !assignments) {
-        return -1;
-    }
+    if (numClusters <= 1 || points.length < numClusters || points.length === 0 || !assignments) return -1;
     let totalSilhouette = 0;
     let validPointsForScore = 0;
-
     for (let i = 0; i < points.length; i++) {
         const point = points[i];
         const clusterIdx = assignments[i];
@@ -117,7 +102,6 @@ function calculateSilhouetteScore(points, assignments, numClusters) {
         }
         if (sameClusterPointsCount > 0) a_i /= sameClusterPointsCount;
         else { validPointsForScore++; continue; }
-
         let b_i = Infinity;
         for (let k = 0; k < numClusters; k++) {
             if (k === clusterIdx) continue;
@@ -135,7 +119,6 @@ function calculateSilhouetteScore(points, assignments, numClusters) {
             }
         }
         if (b_i === Infinity) { validPointsForScore++; continue; }
-
         const s_i = (b_i - a_i) / Math.max(a_i, b_i);
         if (!isNaN(s_i)) totalSilhouette += s_i;
         validPointsForScore++;
@@ -160,7 +143,6 @@ const VisualizationCanvas = () => {
   const [error, setError] = useState(null);
   const [isLoadingTracks, setIsLoadingTracks] = useState(true);
   const [isSimilarityMode, setIsSimilarityMode] = useState(false);
-  const [styleThreshold, setStyleThreshold] = useState(DYNAMIC_FEATURE_MIN_PROBABILITY);
 
   const pixiCanvasContainerRef = useRef(null);
   const pixiAppRef = useRef(null);
@@ -204,11 +186,10 @@ const VisualizationCanvas = () => {
   const [clusters, setClusters] = useState([]);
   const [isClusteringCalculating, setIsClusteringCalculating] = useState(false);
 
-  const dynamicClusterColors = useMemo(() => {
-      return generateClusterColors(clusters.length > 0 ? clusters.length : 1);
-  }, [clusters.length]);
+  const [selectedIndividualFeatures, setSelectedIndividualFeatures] = useState({});
+  const [highlightPrecisionThreshold, setHighlightPrecisionThreshold] = useState(0.1); // Default 10%
 
-  const [tsneData, setTsneData] = useState(null); // PCA data
+  const [tsneData, setTsneData] = useState(null);
   const [isPcaCalculating, setIsPcaCalculating] = useState(false);
 
   useEffect(() => {
@@ -244,7 +225,7 @@ const VisualizationCanvas = () => {
                   const parsedObj = typeof featureObject === 'string' ? JSON.parse(featureObject) : featureObject;
                   Object.entries(parsedObj).forEach(([key, value]) => {
                     const val = parseFloat(value);
-                    if (!isNaN(val) && val >= styleThreshold) {
+                    if (!isNaN(val) && val >= FIXED_STYLE_THRESHOLD) {
                       currentParsedFeatures[key] = val;
                       allDiscoveredFeatureKeys.add(key);
                       dynamicFeatureSourceMap.set(key, category);
@@ -265,16 +246,16 @@ const VisualizationCanvas = () => {
           for (const key in currentParsedFeatures) {
               if (dynamicFeatureSourceMap.get(key) === FEATURE_CATEGORIES.STYLE && key.includes('---')) {
                 const value = currentParsedFeatures[key];
-                if (value >= styleThreshold && value > highestProbGenreSubgenre) {
-                    highestProbGenreSubgenre = value;
-                    const parts = key.split('---');
-                    if (parts.length >= 2) {
-                      mainGenre = parts[0].replace(/_/g, ' ').trim();
-                      mainSubgenre = parts[1].replace(/_/g, ' ').trim();
-                    } else if (parts.length === 1 && key.length > 0) {
-                      mainGenre = parts[0].replace(/_/g, ' ').trim();
-                      mainSubgenre = 'N/A';
-                    }
+                if (value >= FIXED_STYLE_THRESHOLD && value > highestProbGenreSubgenre) {
+                  highestProbGenreSubgenre = value;
+                  const parts = key.split('---');
+                  if (parts.length >= 2) {
+                    mainGenre = parts[0].replace(/_/g, ' ').trim();
+                    mainSubgenre = parts[1].replace(/_/g, ' ').trim();
+                  } else if (parts.length === 1 && key.length > 0) {
+                    mainGenre = parts[0].replace(/_/g, ' ').trim();
+                    mainSubgenre = 'N/A';
+                  }
                 }
               }
           }
@@ -345,7 +326,7 @@ const VisualizationCanvas = () => {
       }
     };
     fetchTracksAndPrepareFeatures();
-  }, [styleThreshold]);
+  }, []);
 
   useEffect(() => {
     if (isLoadingTracks || !tracks || tracks.length === 0 || !xAxisFeature || !yAxisFeature || selectableFeatures.length === 0) return;
@@ -513,9 +494,9 @@ const VisualizationCanvas = () => {
       if (wavesurferRef.current) { wavesurferRef.current.stop(); wavesurferRef.current.destroy(); wavesurferRef.current = null; console.log("🌊 Wavesurfer instance destroyed."); }
       chartAreaRef.current = null; tooltipContainerRef.current = null; currentTooltipTrackRef.current = null; setIsPixiAppReady(false);
     };
-  }, []); // Removed updateAxesTextScale from dependency array as it's stable
+  }, []);
 
-  const formatTickValue = useCallback((value) => { // Removed unused isGenreAxis
+  const formatTickValue = useCallback((value) => {
     if (value === null || value === undefined) return 'N/A';
     if (typeof value !== 'number' || isNaN(value)) return String(value);
     if (Math.abs(value) < 0.001 && value !== 0) return value.toExponential(1);
@@ -524,16 +505,7 @@ const VisualizationCanvas = () => {
     return parseFloat(numStr).toString();
   }, []);
 
-  // Tooltip Update Logic (Largely unchanged, but ensure cluster label logic is correct)
   useEffect(() => {
-    // ... (Tooltip update logic from previous turn, ensure track.clusterLabel and cluster.silhouetteScore are used correctly)
-    // For brevity, this section is condensed. It should handle:
-    // - Clearing old waveform instances
-    // - Setting text for title and features (including cluster label if in similarity mode)
-    // - Loading artwork
-    // - Updating play/pause icon
-    // - Positioning and showing the tooltip
-    // - Rendering the Waveform React component inside the tooltip.
      if (!currentHoverTrack || !tooltipContainerRef.current || !pixiAppRef.current) {
       if (tooltipContainerRef.current) tooltipContainerRef.current.visible = false;
       const existingReactContainers = pixiCanvasContainerRef.current?.querySelectorAll('.waveform-react-container');
@@ -560,15 +532,14 @@ const VisualizationCanvas = () => {
 
         if (isSimilarityMode && currentHoverTrack.clusterLabel) {
             featuresText = `Cluster: ${currentHoverTrack.clusterLabel}\n`;
-            if (currentHoverTrack.clusterSilhouetteScore !== undefined) { // Check if score exists
-                 featuresText += `(Sil: ${currentHoverTrack.clusterSilhouetteScore > -Infinity ? currentHoverTrack.clusterSilhouetteScore.toFixed(2) : 'N/A'})\n`;
+            if (currentHoverTrack.clusterSilhouetteScore !== undefined) {
+                featuresText += `(Sil: ${currentHoverTrack.clusterSilhouetteScore > -Infinity ? currentHoverTrack.clusterSilhouetteScore.toFixed(2) : 'N/A'})\n`;
             }
         } else if (isSimilarityMode && currentHoverTrack.clusterId !== undefined && clusters.length > 0) {
-            // Fallback for older structure or if track.clusterLabel isn't directly on track
             const cluster = clusters.find(c => c.id === currentHoverTrack.clusterId);
             featuresText = `Cluster: ${cluster ? cluster.label : 'N/A'}\n`;
-             if (cluster && cluster.silhouetteScore !== undefined) {
-                 featuresText += `(Sil: ${cluster.silhouetteScore > -Infinity ? cluster.silhouetteScore.toFixed(2) : 'N/A'})\n`;
+              if (cluster && cluster.silhouetteScore !== undefined) {
+                  featuresText += `(Sil: ${cluster.silhouetteScore > -Infinity ? cluster.silhouetteScore.toFixed(2) : 'N/A'})\n`;
             }
         }
 
@@ -590,8 +561,8 @@ const VisualizationCanvas = () => {
             playIconRef.current.clear();
             if (isPlaying && activeAudioUrlRef.current === currentHoverTrack.path) {
               playIconRef.current.fill({ color: 0xFFFFFF })
-                  .rect(-5, -6, 4, 12)
-                  .rect(1, -6, 4, 12);
+                .rect(-5, -6, 4, 12)
+                .rect(1, -6, 4, 12);
             } else {
               playIconRef.current.fill({ color: 0xFFFFFF }).moveTo(-4, -6).lineTo(-4, 6).lineTo(6, 0);
             }
@@ -613,10 +584,11 @@ const VisualizationCanvas = () => {
         waveformHostElement.style.top = `${tooltipGlobalPos.y - canvasRect.top + waveformContainerRef.current.y}px`;
         pixiCanvasContainerRef.current.appendChild(waveformHostElement);
 
+
         const root = ReactDOM.createRoot(waveformHostElement);
         waveformHostElement._reactRoot = root;
 
-        const playbackContextValue = { /* ... */ };
+        const playbackContextValue = {};
 
         root.render(
           <PlaybackContext.Provider value={playbackContextValue}>
@@ -627,7 +599,7 @@ const VisualizationCanvas = () => {
               isInteractive={true}
               wavesurferInstanceRef={wavesurferRef}
               onPlay={() => { activeAudioUrlRef.current = currentHoverTrack.path; }}
-              onReadyToPlay={(wsInstance) => { /* Autoplay handled by global */ }}
+              onReadyToPlay={(wsInstance) => {}}
             />
           </PlaybackContext.Provider>
         );
@@ -705,42 +677,34 @@ const VisualizationCanvas = () => {
 
   const prepareFeatureData = useCallback((tracksToProcess, allSelectableFeaturesForScope, currentFeatureSettings) => {
     if (!tracksToProcess?.length || !allSelectableFeaturesForScope?.length) return null;
-
     const activeFeatureConfigs = allSelectableFeaturesForScope.filter(featureConf =>
       featureConf.isNumeric && currentFeatureSettings[featureConf.category]
     );
-
     if (!activeFeatureConfigs.length) {
       console.warn("DataPrep: No numeric features selected for the current settings/scope.");
       return null;
     }
-
     const featureVectors = [];
     const trackIdsForProcessing = [];
     const validTracksForProcessing = [];
     const vectorLength = activeFeatureConfigs.length;
     const tempVector = new Array(vectorLength);
-
     tracksToProcess.forEach(track => {
       let hasAnyValidData = false;
       for (let i = 0; i < vectorLength; i++) {
         const value = track.parsedFeatures?.[activeFeatureConfigs[i].value];
-        tempVector[i] = typeof value === 'number' && !isNaN(value) ? value : 0; // Impute missing/NaN with 0
-        if (tempVector[i] !== 0 && !isNaN(tempVector[i])) hasAnyValidData = true; // Ensure it's a valid number
+        tempVector[i] = typeof value === 'number' && !isNaN(value) ? value : 0;
+        if (tempVector[i] !== 0 && !isNaN(tempVector[i])) hasAnyValidData = true;
       }
-
       if (hasAnyValidData || vectorLength === 0) {
         featureVectors.push([...tempVector]);
         trackIdsForProcessing.push(track.id);
         validTracksForProcessing.push(track);
       }
     });
-
     if (!featureVectors.length) return null;
-
     const numFeatures = vectorLength;
     const numSamples = featureVectors.length;
-
     const featureWeights = new Array(numFeatures).fill(1e-6);
     if (numSamples > 1) {
         for (let j = 0; j < numFeatures; j++) {
@@ -753,13 +717,11 @@ const VisualizationCanvas = () => {
             if (variance > 1e-6) featureWeights[j] = variance;
         }
     }
-
     for (let i = 0; i < numSamples; i++) {
         for (let j = 0; j < numFeatures; j++) {
             featureVectors[i][j] *= Math.sqrt(featureWeights[j]);
         }
     }
-
     const normalizationParams = new Array(numFeatures);
     for (let j = 0; j < numFeatures; j++) {
       let minVal = Infinity; let maxVal = -Infinity;
@@ -791,15 +753,13 @@ const VisualizationCanvas = () => {
     if (!data || !data.features || data.features.length === 0) return null;
     const nSamples = data.features.length;
     const actualMinK = Math.max(kConfig.min, 2);
-    const actualMaxK = Math.min(kConfig.max, nSamples -1); // k must be < nSamples for silhouette
-
+    const actualMaxK = Math.min(kConfig.max, nSamples -1);
     if (nSamples < 2 || actualMinK > actualMaxK || nSamples < actualMinK) {
         const assignments = new Array(nSamples).fill(0);
         const trackIdToClusterId = {};
         data.trackIds.forEach((trackId) => trackIdToClusterId[trackId] = 0);
         return { assignments, centroids: nSamples > 0 ? [calculateCentroid(data.features)] : [], trackIdToClusterId, actualKUsed: 1, silhouetteScore: 0 };
     }
-
     let bestK = actualMinK, bestSilhouetteScore = -Infinity, bestKmeansResult = null;
     for (let k_to_test = actualMinK; k_to_test <= actualMaxK; k_to_test++) {
         try {
@@ -818,15 +778,13 @@ const VisualizationCanvas = () => {
             }
         } catch (error) { console.error(`Error during K-Means for k=${k_to_test}:`, error); }
     }
-
     if (!bestKmeansResult) {
-        const fallbackK = Math.min(actualMinK, nSamples > 0 ? nSamples : 1); // Ensure fallbackK is valid
+        const fallbackK = Math.min(actualMinK, nSamples > 0 ? nSamples : 1);
         bestKmeansResult = kmeans(data.features, fallbackK, { seed: 42 });
         bestK = bestKmeansResult.centroids.length;
         bestSilhouetteScore = calculateSilhouetteScore(data.features, bestKmeansResult.clusters, bestK);
         if (bestSilhouetteScore === -1 && bestK <=1 ) bestSilhouetteScore = 0;
     }
-
     const trackIdToClusterId = {};
     bestKmeansResult.clusters.forEach((clusterIndex, trackKmeansIdx) => {
       trackIdToClusterId[data.trackIds[trackKmeansIdx]] = clusterIndex;
@@ -838,7 +796,6 @@ const VisualizationCanvas = () => {
     if (!allTracks || allTracks.length === 0) return { updatedTracks: [], finalClustersList: [] };
     console.log("🚀 Starting Hierarchical Grouping...");
     let currentTrackObjects = allTracks.map(t => ({ ...t, hierarchicalPath: [], clusterLabel: '', clusterSilhouetteScore: undefined }));
-
     const genreSubgenreGroups = currentTrackObjects.reduce((acc, track) => {
       const genreKey = track.mainGenre || 'Unknown Genre';
       const subgenreKey = track.mainSubgenre || 'Unknown Subgenre';
@@ -848,7 +805,6 @@ const VisualizationCanvas = () => {
       acc[groupKey].push(track);
       return acc;
     }, {});
-
     let processedTracks = [];
     Object.values(genreSubgenreGroups).forEach(tracksInGsGroup => {
       let currentLevelTrackGroups = { "initial": tracksInGsGroup };
@@ -856,7 +812,7 @@ const VisualizationCanvas = () => {
         const nextLevelTrackGroups = {};
         Object.entries(currentLevelTrackGroups).forEach(([/* prevPathKey */, tracksInCurrentSubGroup]) => {
           if (tracksInCurrentSubGroup.length === 0) return;
-          if (tracksInCurrentSubGroup.length < levelConf.kConfig.min || tracksInCurrentSubGroup.length < 2) {
+          if (tracksInCurrentSubGroup.length < levelConf.kConfig.min || tracksInCurrentSubGroup.length < 2 ) {
             tracksInCurrentSubGroup.forEach(track => {
               track.hierarchicalPath.push(`${levelConf.labelPrefix}_0`);
               track.clusterSilhouetteScore = 0;
@@ -868,7 +824,6 @@ const VisualizationCanvas = () => {
             const featuresForThisLevel = allSelectableFeatures.filter(f => f.category === levelConf.category);
             const tempFeatureSettings = { [levelConf.category]: true };
             const dataForKMeans = prepareFeatureData(tracksInCurrentSubGroup, featuresForThisLevel, tempFeatureSettings);
-
             if (dataForKMeans && dataForKMeans.features.length >= levelConf.kConfig.min && dataForKMeans.features.length >=2) {
               const kmeansResult = runKMeansClustering(dataForKMeans, levelConf.kConfig);
               if (kmeansResult && kmeansResult.assignments) {
@@ -906,11 +861,9 @@ const VisualizationCanvas = () => {
       });
       Object.values(currentLevelTrackGroups).forEach(finalSubGroupTracks => processedTracks.push(...finalSubGroupTracks));
     });
-
     let finalClusterIdCounter = 0;
     const finalClustersMap = new Map();
     const finalClustersList = [];
-
     processedTracks.forEach(track => {
       track.clusterLabel = track.hierarchicalPath.join(' / ');
       if (!finalClustersMap.has(track.clusterLabel)) {
@@ -920,14 +873,13 @@ const VisualizationCanvas = () => {
           id: newClusterId,
           label: track.clusterLabel,
           trackIds: [],
-          silhouetteScore: track.clusterSilhouetteScore // Store the silhouette from its formation
+          silhouetteScore: track.clusterSilhouetteScore
         });
       }
       track.clusterId = finalClustersMap.get(track.clusterLabel);
       const clusterForTrack = finalClustersList.find(c => c.id === track.clusterId);
       if(clusterForTrack) {
         clusterForTrack.trackIds.push(track.id);
-        // Potentially average or update silhouette score for the cluster here if desired
       }
     });
     finalClustersList.sort((a,b) => a.label.localeCompare(b.label));
@@ -952,15 +904,15 @@ const VisualizationCanvas = () => {
             const pca = new PCA(data.features);
             const result = pca.predict(data.features, { nComponents: 2 });
             let resultArray = result.data || result;
-
             if (!resultArray?.length || !resultArray[0]?.length || resultArray[0].length < 2) {
                 console.warn("PCA result is not in expected format or has < 2 components. Actual components:", resultArray[0]?.length);
-                  if (resultArray?.length && resultArray[0]?.length === 1) {
+                if (resultArray?.length && resultArray[0]?.length === 1) {
+                    console.log("PCA yielded 1 component, adding jitter for 2nd dimension.");
                     resultArray = resultArray.map(point => [point[0], Math.random() * 0.1 - 0.05]);
-                  } else {
+                } else {
                     if (forClusteringVis) setIsPcaCalculating(false);
                     setTsneData(null); return;
-                  }
+                }
             }
             let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity;
             resultArray.forEach(point => {
@@ -993,7 +945,6 @@ const VisualizationCanvas = () => {
       setIsClusteringCalculating(false); setIsPcaCalculating(false);
       return;
     }
-
     let animationFrameId;
     const timeoutId = setTimeout(() => {
       setIsClusteringCalculating(true); setIsPcaCalculating(true);
@@ -1014,9 +965,10 @@ const VisualizationCanvas = () => {
     }, 500);
     return () => { clearTimeout(timeoutId); if (animationFrameId) cancelAnimationFrame(animationFrameId); };
   }, [
-    isSimilarityMode, tracks.length, selectableFeatures.length,
+    isSimilarityMode, tracks.length,
+    selectableFeatures.length,
     performHierarchicalClustering, calculatePca, prepareFeatureData,
-    JSON.stringify(clusterSettings) // Stringify to ensure effect runs on deep changes
+    JSON.stringify(clusterSettings)
   ]);
 
   const calculateVisualizationBounds = useCallback((points, padding = 0.1) => {
@@ -1035,12 +987,8 @@ const VisualizationCanvas = () => {
     };
   }, []);
 
-  // Main PIXI Rendering useEffect (handles drawing logic)
+  // Main PIXI Rendering useEffect
   useEffect(() => {
-    // ... (Full Pixi rendering logic from previous turn)
-    // This includes: clearing chart, drawing axes, drawing dots based on mode (scatter plot or PCA)
-    // For brevity, this section is condensed. It uses commonDotLogic.
-    // Ensure it correctly uses `dynamicClusterColors` for PCA plot dot colors.
      if (!isPixiAppReady || !pixiAppRef.current || !chartAreaRef.current || isLoadingTracks || error || !tracks || !canvasSize.width || !canvasSize.height) return;
 
     const app = pixiAppRef.current;
@@ -1071,19 +1019,24 @@ const VisualizationCanvas = () => {
     if (drawableWidth <= 0 || drawableHeight <= 0) return;
 
     const commonDotLogic = (track, screenX, screenY) => {
-        let fillColor = DEFAULT_DOT_COLOR;
-        if (isSimilarityMode && track.clusterId !== undefined && clusters.length > 0) {
-            const clusterIndex = clusters.findIndex(c => c.id === track.clusterId);
-            if(clusterIndex !== -1) {
-                fillColor = dynamicClusterColors[clusterIndex % dynamicClusterColors.length];
+        let fillColor = DEFAULT_DOT_COLOR; // Default to white
+
+        const activeMenuSelections = Object.entries(selectedIndividualFeatures)
+            .filter(([, isSelected]) => isSelected)
+            .map(([key]) => key);
+
+        if (activeMenuSelections.length > 0) { // Highlight features are selected
+            let matchCount = 0;
+            for (const featureValue of activeMenuSelections) {
+                const trackFeatureVal = track.parsedFeatures?.[featureValue];
+                if (typeof trackFeatureVal === 'number' && trackFeatureVal >= highlightPrecisionThreshold) {
+                    matchCount++;
+                }
             }
-        } else {
-            const happinessVal = track.parsedFeatures?.happiness;
-            const aggressiveVal = track.parsedFeatures?.aggressive;
-            const relaxedVal = track.parsedFeatures?.relaxed;
-            if (typeof happinessVal === 'number' && happinessVal > 0.7) fillColor = HAPPINESS_COLOR;
-            else if (typeof aggressiveVal === 'number' && aggressiveVal > 0.6) fillColor = AGGRESSIVE_COLOR;
-            else if (typeof relaxedVal === 'number' && relaxedVal > 0.7) fillColor = RELAXED_COLOR;
+
+            if (matchCount > 0) {
+                fillColor = HIGHLIGHT_COLORS[(matchCount - 1) % HIGHLIGHT_COLORS.length];
+            }
         }
 
         const dotContainer = new PIXI.Container();
@@ -1137,15 +1090,11 @@ const VisualizationCanvas = () => {
       yTitle.isAxisTextElement = true; yTitle.anchor.set(0.5,1); yTitle.rotation = -Math.PI/2; yTitle.position.set(PADDING - 45, PADDING + drawableHeight/2); chartArea.addChild(yTitle);
       chartArea.addChild(graphics);
 
-      // Optional: Draw cluster labels on map (if desired, like C0, C1...)
-      // The user's screenshot had a legend on the side, not labels directly on the map points.
-      // If you want map labels, uncomment and adapt this section from your original code.
-
       tsneData.forEach(({ x: pcaX, y: pcaY, trackId }) => {
         const track = tracks.find(t => t.id === trackId);
         if (!track) return;
-        const screenX = PADDING + ((pcaX - pcaBounds.xMin) / pcaBounds.xRange) * drawableWidth;
-        const screenY = PADDING + (1 - ((pcaY - pcaBounds.yMin) / pcaBounds.yRange)) * drawableHeight;
+        const screenX = PADDING + pcaX * drawableWidth;
+        const screenY = PADDING + (1 - pcaY) * drawableHeight;
         commonDotLogic(track, screenX, screenY);
       });
 
@@ -1175,11 +1124,10 @@ const VisualizationCanvas = () => {
   }, [
       isPixiAppReady, tracks, axisMinMax, xAxisFeature, yAxisFeature,
       isLoadingTracks, error, drawAxes, canvasSize, updateAxesTextScale,
-      selectableFeatures,
+      selectableFeatures, selectedIndividualFeatures, highlightPrecisionThreshold,
       tsneData, isPcaCalculating, isClusteringCalculating, isSimilarityMode, clusterSettings, clusters,
-      calculateVisualizationBounds, dynamicClusterColors
+      calculateVisualizationBounds
   ]);
-
 
   useEffect(() => {
     return () => { if (tooltipTimeoutRef.current) clearTimeout(tooltipTimeoutRef.current); };
@@ -1222,12 +1170,51 @@ const VisualizationCanvas = () => {
           </label>
         </div>
 
+        {/* Feature Highlighting Section - Always Visible */}
+        <div className="feature-highlighting-controls" style={{ marginBottom: '15px', borderTop: '1px solid #555', paddingTop: '15px' }}>
+            <div style={{ fontWeight: 'bold', marginBottom: '10px', fontSize: '1.05em' }}>Feature Highlighting</div>
+            <div style={{ marginBottom: '15px' }}>
+                <label style={{ display: 'block', marginBottom: '5px' }}>
+                    Highlight Min. Probability: {(highlightPrecisionThreshold * 100).toFixed(0)}%
+                </label>
+                <input
+                    type="range" min="0" max="100"
+                    value={highlightPrecisionThreshold * 100}
+                    onChange={(e) => setHighlightPrecisionThreshold(parseInt(e.target.value, 10) / 100)}
+                    style={{ width: '100%' }}
+                />
+            </div>
+            <div style={{fontWeight: 'bold', marginBottom: '10px'}}>Select Features to Highlight:</div>
+            {Object.values(FEATURE_CATEGORIES).map(category => {
+            const featuresInCategory = selectableFeatures.filter(f => f.category === category);
+            if (featuresInCategory.length === 0) return null;
+            return (
+                <div key={category} style={{ marginBottom: '10px' }}>
+                <strong style={{ display: 'block', marginBottom: '5px', color: '#ddd', textTransform: 'capitalize' }}>{category.toLowerCase()}</strong>
+                {featuresInCategory.map(feature => (
+                    <div key={feature.value} style={{ marginLeft: '10px', marginBottom: '3px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.9em' }}>
+                        <input
+                        type="checkbox"
+                        checked={!!selectedIndividualFeatures[feature.value]}
+                        onChange={() => setSelectedIndividualFeatures(prev => ({ ...prev, [feature.value]: !prev[feature.value] }))}
+                        style={{ width: '14px', height: '14px', flexShrink: 0 }}
+                        />
+                        {feature.label.split('(')[0].trim()}
+                    </label>
+                    </div>
+                ))}
+                </div>
+            );
+            })}
+        </div>
+
+
         {isSimilarityMode && (
           <div className="clustering-controls" style={{ marginBottom: '15px', borderTop: '1px solid #555', paddingTop: '15px'}}>
-            <div style={{fontWeight: 'bold', marginBottom: '10px', fontSize: '1.05em'}}>Hierarchical Clustering:</div>
+            <div style={{fontWeight: 'bold', marginBottom: '10px', fontSize: '1.05em'}}>Clustering & PCA Settings:</div>
             <p style={{fontSize: '0.9em', color: '#bbb', marginBottom: '15px'}}>
-              Tracks grouped by: Genre → Subgenre → Optimal K for (Spectral → Mood → Instruments) using Silhouette Score & Variance Weighted Features.
-              PCA projection features below:
+              PCA projection uses features from the categories selected below. Hierarchical clustering groups by Genre → Subgenre → then (Spectral → Mood → Instruments) based on their respective features.
             </p>
             <div style={{fontWeight: 'bold', marginBottom: '5px'}}>Feature Categories for PCA:</div>
             {[FEATURE_CATEGORIES.MOOD, FEATURE_CATEGORIES.SPECTRAL, FEATURE_CATEGORIES.TECHNICAL, FEATURE_CATEGORIES.STYLE, FEATURE_CATEGORIES.INSTRUMENT].map(category => (
@@ -1248,13 +1235,8 @@ const VisualizationCanvas = () => {
               <div style={{marginTop: '15px', borderTop: '1px solid #555', paddingTop: '15px'}}>
                 <div style={{fontWeight: 'bold', marginBottom: '10px'}}>Cluster Legend ({clusters.length}):</div>
                 <div style={{maxHeight: '150px', overflowY: 'auto', paddingRight: '5px', fontSize: '0.85em'}}>
-                  {clusters.map((cluster, index) => (
-                    <div key={cluster.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                      <div style={{
-                        width: '12px', height: '12px', borderRadius: '50%',
-                        backgroundColor: `#${dynamicClusterColors[index % dynamicClusterColors.length].toString(16).padStart(6, '0')}`,
-                        flexShrink: 0
-                      }} />
+                  {clusters.map((cluster) => (
+                    <div key={cluster.id} style={{ marginBottom: '8px' }}>
                       <span style={{ color: '#ccc', wordBreak: 'break-word', lineHeight: '1.2' }}>
                         {cluster.label} ({cluster.trackIds.length})
                         {cluster.silhouetteScore !== undefined &&
@@ -1268,28 +1250,27 @@ const VisualizationCanvas = () => {
           </div>
         )}
 
-        <div className="style-threshold" style={{ marginBottom: '15px', borderTop: '1px solid #555', paddingTop: '15px' }}>
-          <label style={{ display: 'block', marginBottom: '5px' }}>
-            Dynamic Feature Min. Prob: {(styleThreshold * 100).toFixed(0)}%
-          </label>
-          <input type="range" min="0" max="100" value={styleThreshold * 100}
-            onChange={(e) => setStyleThreshold(parseInt(e.target.value) / 100)}
-            style={{ width: '100%' }} />
-        </div>
+         <div style={{ marginBottom: '15px', borderTop: '1px solid #555', paddingTop: '15px' }}>
+            <p style={{fontSize: '0.9em', color: '#bbb'}}>Dynamic Feature Inclusion Probability: 0% (fixed for data processing)</p>
+         </div>
+
 
         {!isSimilarityMode && (
-          <div className="axis-selectors" style={{display: "flex", flexDirection:"column", gap: "10px"}}>
-            <div className="axis-selector">
-              <label htmlFor="xAxisSelect" style={{color: "#ccc", marginRight:"5px", display:'block', marginBottom:'3px'}}>X-Axis:</label>
-              <select id="xAxisSelect" value={xAxisFeature} onChange={(e) => setXAxisFeature(e.target.value)} style={{padding:"5px", width: '100%', backgroundColor: "#333", color:"#fff", border:"1px solid #555"}}>
-                {selectableFeatures.map((feature) => (<option key={`x-${feature.value}`} value={feature.value}>{feature.label}</option>))}
-              </select>
-            </div>
-            <div className="axis-selector">
-              <label htmlFor="yAxisSelect" style={{color: "#ccc", marginRight:"5px", display:'block', marginBottom:'3px'}}>Y-Axis:</label>
-              <select id="yAxisSelect" value={yAxisFeature} onChange={(e) => setYAxisFeature(e.target.value)} style={{padding:"5px", width: '100%', backgroundColor: "#333", color:"#fff", border:"1px solid #555"}}>
-                {selectableFeatures.map((feature) => (<option key={`y-${feature.value}`} value={feature.value}>{feature.label}</option>))}
-              </select>
+          <div className="axis-selectors-container" style={{borderTop: '1px solid #555', paddingTop: '15px'}}>
+             <div style={{fontWeight: 'bold', marginBottom: '10px', fontSize: '1.05em'}}>Scatter Plot Axes:</div>
+            <div className="axis-selectors" style={{display: "flex", flexDirection:"column", gap: "10px", marginBottom: '15px'}}>
+              <div className="axis-selector">
+                <label htmlFor="xAxisSelect" style={{color: "#ccc", marginRight:"5px", display:'block', marginBottom:'3px'}}>X-Axis:</label>
+                <select id="xAxisSelect" value={xAxisFeature} onChange={(e) => setXAxisFeature(e.target.value)} style={{padding:"5px", width: '100%', backgroundColor: "#333", color:"#fff", border:"1px solid #555"}}>
+                  {selectableFeatures.map((feature) => (<option key={`x-${feature.value}`} value={feature.value}>{feature.label}</option>))}
+                </select>
+              </div>
+              <div className="axis-selector">
+                <label htmlFor="yAxisSelect" style={{color: "#ccc", marginRight:"5px", display:'block', marginBottom:'3px'}}>Y-Axis:</label>
+                <select id="yAxisSelect" value={yAxisFeature} onChange={(e) => setYAxisFeature(e.target.value)} style={{padding:"5px", width: '100%', backgroundColor: "#333", color:"#fff", border:"1px solid #555"}}>
+                  {selectableFeatures.map((feature) => (<option key={`y-${feature.value}`} value={feature.value}>{feature.label}</option>))}
+                </select>
+              </div>
             </div>
           </div>
         )}

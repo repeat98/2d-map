@@ -104,13 +104,13 @@ app.whenReady().then(() => {
         ...details.responseHeaders,
         'Content-Security-Policy': [
           "default-src 'self';" +
-          "script-src 'self' 'unsafe-inline' 'unsafe-eval';" + // Required for React and PixiJS
+          "script-src 'self' 'unsafe-inline';" + // Removed unsafe-eval
           "style-src 'self' 'unsafe-inline';" +
-          "img-src 'self' data: http://localhost:3000 blob: file:;" + // Allow data URLs for images
-          "media-src 'self' http://localhost:3000 blob: file: data:;" + // Allow data URLs for media
-          "worker-src 'self' blob:;" + // For web workers
-          "child-src 'self' blob:;" + // For web workers
-          "connect-src 'self' http://localhost:3000 data: blob:;" // Allow data and blob URLs for connections
+          "img-src 'self' data: http://localhost:3000 blob: file:;" +
+          "media-src 'self' http://localhost:3000 blob: file: data:;" +
+          "worker-src 'self' blob:;" +
+          "child-src 'self' blob:;" +
+          "connect-src 'self' http://localhost:3000 data: blob:;"
         ]
       }
     });
