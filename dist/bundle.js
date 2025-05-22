@@ -49,16 +49,16 @@ __webpack_require__.r(__webpack_exports__);
 function _regeneratorRuntime() { "use strict"; /*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/babel/babel/blob/main/packages/babel-helpers/LICENSE */ _regeneratorRuntime = function _regeneratorRuntime() { return r; }; var t, r = {}, e = Object.prototype, n = e.hasOwnProperty, o = "function" == typeof Symbol ? Symbol : {}, i = o.iterator || "@@iterator", a = o.asyncIterator || "@@asyncIterator", u = o.toStringTag || "@@toStringTag"; function c(t, r, e, n) { return Object.defineProperty(t, r, { value: e, enumerable: !n, configurable: !n, writable: !n }); } try { c({}, ""); } catch (t) { c = function c(t, r, e) { return t[r] = e; }; } function h(r, e, n, o) { var i = e && e.prototype instanceof Generator ? e : Generator, a = Object.create(i.prototype); return c(a, "_invoke", function (r, e, n) { var o = 1; return function (i, a) { if (3 === o) throw Error("Generator is already running"); if (4 === o) { if ("throw" === i) throw a; return { value: t, done: !0 }; } for (n.method = i, n.arg = a;;) { var u = n.delegate; if (u) { var c = d(u, n); if (c) { if (c === f) continue; return c; } } if ("next" === n.method) n.sent = n._sent = n.arg;else if ("throw" === n.method) { if (1 === o) throw o = 4, n.arg; n.dispatchException(n.arg); } else "return" === n.method && n.abrupt("return", n.arg); o = 3; var h = s(r, e, n); if ("normal" === h.type) { if (o = n.done ? 4 : 2, h.arg === f) continue; return { value: h.arg, done: n.done }; } "throw" === h.type && (o = 4, n.method = "throw", n.arg = h.arg); } }; }(r, n, new Context(o || [])), !0), a; } function s(t, r, e) { try { return { type: "normal", arg: t.call(r, e) }; } catch (t) { return { type: "throw", arg: t }; } } r.wrap = h; var f = {}; function Generator() {} function GeneratorFunction() {} function GeneratorFunctionPrototype() {} var l = {}; c(l, i, function () { return this; }); var p = Object.getPrototypeOf, y = p && p(p(x([]))); y && y !== e && n.call(y, i) && (l = y); var v = GeneratorFunctionPrototype.prototype = Generator.prototype = Object.create(l); function g(t) { ["next", "throw", "return"].forEach(function (r) { c(t, r, function (t) { return this._invoke(r, t); }); }); } function AsyncIterator(t, r) { function e(o, i, a, u) { var c = s(t[o], t, i); if ("throw" !== c.type) { var h = c.arg, f = h.value; return f && "object" == _typeof(f) && n.call(f, "__await") ? r.resolve(f.__await).then(function (t) { e("next", t, a, u); }, function (t) { e("throw", t, a, u); }) : r.resolve(f).then(function (t) { h.value = t, a(h); }, function (t) { return e("throw", t, a, u); }); } u(c.arg); } var o; c(this, "_invoke", function (t, n) { function i() { return new r(function (r, o) { e(t, n, r, o); }); } return o = o ? o.then(i, i) : i(); }, !0); } function d(r, e) { var n = e.method, o = r.i[n]; if (o === t) return e.delegate = null, "throw" === n && r.i["return"] && (e.method = "return", e.arg = t, d(r, e), "throw" === e.method) || "return" !== n && (e.method = "throw", e.arg = new TypeError("The iterator does not provide a '" + n + "' method")), f; var i = s(o, r.i, e.arg); if ("throw" === i.type) return e.method = "throw", e.arg = i.arg, e.delegate = null, f; var a = i.arg; return a ? a.done ? (e[r.r] = a.value, e.next = r.n, "return" !== e.method && (e.method = "next", e.arg = t), e.delegate = null, f) : a : (e.method = "throw", e.arg = new TypeError("iterator result is not an object"), e.delegate = null, f); } function w(t) { this.tryEntries.push(t); } function m(r) { var e = r[4] || {}; e.type = "normal", e.arg = t, r[4] = e; } function Context(t) { this.tryEntries = [[-1]], t.forEach(w, this), this.reset(!0); } function x(r) { if (null != r) { var e = r[i]; if (e) return e.call(r); if ("function" == typeof r.next) return r; if (!isNaN(r.length)) { var o = -1, a = function e() { for (; ++o < r.length;) if (n.call(r, o)) return e.value = r[o], e.done = !1, e; return e.value = t, e.done = !0, e; }; return a.next = a; } } throw new TypeError(_typeof(r) + " is not iterable"); } return GeneratorFunction.prototype = GeneratorFunctionPrototype, c(v, "constructor", GeneratorFunctionPrototype), c(GeneratorFunctionPrototype, "constructor", GeneratorFunction), GeneratorFunction.displayName = c(GeneratorFunctionPrototype, u, "GeneratorFunction"), r.isGeneratorFunction = function (t) { var r = "function" == typeof t && t.constructor; return !!r && (r === GeneratorFunction || "GeneratorFunction" === (r.displayName || r.name)); }, r.mark = function (t) { return Object.setPrototypeOf ? Object.setPrototypeOf(t, GeneratorFunctionPrototype) : (t.__proto__ = GeneratorFunctionPrototype, c(t, u, "GeneratorFunction")), t.prototype = Object.create(v), t; }, r.awrap = function (t) { return { __await: t }; }, g(AsyncIterator.prototype), c(AsyncIterator.prototype, a, function () { return this; }), r.AsyncIterator = AsyncIterator, r.async = function (t, e, n, o, i) { void 0 === i && (i = Promise); var a = new AsyncIterator(h(t, e, n, o), i); return r.isGeneratorFunction(e) ? a : a.next().then(function (t) { return t.done ? t.value : a.next(); }); }, g(v), c(v, u, "Generator"), c(v, i, function () { return this; }), c(v, "toString", function () { return "[object Generator]"; }), r.keys = function (t) { var r = Object(t), e = []; for (var n in r) e.unshift(n); return function t() { for (; e.length;) if ((n = e.pop()) in r) return t.value = n, t.done = !1, t; return t.done = !0, t; }; }, r.values = x, Context.prototype = { constructor: Context, reset: function reset(r) { if (this.prev = this.next = 0, this.sent = this._sent = t, this.done = !1, this.delegate = null, this.method = "next", this.arg = t, this.tryEntries.forEach(m), !r) for (var e in this) "t" === e.charAt(0) && n.call(this, e) && !isNaN(+e.slice(1)) && (this[e] = t); }, stop: function stop() { this.done = !0; var t = this.tryEntries[0][4]; if ("throw" === t.type) throw t.arg; return this.rval; }, dispatchException: function dispatchException(r) { if (this.done) throw r; var e = this; function n(t) { a.type = "throw", a.arg = r, e.next = t; } for (var o = e.tryEntries.length - 1; o >= 0; --o) { var i = this.tryEntries[o], a = i[4], u = this.prev, c = i[1], h = i[2]; if (-1 === i[0]) return n("end"), !1; if (!c && !h) throw Error("try statement without catch or finally"); if (null != i[0] && i[0] <= u) { if (u < c) return this.method = "next", this.arg = t, n(c), !0; if (u < h) return n(h), !1; } } }, abrupt: function abrupt(t, r) { for (var e = this.tryEntries.length - 1; e >= 0; --e) { var n = this.tryEntries[e]; if (n[0] > -1 && n[0] <= this.prev && this.prev < n[2]) { var o = n; break; } } o && ("break" === t || "continue" === t) && o[0] <= r && r <= o[2] && (o = null); var i = o ? o[4] : {}; return i.type = t, i.arg = r, o ? (this.method = "next", this.next = o[2], f) : this.complete(i); }, complete: function complete(t, r) { if ("throw" === t.type) throw t.arg; return "break" === t.type || "continue" === t.type ? this.next = t.arg : "return" === t.type ? (this.rval = this.arg = t.arg, this.method = "return", this.next = "end") : "normal" === t.type && r && (this.next = r), f; }, finish: function finish(t) { for (var r = this.tryEntries.length - 1; r >= 0; --r) { var e = this.tryEntries[r]; if (e[2] === t) return this.complete(e[4], e[3]), m(e), f; } }, "catch": function _catch(t) { for (var r = this.tryEntries.length - 1; r >= 0; --r) { var e = this.tryEntries[r]; if (e[0] === t) { var n = e[4]; if ("throw" === n.type) { var o = n.arg; m(e); } return o; } } throw Error("illegal catch attempt"); }, delegateYield: function delegateYield(r, e, n) { return this.delegate = { i: x(r), r: e, n: n }, "next" === this.method && (this.arg = t), f; } }, r; }
 function asyncGeneratorStep(n, t, e, r, o, a, c) { try { var i = n[a](c), u = i.value; } catch (n) { return void e(n); } i.done ? t(u) : Promise.resolve(u).then(r, o); }
 function _asyncToGenerator(n) { return function () { var t = this, e = arguments; return new Promise(function (r, o) { var a = n.apply(t, e); function _next(n) { asyncGeneratorStep(a, r, o, _next, _throw, "next", n); } function _throw(n) { asyncGeneratorStep(a, r, o, _next, _throw, "throw", n); } _next(void 0); }); }; }
-function ownKeys(e, r) { var t = Object.keys(e); if (Object.getOwnPropertySymbols) { var o = Object.getOwnPropertySymbols(e); r && (o = o.filter(function (r) { return Object.getOwnPropertyDescriptor(e, r).enumerable; })), t.push.apply(t, o); } return t; }
-function _objectSpread(e) { for (var r = 1; r < arguments.length; r++) { var t = null != arguments[r] ? arguments[r] : {}; r % 2 ? ownKeys(Object(t), !0).forEach(function (r) { _defineProperty(e, r, t[r]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function (r) { Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r)); }); } return e; }
-function _defineProperty(e, r, t) { return (r = _toPropertyKey(r)) in e ? Object.defineProperty(e, r, { value: t, enumerable: !0, configurable: !0, writable: !0 }) : e[r] = t, e; }
-function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" == _typeof(i) ? i : i + ""; }
-function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e = t[Symbol.toPrimitive]; if (void 0 !== e) { var i = e.call(t, r || "default"); if ("object" != _typeof(i)) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === r ? String : Number)(t); }
 function _toConsumableArray(r) { return _arrayWithoutHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray(r) || _nonIterableSpread(); }
 function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
 function _iterableToArray(r) { if ("undefined" != typeof Symbol && null != r[Symbol.iterator] || null != r["@@iterator"]) return Array.from(r); }
 function _arrayWithoutHoles(r) { if (Array.isArray(r)) return _arrayLikeToArray(r); }
 function _createForOfIteratorHelper(r, e) { var t = "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (!t) { if (Array.isArray(r) || (t = _unsupportedIterableToArray(r)) || e && r && "number" == typeof r.length) { t && (r = t); var _n = 0, F = function F() {}; return { s: F, n: function n() { return _n >= r.length ? { done: !0 } : { done: !1, value: r[_n++] }; }, e: function e(r) { throw r; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var o, a = !0, u = !1; return { s: function s() { t = t.call(r); }, n: function n() { var r = t.next(); return a = r.done, r; }, e: function e(r) { u = !0, o = r; }, f: function f() { try { a || null == t["return"] || t["return"](); } finally { if (u) throw o; } } }; }
+function ownKeys(e, r) { var t = Object.keys(e); if (Object.getOwnPropertySymbols) { var o = Object.getOwnPropertySymbols(e); r && (o = o.filter(function (r) { return Object.getOwnPropertyDescriptor(e, r).enumerable; })), t.push.apply(t, o); } return t; }
+function _objectSpread(e) { for (var r = 1; r < arguments.length; r++) { var t = null != arguments[r] ? arguments[r] : {}; r % 2 ? ownKeys(Object(t), !0).forEach(function (r) { _defineProperty(e, r, t[r]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function (r) { Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r)); }); } return e; }
+function _defineProperty(e, r, t) { return (r = _toPropertyKey(r)) in e ? Object.defineProperty(e, r, { value: t, enumerable: !0, configurable: !0, writable: !0 }) : e[r] = t, e; }
+function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" == _typeof(i) ? i : i + ""; }
+function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e = t[Symbol.toPrimitive]; if (void 0 !== e) { var i = e.call(t, r || "default"); if ("object" != _typeof(i)) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === r ? String : Number)(t); }
 function _slicedToArray(r, e) { return _arrayWithHoles(r) || _iterableToArrayLimit(r, e) || _unsupportedIterableToArray(r, e) || _nonIterableRest(); }
 function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
 function _unsupportedIterableToArray(r, a) { if (r) { if ("string" == typeof r) return _arrayLikeToArray(r, a); var t = {}.toString.call(r).slice(8, -1); return "Object" === t && r.constructor && (t = r.constructor.name), "Map" === t || "Set" === t ? Array.from(r) : "Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t) ? _arrayLikeToArray(r, a) : void 0; } }
@@ -67,23 +67,30 @@ function _iterableToArrayLimit(r, l) { var t = null == r ? null : "undefined" !=
 function _arrayWithHoles(r) { if (Array.isArray(r)) return r; }
 function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
 
- // Make sure this SCSS file exists and is styled appropriately
+
+
+// --- Dark Mode Theme Variables (mirroring SCSS for JS logic if needed) ---
+var DARK_MODE_TEXT_PRIMARY = '#e0e0e0';
+var DARK_MODE_TEXT_SECONDARY = '#b0b0b0';
+var DARK_MODE_SURFACE_ALT = '#3a3a3a';
+var DARK_MODE_BORDER = '#4a4a4a';
+var DARK_MODE_ACCENT = '#00bcd4';
 
 // --- Constants ---
-var SVG_WIDTH = window.innerWidth;
-var SVG_HEIGHT = window.innerHeight;
+// SVG_WIDTH and SVG_HEIGHT are now managed by svgDimensions state
 var PADDING = 50;
 var PCA_N_COMPONENTS = 2;
 var HDBSCAN_DEFAULT_MIN_CLUSTER_SIZE = 5;
 var HDBSCAN_DEFAULT_MIN_SAMPLES = 3;
 var TOOLTIP_OFFSET = 15;
 var NOISE_CLUSTER_ID = -1;
-var NOISE_CLUSTER_COLOR = '#cccccc';
+var NOISE_CLUSTER_COLOR = '#555555'; // Updated for dark mode
 var DEFAULT_CLUSTER_COLORS = [
-// Kept for potential fallback or other uses
+// Kept for potential fallback
 '#e6194B', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4', '#46f0f0', '#f032e6', '#bcf60c', '#fabebe', '#008080', '#e6beff', '#9A6324', '#fffac8', '#800000', '#aaffc3', '#808000', '#ffd8b1', '#000075', '#808080', '#54A0FF', '#F4D03F', '#1ABC9C', '#E74C3C', '#8E44AD'];
-var VIEW_BOX_VALUE = "0 0 ".concat(SVG_WIDTH, " ").concat(SVG_HEIGHT);
-var PLACEHOLDER_IMAGE = '/placeholder.png';
+// VIEW_BOX_VALUE is now dynamic, derived from svgDimensions state
+var PLACEHOLDER_IMAGE = '/placeholder.png'; // Ensure this is dark-mode friendly or generic
+
 var CATEGORY_WEIGHTS = {
   'genre': 4.0,
   'style': 4.0,
@@ -95,31 +102,31 @@ var CATEGORY_WEIGHTS = {
 var SPECTRAL_KEYWORDS = ['noisy', 'tonal', 'dark', 'bright', 'percussive', 'smooth', 'lufs'];
 var MOOD_KEYWORDS = ['happiness', 'party', 'aggressive', 'danceability', 'relaxed', 'sad', 'engagement', 'approachability'];
 var CATEGORY_BASE_COLORS = {
-  'genre': '#e6194B',
-  // Red
-  'style': '#3cb44b',
-  // Green
-  'spectral': '#4363d8',
-  // Blue
-  'mood': '#f58231',
-  // Orange
-  'instrument': '#911eb4' // Purple
+  // Updated for better dark mode visibility
+  'genre': '#F44336',
+  // Material Red
+  'style': '#4CAF50',
+  // Material Green
+  'spectral': '#2196F3',
+  // Material Blue
+  'mood': '#FF9800',
+  // Material Orange
+  'instrument': '#9C27B0' // Material Purple
 };
-var LUMINANCE_INCREMENT = 0.15;
-var MAX_LUM_OFFSET = 0.6;
 
-// --- Helper Functions ---
+// Adjusted luminance for "fixing shade assignment"
+var LUMINANCE_INCREMENT = 0.1; // Was 0.15
+var MAX_LUM_OFFSET = 0.3; // Was 0.6
+
+// --- Helper Functions (largely unchanged, ensure console logs are intended for prod) ---
 
 function calculateDistance(vec1, vec2) {
   if (!vec1 || !vec2) {
-    console.warn('Missing vectors for distance calculation');
+    // console.warn('Missing vectors for distance calculation');
     return Infinity;
   }
   if (vec1.length !== vec2.length) {
-    console.warn('Vectors have different lengths for distance calculation:', {
-      len1: vec1.length,
-      len2: vec2.length
-    });
+    // console.warn('Vectors have different lengths for distance calculation:', { len1: vec1.length, len2: vec2.length });
     return Infinity;
   }
   var sumOfSquares = 0;
@@ -135,12 +142,8 @@ function getAllFeatureKeysAndCategories(tracks) {
   var featuresWithCategories = new Map();
   var determineFinalCategory = function determineFinalCategory(keyName, sourceCategory) {
     var lowerKeyName = keyName.toLowerCase();
-    if (SPECTRAL_KEYWORDS.includes(lowerKeyName)) {
-      return 'spectral';
-    }
-    if (MOOD_KEYWORDS.includes(lowerKeyName)) {
-      return 'mood';
-    }
+    if (SPECTRAL_KEYWORDS.includes(lowerKeyName)) return 'spectral';
+    if (MOOD_KEYWORDS.includes(lowerKeyName)) return 'mood';
     return sourceCategory;
   };
   var processFeatureSource = function processFeatureSource(featureObj, sourceCategory, trackId) {
@@ -159,26 +162,22 @@ function getAllFeatureKeysAndCategories(tracks) {
         });
       }
     } catch (e) {
-      console.warn("Failed to parse features for track ".concat(trackId, " (source: ").concat(sourceCategory, ") while getting keys:"), e, featureObj);
+      // console.warn(`Failed to parse features for track ${trackId} (source: ${sourceCategory}) while getting keys:`, e, featureObj);
     }
   };
-
-  // Process genre/style features
   tracks.forEach(function (track) {
     if (!track || !track.id) return;
     processFeatureSource(track.features, 'genre', track.id);
     processFeatureSource(track.style_features, 'style', track.id);
     processFeatureSource(track.instrument_features, 'instrument', track.id);
   });
-
-  // Add spectral and mood features directly
   SPECTRAL_KEYWORDS.forEach(function (key) {
-    featuresWithCategories.set(key, 'spectral');
+    return featuresWithCategories.set(key, 'spectral');
   });
   MOOD_KEYWORDS.forEach(function (key) {
-    featuresWithCategories.set(key, 'mood');
+    return featuresWithCategories.set(key, 'mood');
   });
-  var categorizedFeatures = Array.from(featuresWithCategories.entries()).map(function (_ref) {
+  return Array.from(featuresWithCategories.entries()).map(function (_ref) {
     var _ref2 = _slicedToArray(_ref, 2),
       name = _ref2[0],
       category = _ref2[1];
@@ -189,7 +188,6 @@ function getAllFeatureKeysAndCategories(tracks) {
   }).sort(function (a, b) {
     return a.name.localeCompare(b.name);
   });
-  return categorizedFeatures;
 }
 function mergeFeatureVectors(track, allFeatureNames) {
   var mergedFeatures = {};
@@ -207,68 +205,29 @@ function mergeFeatureVectors(track, allFeatureNames) {
             value = _ref4[1];
           if (allFeatureNames.includes(key)) {
             var num = parseFloat(value);
-            if (!isNaN(num)) {
-              mergedFeatures[key] = num;
-            }
+            if (!isNaN(num)) mergedFeatures[key] = num;
           }
         });
       }
     } catch (e) {
-      console.warn("Failed to parse features for track ".concat(track === null || track === void 0 ? void 0 : track.id, " during merge:"), e, featureObj);
+      // console.warn(`Failed to parse features for track ${track?.id} during merge:`, e, featureObj);
     }
   };
-
-  // Handle genre/style features
   parseAndMerge(track.features);
   parseAndMerge(track.style_features);
   parseAndMerge(track.instrument_features);
-
-  // Handle spectral features
-  var spectralFeatures = {
-    'noisy': track.noisy,
-    'tonal': track.tonal,
-    'dark': track.dark,
-    'bright': track.bright,
-    'percussive': track.percussive,
-    'smooth': track.smooth,
-    'lufs': track.lufs
-  };
-
-  // Handle mood features
-  var moodFeatures = {
-    'happiness': track.happiness,
-    'party': track.party,
-    'aggressive': track.aggressive,
-    'danceability': track.danceability,
-    'relaxed': track.relaxed,
-    'sad': track.sad,
-    'engagement': track.engagement,
-    'approachability': track.approachability
-  };
-
-  // Merge spectral features
-  Object.entries(spectralFeatures).forEach(function (_ref5) {
+  var directFeatures = _objectSpread(_objectSpread({}, Object.fromEntries(SPECTRAL_KEYWORDS.map(function (k) {
+    return [k, track[k]];
+  }))), Object.fromEntries(MOOD_KEYWORDS.map(function (k) {
+    return [k, track[k]];
+  })));
+  Object.entries(directFeatures).forEach(function (_ref5) {
     var _ref6 = _slicedToArray(_ref5, 2),
       key = _ref6[0],
       value = _ref6[1];
     if (allFeatureNames.includes(key)) {
       var num = parseFloat(value);
-      if (!isNaN(num)) {
-        mergedFeatures[key] = num;
-      }
-    }
-  });
-
-  // Merge mood features
-  Object.entries(moodFeatures).forEach(function (_ref7) {
-    var _ref8 = _slicedToArray(_ref7, 2),
-      key = _ref8[0],
-      value = _ref8[1];
-    if (allFeatureNames.includes(key)) {
-      var num = parseFloat(value);
-      if (!isNaN(num)) {
-        mergedFeatures[key] = num;
-      }
+      if (!isNaN(num)) mergedFeatures[key] = num;
     }
   });
   return allFeatureNames.map(function (key) {
@@ -279,15 +238,14 @@ function normalizeFeatures(featureVectors, featureCategories) {
   var _featureVectors$;
   if (!featureVectors || featureVectors.length === 0) return [];
   var numSamples = featureVectors.length;
-  if (numSamples === 0) return [];
   var numFeatures = ((_featureVectors$ = featureVectors[0]) === null || _featureVectors$ === void 0 ? void 0 : _featureVectors$.length) || 0;
   if (numFeatures === 0) return featureVectors.map(function () {
     return [];
   });
-  if (featureCategories.length !== numFeatures) {
-    console.error("Normalization Error: Mismatch between number of features (".concat(numFeatures, ") and categories (").concat(featureCategories.length, "). Providing defaults for categories."));
-    // Fallback if categories are mismatched, though this indicates a deeper issue.
-    featureCategories = Array(numFeatures).fill('default');
+  var categories = featureCategories;
+  if (categories.length !== numFeatures) {
+    // console.error(`Normalization Error: Mismatch features (${numFeatures}) & categories (${categories.length}). Using defaults.`);
+    categories = Array(numFeatures).fill('default');
   }
   var means = new Array(numFeatures).fill(0);
   var stdDevs = new Array(numFeatures).fill(0);
@@ -296,41 +254,33 @@ function normalizeFeatures(featureVectors, featureCategories) {
   try {
     for (_iterator.s(); !(_step = _iterator.n()).done;) {
       var vector = _step.value;
-      for (var _j2 = 0; _j2 < numFeatures; _j2++) {
-        means[_j2] += vector[_j2] || 0;
-      }
+      for (var _j2 = 0; _j2 < numFeatures; _j2++) means[_j2] += vector[_j2] || 0;
     }
   } catch (err) {
     _iterator.e(err);
   } finally {
     _iterator.f();
   }
-  for (var j = 0; j < numFeatures; j++) {
-    means[j] /= numSamples;
-  }
+  for (var j = 0; j < numFeatures; j++) means[j] /= numSamples;
   var _iterator2 = _createForOfIteratorHelper(featureVectors),
     _step2;
   try {
     for (_iterator2.s(); !(_step2 = _iterator2.n()).done;) {
       var _vector = _step2.value;
-      for (var _j3 = 0; _j3 < numFeatures; _j3++) {
-        stdDevs[_j3] += Math.pow((_vector[_j3] || 0) - means[_j3], 2);
-      }
+      for (var _j3 = 0; _j3 < numFeatures; _j3++) stdDevs[_j3] += Math.pow((_vector[_j3] || 0) - means[_j3], 2);
     }
   } catch (err) {
     _iterator2.e(err);
   } finally {
     _iterator2.f();
   }
-  for (var _j = 0; _j < numFeatures; _j++) {
-    stdDevs[_j] = Math.sqrt(stdDevs[_j] / numSamples);
-  }
+  for (var _j = 0; _j < numFeatures; _j++) stdDevs[_j] = Math.sqrt(stdDevs[_j] / numSamples);
   return featureVectors.map(function (vector) {
     return vector.map(function (value, j) {
       var std = stdDevs[j];
       var mean = means[j];
       var normalizedValue = std < 1e-10 ? 0 : ((value || 0) - mean) / std;
-      var category = j < featureCategories.length && featureCategories[j] ? featureCategories[j] : 'default';
+      var category = j < categories.length && categories[j] ? categories[j] : 'default';
       var weight = CATEGORY_WEIGHTS[category] || CATEGORY_WEIGHTS['default'];
       return normalizedValue * weight;
     });
@@ -342,30 +292,22 @@ function pca(processedData) {
   if (!processedData || processedData.length === 0) return [];
   var numSamples = processedData.length;
   var numFeatures = ((_processedData$ = processedData[0]) === null || _processedData$ === void 0 ? void 0 : _processedData$.length) || 0;
-  if (numFeatures === 0) {
-    console.warn('PCA: Input data has no features.');
-    return processedData.map(function () {
-      return Array(nComponents).fill(0.5);
-    });
-  }
-  if (nComponents > numFeatures) {
-    nComponents = numFeatures;
-  }
-  if (nComponents <= 0) {
-    nComponents = numFeatures > 0 ? 1 : 0;
-    if (nComponents === 0) return processedData.map(function () {
-      return [];
-    });
-  }
-  if (numSamples <= 1) {
-    return processedData.map(function () {
-      return Array(nComponents).fill(0.5);
-    });
-  }
+  if (numFeatures === 0) return processedData.map(function () {
+    return Array(nComponents).fill(0.5);
+  });
+  nComponents = Math.min(nComponents, numFeatures > 0 ? numFeatures : nComponents);
+  if (nComponents <= 0) return processedData.map(function () {
+    return [];
+  });
+  if (numSamples <= 1) return processedData.map(function () {
+    return Array(nComponents).fill(0.5);
+  });
+
+  // Standard PCA implementation (remains largely the same)
   var means = processedData[0].map(function (_, colIndex) {
-    var sum = 0;
-    for (var i = 0; i < numSamples; i++) sum += processedData[i][colIndex];
-    return sum / numSamples;
+    return processedData.reduce(function (sum, row) {
+      return sum + row[colIndex];
+    }, 0) / numSamples;
   });
   var centeredData = processedData.map(function (row) {
     return row.map(function (val, colIndex) {
@@ -479,17 +421,13 @@ function pca(processedData) {
       }, 0);
     });
   });
-  if (projected.length === 0 || nComponents === 0) {
-    return projected.map(function () {
-      return Array(nComponents).fill(0.5);
-    });
-  }
+  if (projected.length === 0 || nComponents === 0) return projected.map(function () {
+    return Array(nComponents).fill(0.5);
+  });
   var actualNumOutputComponents = ((_projected$ = projected[0]) === null || _projected$ === void 0 ? void 0 : _projected$.length) || 0;
-  if (actualNumOutputComponents === 0) {
-    return projected.map(function () {
-      return Array(nComponents).fill(0.5);
-    });
-  }
+  if (actualNumOutputComponents === 0) return projected.map(function () {
+    return Array(nComponents).fill(0.5);
+  });
   var minMax = Array(actualNumOutputComponents).fill(null).map(function (_, i) {
     return {
       min: Math.min.apply(Math, _toConsumableArray(projected.map(function (p) {
@@ -511,14 +449,13 @@ function pca(processedData) {
 function hdbscan(data) {
   var minClusterSize = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : HDBSCAN_DEFAULT_MIN_CLUSTER_SIZE;
   var minSamples = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : HDBSCAN_DEFAULT_MIN_SAMPLES;
+  // HDBSCAN implementation (remains largely the same)
   if (!data || data.length === 0) return [];
   var n = data.length;
   if (n === 0) return [];
   minClusterSize = Math.max(1, Math.min(minClusterSize, n));
   minSamples = Math.max(1, Math.min(minSamples, n > 1 ? n - 1 : 1));
-  if (n < minClusterSize && n > 0) {
-    return Array(n).fill(NOISE_CLUSTER_ID);
-  }
+  if (n < minClusterSize && n > 0) return Array(n).fill(NOISE_CLUSTER_ID);
   function computeMutualReachabilityDistance() {
     var distances = Array(n).fill(null).map(function () {
       return Array(n).fill(0);
@@ -572,9 +509,7 @@ function hdbscan(data) {
       }
       if (u === -1) break;
       visited[u] = true;
-      if (edgeToVertex[u] !== -1) {
-        mstEdges.push([u, edgeToVertex[u], minEdgeWeight[u]]);
-      }
+      if (edgeToVertex[u] !== -1) mstEdges.push([u, edgeToVertex[u], minEdgeWeight[u]]);
       for (var _v = 0; _v < n; _v++) {
         if (!visited[_v]) {
           var _mutualReachabilityDi, _mutualReachabilityDi2;
@@ -608,9 +543,9 @@ function hdbscan(data) {
         rootJ = findSet(j);
       if (rootI !== rootJ) {
         if (componentSize[rootI] < componentSize[rootJ]) {
-          var _ref9 = [rootJ, rootI];
-          rootI = _ref9[0];
-          rootJ = _ref9[1];
+          var _ref7 = [rootJ, rootI];
+          rootI = _ref7[0];
+          rootJ = _ref7[1];
         }
         parent[rootJ] = rootI;
         componentSize[rootI] += componentSize[rootJ];
@@ -691,75 +626,80 @@ var TrackVisualizer = function TrackVisualizer() {
     _useState18 = _slicedToArray(_useState17, 2),
     topNThreshold = _useState18[0],
     setTopNThreshold = _useState18[1];
-
-  // Add zoom state
-  var _useState19 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(1),
+  var _useState19 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
+      width: window.innerWidth,
+      height: window.innerHeight - 150
+    }),
     _useState20 = _slicedToArray(_useState19, 2),
-    zoom = _useState20[0],
-    setZoom = _useState20[1];
-  var _useState21 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
-      x: 0,
-      y: 0
-    }),
-    _useState22 = _slicedToArray(_useState21, 2),
-    pan = _useState22[0],
-    setPan = _useState22[1];
-  var _useState23 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(false),
-    _useState24 = _slicedToArray(_useState23, 2),
-    isDragging = _useState24[0],
-    setIsDragging = _useState24[1];
-  var _useState25 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
-      x: 0,
-      y: 0
-    }),
-    _useState26 = _slicedToArray(_useState25, 2),
-    dragStart = _useState26[0],
-    setDragStart = _useState26[1];
+    svgDimensions = _useState20[0],
+    setSvgDimensions = _useState20[1]; // Adjust height for controls
+  var viewModeRef = react__WEBPACK_IMPORTED_MODULE_0___default().useRef(null); // Ref for visualization area dimensions
 
-  // Handle window resize
+  var _useState21 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(1),
+    _useState22 = _slicedToArray(_useState21, 2),
+    zoom = _useState22[0],
+    setZoom = _useState22[1];
+  var _useState23 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
+      x: 0,
+      y: 0
+    }),
+    _useState24 = _slicedToArray(_useState23, 2),
+    pan = _useState24[0],
+    setPan = _useState24[1];
+  var _useState25 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(false),
+    _useState26 = _slicedToArray(_useState25, 2),
+    isDragging = _useState26[0],
+    setIsDragging = _useState26[1];
+  var _useState27 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
+      x: 0,
+      y: 0
+    }),
+    _useState28 = _slicedToArray(_useState27, 2),
+    dragStart = _useState28[0],
+    setDragStart = _useState28[1];
+  var VIEW_BOX_VALUE = "0 0 ".concat(svgDimensions.width, " ").concat(svgDimensions.height);
   (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(function () {
-    var handleResize = function handleResize() {
-      setPlotData(function (prevData) {
-        if (!prevData || prevData.length === 0) return prevData;
-        return prevData.map(function (point) {
-          return _objectSpread(_objectSpread({}, point), {}, {
-            x: PADDING + point.x * (window.innerWidth - 2 * PADDING),
-            y: PADDING + point.y * (window.innerHeight - 2 * PADDING)
-          });
+    var updateDimensions = function updateDimensions() {
+      if (viewModeRef.current) {
+        setSvgDimensions({
+          width: viewModeRef.current.clientWidth,
+          height: viewModeRef.current.clientHeight
         });
-      });
+      } else {
+        // Fallback if ref not ready, though less ideal.
+        // Adjust height to account for controls/header, or make it dynamic.
+        setSvgDimensions({
+          width: window.innerWidth,
+          height: window.innerHeight - 180
+        });
+      }
     };
-    window.addEventListener('resize', handleResize);
+    updateDimensions(); // Initial set
+    window.addEventListener('resize', updateDimensions);
     return function () {
-      return window.removeEventListener('resize', handleResize);
+      return window.removeEventListener('resize', updateDimensions);
     };
   }, []);
-
-  // Handle zoom with mouse wheel
   var handleWheel = (0,react__WEBPACK_IMPORTED_MODULE_0__.useCallback)(function (e) {
     e.preventDefault();
     var delta = e.deltaY;
     var zoomFactor = delta > 0 ? 0.9 : 1.1;
-    var newZoom = Math.min(Math.max(zoom * zoomFactor, 0.1), 10);
-
-    // Calculate mouse position relative to SVG
     var svgRect = e.currentTarget.getBoundingClientRect();
     var mouseX = e.clientX - svgRect.left;
     var mouseY = e.clientY - svgRect.top;
-
-    // Calculate new pan to zoom towards mouse position
-    var newPan = {
-      x: pan.x - (mouseX - pan.x) * (zoomFactor - 1),
-      y: pan.y - (mouseY - pan.y) * (zoomFactor - 1)
-    };
-    setZoom(newZoom);
-    setPan(newPan);
-  }, [zoom, pan]);
-
-  // Handle panning
+    setZoom(function (prevZoom) {
+      var newZoom = Math.min(Math.max(prevZoom * zoomFactor, 0.1), 10);
+      setPan(function (prevPan) {
+        return {
+          x: prevPan.x - (mouseX - prevPan.x) * (newZoom / prevZoom - 1),
+          y: prevPan.y - (mouseY - prevPan.y) * (newZoom / prevZoom - 1)
+        };
+      });
+      return newZoom;
+    });
+  }, []);
   var handleMouseDown = (0,react__WEBPACK_IMPORTED_MODULE_0__.useCallback)(function (e) {
     if (e.button === 0) {
-      // Left mouse button
       setIsDragging(true);
       setDragStart({
         x: e.clientX - pan.x,
@@ -776,10 +716,8 @@ var TrackVisualizer = function TrackVisualizer() {
     }
   }, [isDragging, dragStart]);
   var handleMouseUp = (0,react__WEBPACK_IMPORTED_MODULE_0__.useCallback)(function () {
-    setIsDragging(false);
+    return setIsDragging(false);
   }, []);
-
-  // Reset zoom and pan
   var handleReset = (0,react__WEBPACK_IMPORTED_MODULE_0__.useCallback)(function () {
     setZoom(1);
     setPan({
@@ -789,9 +727,7 @@ var TrackVisualizer = function TrackVisualizer() {
   }, []);
   var adjustLuminance = function adjustLuminance(hex, lum) {
     hex = String(hex).replace(/[^0-9a-f]/gi, '');
-    if (hex.length < 6) {
-      hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
-    }
+    if (hex.length < 6) hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
     lum = lum || 0;
     var rgb = "#",
       c,
@@ -812,85 +748,67 @@ var TrackVisualizer = function TrackVisualizer() {
     var featureFrequencies = new Map();
     tracks.forEach(function (track) {
       if (!track) return;
-      switch (selectedCategory) {
-        case 'genre':
-        case 'style':
-          var featuresGS = track.features;
-          if (featuresGS) {
-            try {
-              var parsed = typeof featuresGS === 'string' ? JSON.parse(featuresGS) : featuresGS;
-              if (_typeof(parsed) === 'object' && parsed !== null) {
-                Object.entries(parsed).forEach(function (_ref10) {
-                  var _ref11 = _slicedToArray(_ref10, 2),
-                    key = _ref11[0],
-                    value = _ref11[1];
-                  var probability = parseFloat(value);
-                  if (isNaN(probability) || probability <= 0) return;
-                  var _key$split = key.split('---'),
-                    _key$split2 = _slicedToArray(_key$split, 2),
-                    genrePart = _key$split2[0],
-                    stylePart = _key$split2[1];
-                  var featureName = selectedCategory === 'genre' ? genrePart : stylePart;
-                  if (featureName) {
-                    featureFrequencies.set(featureName, (featureFrequencies.get(featureName) || 0) + probability);
-                  }
-                });
-              }
-            } catch (e) {
-              console.warn("Failed to parse genre/style features for track ".concat(track.id, ":"), e, featuresGS);
-            }
+      var featuresToParse = null;
+      var keyExtractor = function keyExtractor(key) {
+        return key;
+      };
+      if (selectedCategory === 'genre' || selectedCategory === 'style') {
+        featuresToParse = track.features; // Assuming 'features' contains 'genre---style'
+        keyExtractor = function keyExtractor(key) {
+          var _key$split = key.split('---'),
+            _key$split2 = _slicedToArray(_key$split, 2),
+            genrePart = _key$split2[0],
+            stylePart = _key$split2[1];
+          return selectedCategory === 'genre' ? genrePart : stylePart;
+        };
+      } else if (selectedCategory === 'instrument') {
+        featuresToParse = track.instrument_features;
+      } else if (selectedCategory === 'mood') {
+        MOOD_KEYWORDS.forEach(function (key) {
+          var value = track[key];
+          if (typeof value === 'number' && !isNaN(value)) {
+            featureFrequencies.set(key, (featureFrequencies.get(key) || 0) + value);
           }
-          break;
-        case 'mood':
-          MOOD_KEYWORDS.forEach(function (key) {
-            var value = track[key];
-            if (typeof value === 'number' && !isNaN(value)) {
-              featureFrequencies.set(key, (featureFrequencies.get(key) || 0) + value);
-            }
-          });
-          break;
-        case 'spectral':
-          SPECTRAL_KEYWORDS.forEach(function (key) {
-            var value = track[key];
-            if (typeof value === 'number' && !isNaN(value)) {
-              featureFrequencies.set(key, (featureFrequencies.get(key) || 0) + value);
-            }
-          });
-          break;
-        case 'instrument':
-          var instrumentF = track.instrument_features;
-          if (instrumentF) {
-            try {
-              var _parsed = typeof instrumentF === 'string' ? JSON.parse(instrumentF) : instrumentF;
-              if (_typeof(_parsed) === 'object' && _parsed !== null) {
-                Object.entries(_parsed).forEach(function (_ref12) {
-                  var _ref13 = _slicedToArray(_ref12, 2),
-                    key = _ref13[0],
-                    value = _ref13[1];
-                  var score = parseFloat(value);
-                  if (!isNaN(score) && score > 0) {
-                    featureFrequencies.set(key, (featureFrequencies.get(key) || 0) + score);
-                  }
-                });
-              }
-            } catch (e) {
-              console.warn("Failed to parse instrument features for track ".concat(track.id, ":"), e, instrumentF);
-            }
+        });
+      } else if (selectedCategory === 'spectral') {
+        SPECTRAL_KEYWORDS.forEach(function (key) {
+          var value = track[key];
+          if (typeof value === 'number' && !isNaN(value)) {
+            featureFrequencies.set(key, (featureFrequencies.get(key) || 0) + value);
           }
-          break;
+        });
+      }
+      if (featuresToParse) {
+        try {
+          var parsed = typeof featuresToParse === 'string' ? JSON.parse(featuresToParse) : featuresToParse;
+          if (_typeof(parsed) === 'object' && parsed !== null) {
+            Object.entries(parsed).forEach(function (_ref8) {
+              var _ref9 = _slicedToArray(_ref8, 2),
+                key = _ref9[0],
+                value = _ref9[1];
+              var probability = parseFloat(value);
+              if (isNaN(probability) || probability <= 0) return;
+              var featureName = keyExtractor(key);
+              if (featureName) {
+                featureFrequencies.set(featureName, (featureFrequencies.get(featureName) || 0) + probability);
+              }
+            });
+          }
+        } catch (e) {/* console.warn(...) */}
       }
     });
     var sortedFeatures = Array.from(featureFrequencies.entries()).sort(function (a, b) {
       return b[1] - a[1];
     }).slice(0, topNThreshold);
     var newStyleColors = new Map();
-    sortedFeatures.forEach(function (_ref14, index) {
-      var _ref15 = _slicedToArray(_ref14, 1),
-        featureName = _ref15[0];
+    sortedFeatures.forEach(function (_ref10, index) {
+      var _ref11 = _slicedToArray(_ref10, 1),
+        featureName = _ref11[0];
       var luminanceFactor = 0;
       if (index > 0) {
+        // Base color for the most prominent (index 0)
         var magnitude = Math.min(Math.ceil(index / 2) * LUMINANCE_INCREMENT, MAX_LUM_OFFSET);
-        luminanceFactor = index % 2 === 1 ? magnitude : -magnitude;
+        luminanceFactor = index % 2 === 1 ? magnitude : -magnitude; // Alternate lighter/darker
       }
       var shadedColor = adjustLuminance(baseColorForCategory, luminanceFactor);
       newStyleColors.set(featureName, shadedColor);
@@ -901,10 +819,9 @@ var TrackVisualizer = function TrackVisualizer() {
     if (!plotData || plotData.length === 0 || styleColors.size === 0) {
       var fallbackMap = {};
       if (plotData.length > 0) {
-        var _uniqueClusters = _toConsumableArray(new Set(plotData.map(function (p) {
+        _toConsumableArray(new Set(plotData.map(function (p) {
           return p.cluster;
-        })));
-        _uniqueClusters.forEach(function (id) {
+        }))).forEach(function (id) {
           return fallbackMap[id] = NOISE_CLUSTER_COLOR;
         });
       }
@@ -924,83 +841,63 @@ var TrackVisualizer = function TrackVisualizer() {
       var clusterTracks = plotData.filter(function (p) {
         return p.cluster === clusterId;
       });
-      var clusterFeatureValues = new Map(); // featureName -> sum of values in this cluster
-
+      var clusterFeatureValues = new Map();
       clusterTracks.forEach(function (track) {
         if (!track) return;
-        switch (selectedCategory) {
-          case 'genre':
-          case 'style':
-            var featuresGS = track.features;
-            if (featuresGS) {
-              try {
-                var parsed = typeof featuresGS === 'string' ? JSON.parse(featuresGS) : featuresGS;
-                if (_typeof(parsed) === 'object' && parsed !== null) {
-                  Object.entries(parsed).forEach(function (_ref16) {
-                    var _ref17 = _slicedToArray(_ref16, 2),
-                      key = _ref17[0],
-                      value = _ref17[1];
-                    var _key$split3 = key.split('---'),
-                      _key$split4 = _slicedToArray(_key$split3, 2),
-                      genrePart = _key$split4[0],
-                      stylePart = _key$split4[1];
-                    var featureName = selectedCategory === 'genre' ? genrePart : stylePart;
-                    if (featureName && styleColors.has(featureName)) {
-                      var score = parseFloat(value);
-                      if (!isNaN(score) && score > 0) {
-                        clusterFeatureValues.set(featureName, (clusterFeatureValues.get(featureName) || 0) + score);
-                      }
-                    }
-                  });
-                }
-              } catch (e) {/* console.warn(...) */}
-            }
-            break;
-          case 'mood':
-            MOOD_KEYWORDS.forEach(function (key) {
-              if (styleColors.has(key)) {
-                var value = track[key];
-                if (typeof value === 'number' && !isNaN(value)) {
-                  clusterFeatureValues.set(key, (clusterFeatureValues.get(key) || 0) + value);
-                }
+        var featuresToParse = null;
+        var keyExtractor = function keyExtractor(key) {
+          return key;
+        };
+        if (selectedCategory === 'genre' || selectedCategory === 'style') {
+          featuresToParse = track.features;
+          keyExtractor = function keyExtractor(key) {
+            var _key$split3 = key.split('---'),
+              _key$split4 = _slicedToArray(_key$split3, 2),
+              genrePart = _key$split4[0],
+              stylePart = _key$split4[1];
+            return selectedCategory === 'genre' ? genrePart : stylePart;
+          };
+        } else if (selectedCategory === 'instrument') {
+          featuresToParse = track.instrument_features;
+        } else if (selectedCategory === 'mood') {
+          MOOD_KEYWORDS.forEach(function (key) {
+            if (styleColors.has(key)) {
+              var value = track[key];
+              if (typeof value === 'number' && !isNaN(value)) {
+                clusterFeatureValues.set(key, (clusterFeatureValues.get(key) || 0) + value);
               }
-            });
-            break;
-          case 'spectral':
-            SPECTRAL_KEYWORDS.forEach(function (key) {
-              if (styleColors.has(key)) {
-                var value = track[key];
-                if (typeof value === 'number' && !isNaN(value)) {
-                  clusterFeatureValues.set(key, (clusterFeatureValues.get(key) || 0) + value);
-                }
-              }
-            });
-            break;
-          case 'instrument':
-            var instrumentF = track.instrument_features;
-            if (instrumentF) {
-              try {
-                var _parsed2 = typeof instrumentF === 'string' ? JSON.parse(instrumentF) : instrumentF;
-                if (_typeof(_parsed2) === 'object' && _parsed2 !== null) {
-                  Object.entries(_parsed2).forEach(function (_ref18) {
-                    var _ref19 = _slicedToArray(_ref18, 2),
-                      key = _ref19[0],
-                      value = _ref19[1];
-                    if (styleColors.has(key)) {
-                      var score = parseFloat(value);
-                      if (!isNaN(score) && score > 0) {
-                        clusterFeatureValues.set(key, (clusterFeatureValues.get(key) || 0) + score);
-                      }
-                    }
-                  });
-                }
-              } catch (e) {/* console.warn(...) */}
             }
-            break;
+          });
+        } else if (selectedCategory === 'spectral') {
+          SPECTRAL_KEYWORDS.forEach(function (key) {
+            if (styleColors.has(key)) {
+              var value = track[key];
+              if (typeof value === 'number' && !isNaN(value)) {
+                clusterFeatureValues.set(key, (clusterFeatureValues.get(key) || 0) + value);
+              }
+            }
+          });
+        }
+        if (featuresToParse) {
+          try {
+            var parsed = typeof featuresToParse === 'string' ? JSON.parse(featuresToParse) : featuresToParse;
+            if (_typeof(parsed) === 'object' && parsed !== null) {
+              Object.entries(parsed).forEach(function (_ref12) {
+                var _ref13 = _slicedToArray(_ref12, 2),
+                  key = _ref13[0],
+                  value = _ref13[1];
+                var featureName = keyExtractor(key);
+                if (featureName && styleColors.has(featureName)) {
+                  var score = parseFloat(value);
+                  if (!isNaN(score) && score > 0) {
+                    clusterFeatureValues.set(featureName, (clusterFeatureValues.get(featureName) || 0) + score);
+                  }
+                }
+              });
+            }
+          } catch (e) {/* console.warn(...) */}
         }
       });
-
-      // Find the dominant feature and its relative strength
       var dominantFeature = null;
       var maxValue = 0;
       var totalValue = 0;
@@ -1012,10 +909,9 @@ var TrackVisualizer = function TrackVisualizer() {
         }
       });
       if (dominantFeature) {
-        // Calculate relative strength (0 to 1) of the dominant feature
         var relativeStrength = totalValue > 0 ? maxValue / totalValue : 0;
-        // Map relative strength to a luminance offset (-0.3 to 0.3)
-        var luminanceOffset = (relativeStrength - 0.5) * 0.6;
+        // Adjusted luminance factor for cluster color based on dominant feature strength
+        var luminanceOffset = (relativeStrength - 0.5) * 0.4; // Was 0.6 factor
         var baseColor = styleColors.get(dominantFeature) || NOISE_CLUSTER_COLOR;
         newClusterColors[clusterId] = adjustLuminance(baseColor, luminanceOffset);
       } else {
@@ -1023,165 +919,135 @@ var TrackVisualizer = function TrackVisualizer() {
       }
     });
     return newClusterColors;
-  }, [plotData, styleColors, selectedCategory, tracks, featureMetadata, topNThreshold]);
-  (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(function () {
-    var fetchTracks = /*#__PURE__*/function () {
-      var _ref20 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee() {
-        var response, errorData, rawData, keysWithCats, featureNames, featureCats, parsedTracks;
-        return _regeneratorRuntime().wrap(function _callee$(_context) {
-          while (1) switch (_context.prev = _context.next) {
-            case 0:
-              _context.prev = 0;
-              setLoading(true);
-              setError(null);
-              _context.next = 5;
-              return fetch('http://localhost:3000/tracks');
-            case 5:
-              response = _context.sent;
-              if (response.ok) {
-                _context.next = 11;
-                break;
-              }
-              _context.next = 9;
-              return response.json()["catch"](function () {
-                return {
-                  error: "HTTP error! status: ".concat(response.status)
-                };
-              });
-            case 9:
-              errorData = _context.sent;
-              throw new Error(errorData.error || "HTTP error! status: ".concat(response.status));
-            case 11:
-              _context.next = 13;
-              return response.json();
-            case 13:
-              rawData = _context.sent;
-              if (Array.isArray(rawData)) {
-                _context.next = 17;
-                break;
-              }
-              console.error("Fetched data is not an array:", rawData);
-              throw new Error("Invalid data format: Expected an array of tracks.");
-            case 17:
-              keysWithCats = getAllFeatureKeysAndCategories(rawData);
-              featureNames = keysWithCats.map(function (kc) {
-                return kc.name;
-              });
-              featureCats = keysWithCats.map(function (kc) {
-                return kc.category;
-              });
-              if (featureNames.length === 0) {
-                console.warn("No features found across all tracks.");
-              }
-              setFeatureMetadata({
-                names: featureNames,
-                categories: featureCats
-              });
-              parsedTracks = rawData.map(function (track) {
-                if (!track || _typeof(track) !== 'object' || !track.id) {
-                  console.warn('Skipping invalid track data entry:', track);
-                  return null;
-                }
-                try {
-                  var featureVector = mergeFeatureVectors(track, featureNames);
-                  return _objectSpread(_objectSpread({}, track), {}, {
-                    featureVector: featureVector
-                  });
-                } catch (e) {
-                  console.warn("Error processing features for track ".concat(track.id, ":"), e);
-                  return null;
-                }
-              }).filter(Boolean);
-              setTracks(parsedTracks);
-              _context.next = 32;
-              break;
-            case 26:
-              _context.prev = 26;
-              _context.t0 = _context["catch"](0);
-              console.error("Failed to fetch or process tracks:", _context.t0);
-              setError(_context.t0.message || 'An unknown error occurred.');
-              setTracks([]);
-              setFeatureMetadata({
-                names: [],
-                categories: []
-              });
-            case 32:
-              _context.prev = 32;
-              setLoading(false);
-              return _context.finish(32);
-            case 35:
-            case "end":
-              return _context.stop();
+  }, [plotData, styleColors, selectedCategory, tracks, featureMetadata, topNThreshold]); // Removed tracks, featureMetadata, topNThreshold if not directly used for color mapping logic that changes per cluster beyond plotData & styleColors
+
+  var fetchTracksData = (0,react__WEBPACK_IMPORTED_MODULE_0__.useCallback)(/*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee() {
+    var response, errorData, rawData, keysWithCats, featureNames, featureCats, parsedTracks;
+    return _regeneratorRuntime().wrap(function _callee$(_context) {
+      while (1) switch (_context.prev = _context.next) {
+        case 0:
+          _context.prev = 0;
+          setLoading(true);
+          setError(null);
+          _context.next = 5;
+          return fetch('http://localhost:3000/tracks');
+        case 5:
+          response = _context.sent;
+          if (response.ok) {
+            _context.next = 11;
+            break;
           }
-        }, _callee, null, [[0, 26, 32, 35]]);
-      }));
-      return function fetchTracks() {
-        return _ref20.apply(this, arguments);
-      };
-    }();
-    fetchTracks();
-  }, []);
+          _context.next = 9;
+          return response.json()["catch"](function () {
+            return {
+              error: "HTTP error! status: ".concat(response.status)
+            };
+          });
+        case 9:
+          errorData = _context.sent;
+          throw new Error(errorData.error || "HTTP error! status: ".concat(response.status));
+        case 11:
+          _context.next = 13;
+          return response.json();
+        case 13:
+          rawData = _context.sent;
+          if (Array.isArray(rawData)) {
+            _context.next = 16;
+            break;
+          }
+          throw new Error("Invalid data: Expected array.");
+        case 16:
+          keysWithCats = getAllFeatureKeysAndCategories(rawData);
+          featureNames = keysWithCats.map(function (kc) {
+            return kc.name;
+          });
+          featureCats = keysWithCats.map(function (kc) {
+            return kc.category;
+          });
+          setFeatureMetadata({
+            names: featureNames,
+            categories: featureCats
+          });
+          parsedTracks = rawData.map(function (track) {
+            if (!track || _typeof(track) !== 'object' || !track.id) return null;
+            try {
+              var featureVector = mergeFeatureVectors(track, featureNames);
+              return _objectSpread(_objectSpread({}, track), {}, {
+                featureVector: featureVector
+              });
+            } catch (e) {
+              return null;
+            }
+          }).filter(Boolean);
+          setTracks(parsedTracks);
+          _context.next = 29;
+          break;
+        case 24:
+          _context.prev = 24;
+          _context.t0 = _context["catch"](0);
+          setError(_context.t0.message || 'Unknown error.');
+          setTracks([]);
+          setFeatureMetadata({
+            names: [],
+            categories: []
+          });
+        case 29:
+          _context.prev = 29;
+          setLoading(false);
+          return _context.finish(29);
+        case 32:
+        case "end":
+          return _context.stop();
+      }
+    }, _callee, null, [[0, 24, 29, 32]]);
+  })), []);
   (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(function () {
-    if (loading || tracks.length === 0) {
+    fetchTracksData();
+  }, [fetchTracksData]);
+  (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(function () {
+    if (loading || tracks.length === 0 || svgDimensions.width === 0 || svgDimensions.height === 0) {
       setPlotData([]);
       return;
     }
-    if (featureMetadata.names.length === 0 && tracks.length > 0) {
-      console.warn("Tracks available, but feature metadata missing. Plotting may be incorrect.");
-      // Potentially set an error or allow processing with defaults if featureMetadata is crucial and missing
-      return;
-    }
-    if (tracks.some(function (t) {
-      return !t.featureVector;
-    })) {
-      console.warn("Some tracks are missing feature vectors. Plotting may be incomplete or incorrect.");
-      // Potentially filter these tracks out or handle them before normalization
-    }
+    if (featureMetadata.names.length === 0 && tracks.length > 0) return; // Wait for metadata
 
-    // console.log("Processing tracks for visualization...");
     var validTracksForProcessing = tracks.filter(function (t) {
       return t.featureVector && t.featureVector.length === featureMetadata.names.length;
     });
-    if (validTracksForProcessing.length !== tracks.length) {
-      console.warn("Filtered out ".concat(tracks.length - validTracksForProcessing.length, " tracks due to missing or mismatched feature vectors."));
-    }
-    if (validTracksForProcessing.length === 0 && tracks.length > 0) {
-      setError("No tracks have valid feature vectors for processing.");
-      setPlotData([]);
-      return;
-    }
     if (validTracksForProcessing.length === 0) {
+      if (tracks.length > 0) setError("No tracks have valid features for processing.");
       setPlotData([]);
       return;
     }
     var featureVectors = validTracksForProcessing.map(function (t) {
       return t.featureVector;
     });
-
-    // Ensure featureMetadata.categories corresponds to featureMetadata.names
-    // This should be guaranteed by getAllFeatureKeysAndCategories and mergeFeatureVectors if implemented correctly
     var processedFeatureData = normalizeFeatures(featureVectors, featureMetadata.categories);
-    var clusterLabels = hdbscan(processedFeatureData, HDBSCAN_DEFAULT_MIN_CLUSTER_SIZE, HDBSCAN_DEFAULT_MIN_SAMPLES);
-    var projectedData = pca(processedFeatureData, PCA_N_COMPONENTS);
+    var clusterLabels = hdbscan(processedFeatureData); // Using default constants
+    var projectedData = pca(processedFeatureData); // Using default constants
+
     var newPlotData = validTracksForProcessing.map(function (track, index) {
       var _projectedData$index, _clusterLabels$index;
-      var p = projectedData && index < projectedData.length && ((_projectedData$index = projectedData[index]) === null || _projectedData$index === void 0 ? void 0 : _projectedData$index.length) === PCA_N_COMPONENTS ? projectedData[index] : [0.5, 0.5]; // Fallback if PCA fails for a point
+      var p_coords = projectedData && index < projectedData.length && ((_projectedData$index = projectedData[index]) === null || _projectedData$index === void 0 ? void 0 : _projectedData$index.length) === PCA_N_COMPONENTS ? projectedData[index] : [0.5, 0.5];
       return _objectSpread(_objectSpread({}, track), {}, {
-        x: PADDING + p[0] * (SVG_WIDTH - 2 * PADDING),
-        y: PADDING + p[1] * (SVG_HEIGHT - 2 * PADDING),
+        originalX: p_coords[0],
+        // Store original normalized coordinate
+        originalY: p_coords[1],
+        // Store original normalized coordinate
+        x: PADDING + p_coords[0] * (svgDimensions.width - 2 * PADDING),
+        y: PADDING + p_coords[1] * (svgDimensions.height - 2 * PADDING),
         cluster: (_clusterLabels$index = clusterLabels[index]) !== null && _clusterLabels$index !== void 0 ? _clusterLabels$index : NOISE_CLUSTER_ID
       });
     });
     setPlotData(newPlotData);
-    // console.log("Plot data prepared.");
-  }, [tracks, featureMetadata, loading]); // Removed PCA_N_COMPONENTS, HDBSCAN_... as they are constants
+  }, [tracks, featureMetadata, loading, svgDimensions]); // svgDimensions dependency added
 
   var handleMouseOver = (0,react__WEBPACK_IMPORTED_MODULE_0__.useCallback)(function (trackData, event) {
     var _trackData$bpm, _trackData$tag1_prob;
     setTooltip({
       content: /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement((react__WEBPACK_IMPORTED_MODULE_0___default().Fragment), null, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("img", {
         src: trackData.artwork_thumbnail_path ? "file://".concat(trackData.artwork_thumbnail_path) : PLACEHOLDER_IMAGE,
-        alt: "".concat(trackData.artist || 'Unknown Artist', " - ").concat(trackData.title || 'Unknown Title'),
+        alt: "".concat(trackData.artist || 'Unknown', " - ").concat(trackData.title || 'Unknown'),
         onError: function onError(e) {
           e.target.onerror = null;
           e.target.src = PLACEHOLDER_IMAGE;
@@ -1192,7 +1058,7 @@ var TrackVisualizer = function TrackVisualizer() {
           objectFit: 'cover',
           marginRight: '10px',
           "float": 'left',
-          border: '1px solid #ccc'
+          borderRadius: '4px' /* border handled by SCSS */
         }
       }), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
         style: {
@@ -1215,33 +1081,26 @@ var TrackVisualizer = function TrackVisualizer() {
   if (error) return /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
     className: "track-visualizer-error"
   }, "Error: ", error, " ", /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("button", {
-    onClick: function onClick() {
-      setError(null);
-      setLoading(true);
-      fetchTracks(); /* or window.location.reload() */
-    }
+    onClick: fetchTracksData
   }, "Try Reload"));
   if (plotData.length === 0 && !loading && tracks.length > 0) return /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
     className: "track-visualizer-empty"
-  }, "Data processed, but no points to visualize. Check console for errors or warnings.");
+  }, "Data processed, but no points to visualize. Check console for errors.");
   if (plotData.length === 0 && !loading && tracks.length === 0) return /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
     className: "track-visualizer-empty"
   }, "No tracks data loaded.");
   return /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
-    className: "track-visualizer-container",
-    style: {
-      width: '100vw',
-      height: '100vh',
-      position: 'relative'
-    }
-  }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("h3", null, "Track Similarity Visualization (HDBSCAN & PCA)"), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
+    className: "track-visualizer-container"
+  }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("h3", null, "Track Similarity Visualization"), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
     className: "controls-panel"
   }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
     className: "category-toggle"
-  }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("label", null, "Color by Category: "), Object.entries(CATEGORY_BASE_COLORS).map(function (_ref21) {
-    var _ref22 = _slicedToArray(_ref21, 2),
-      categoryKey = _ref22[0],
-      colorValue = _ref22[1];
+  }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("label", {
+    htmlFor: "categorySelect"
+  }, "Color by:"), Object.entries(CATEGORY_BASE_COLORS).map(function (_ref15) {
+    var _ref16 = _slicedToArray(_ref15, 2),
+      categoryKey = _ref16[0],
+      colorValue = _ref16[1];
     return /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("button", {
       key: categoryKey,
       onClick: function onClick() {
@@ -1249,21 +1108,17 @@ var TrackVisualizer = function TrackVisualizer() {
       },
       className: selectedCategory === categoryKey ? 'active' : '',
       style: {
-        backgroundColor: selectedCategory === categoryKey ? colorValue : '#f0f0f0',
-        color: selectedCategory === categoryKey ? parseInt(colorValue.slice(1, 3), 16) * 0.299 + parseInt(colorValue.slice(3, 5), 16) * 0.587 + parseInt(colorValue.slice(5, 7), 16) * 0.114 > 186 ? '#000000' : '#ffffff' : '#333333',
-        border: "2px solid ".concat(selectedCategory === categoryKey ? adjustLuminance(colorValue, -0.3) : colorValue),
-        margin: '0 5px',
-        padding: '5px 10px',
-        borderRadius: '4px',
-        cursor: 'pointer',
-        fontWeight: selectedCategory === categoryKey ? 'bold' : 'normal'
+        backgroundColor: selectedCategory === categoryKey ? colorValue : DARK_MODE_SURFACE_ALT,
+        color: selectedCategory === categoryKey ? parseInt(colorValue.slice(1, 3), 16) * 0.299 + parseInt(colorValue.slice(3, 5), 16) * 0.587 + parseInt(colorValue.slice(5, 7), 16) * 0.114 > 160 ? '#000000' : DARK_MODE_TEXT_PRIMARY : DARK_MODE_TEXT_SECONDARY,
+        // Adjusted threshold for dark bg text
+        border: "2px solid ".concat(selectedCategory === categoryKey ? adjustLuminance(colorValue, -0.2) : DARK_MODE_BORDER)
       }
     }, categoryKey.charAt(0).toUpperCase() + categoryKey.slice(1));
   })), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
     className: "threshold-control"
   }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("label", {
     htmlFor: "topNInput"
-  }, "Top N Features: "), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("input", {
+  }, "Top N Features:"), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("input", {
     id: "topNInput",
     type: "number",
     min: "1",
@@ -1271,34 +1126,16 @@ var TrackVisualizer = function TrackVisualizer() {
     value: topNThreshold,
     onChange: function onChange(e) {
       return setTopNThreshold(Math.max(1, Math.min(50, parseInt(e.target.value) || 1)));
-    },
-    style: {
-      width: '60px',
-      padding: '4px',
-      marginLeft: '5px',
-      borderRadius: '4px',
-      border: '1px solid #ccc'
     }
   })), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("button", {
     onClick: handleReset,
-    style: {
-      marginLeft: '10px',
-      padding: '5px 10px',
-      borderRadius: '4px',
-      border: '1px solid #ccc',
-      backgroundColor: '#f0f0f0',
-      cursor: 'pointer'
-    }
+    className: "reset-button"
   }, "Reset View")), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("p", {
     className: "info-text"
-  }, "Tracks clustered by audio feature similarity. Colors represent the top ", topNThreshold, " dominant features of the '", selectedCategory, "' category within each cluster. Shades indicate feature prominence. Gray dots are noise.", /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("br", null), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("small", null, "Use mouse wheel to zoom, drag to pan, and click Reset View to return to default view.")), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
+  }, "Tracks clustered by audio feature similarity. Colors represent top ", topNThreshold, " dominant '", selectedCategory, "' features. Shades indicate prominence. Gray dots are noise.", /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("small", null, "Scroll to zoom, drag to pan.")), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
     className: "visualization-area",
-    style: {
-      width: '100%',
-      height: 'calc(100vh - 150px)',
-      position: 'relative'
-    }
-  }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("svg", {
+    ref: viewModeRef
+  }, svgDimensions.width > 0 && svgDimensions.height > 0 && /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("svg", {
     className: "track-plot",
     viewBox: VIEW_BOX_VALUE,
     preserveAspectRatio: "xMidYMid meet",
@@ -1308,22 +1145,19 @@ var TrackVisualizer = function TrackVisualizer() {
     onMouseDown: handleMouseDown,
     onMouseMove: handleMouseMove,
     onMouseUp: handleMouseUp,
-    onMouseLeave: handleMouseUp,
-    style: {
-      width: '100%',
-      height: '100%',
-      cursor: isDragging ? 'grabbing' : 'grab'
-    }
+    onMouseLeave: handleMouseUp
   }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("title", {
     id: "plotTitle"
   }, "Track Similarity Plot"), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("g", {
     transform: "translate(".concat(pan.x, ", ").concat(pan.y, ") scale(").concat(zoom, ")")
   }, plotData.map(function (track) {
     return /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("circle", {
-      key: track.id || String(Math.random()),
+      key: track.id || String(Math.random()) // Ensure unique key
+      ,
       cx: track.x,
       cy: track.y,
-      r: 6,
+      r: 6 / Math.sqrt(zoom) // Adjust radius with zoom
+      ,
       fill: clusterColors[track.cluster] || NOISE_CLUSTER_COLOR,
       onMouseMove: function onMouseMove(e) {
         return handleMouseOver(track, e);
@@ -1344,25 +1178,15 @@ var TrackVisualizer = function TrackVisualizer() {
     },
     role: "tooltip"
   }, tooltip.content), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
-    className: "legend",
-    style: {
-      position: 'absolute',
-      right: '20px',
-      top: '20px',
-      backgroundColor: 'rgba(255, 255, 255, 0.9)',
-      padding: '10px',
-      borderRadius: '4px',
-      maxHeight: 'calc(100% - 40px)',
-      overflowY: 'auto'
-    }
-  }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("h4", null, selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1), " Feature Legend (Top ", Math.min(topNThreshold, styleColors.size, 15), ")"), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
+    className: "legend"
+  }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("h4", null, selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1), " Legend (Top ", Math.min(topNThreshold, styleColors.size, 15), ")"), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
     className: "style-legend"
   }, Array.from(styleColors.entries()).sort(function (a, b) {
     return a[0].localeCompare(b[0]);
-  }).slice(0, 15).map(function (_ref23) {
-    var _ref24 = _slicedToArray(_ref23, 2),
-      feature = _ref24[0],
-      color = _ref24[1];
+  }).slice(0, 15).map(function (_ref17) {
+    var _ref18 = _slicedToArray(_ref17, 2),
+      feature = _ref18[0],
+      color = _ref18[1];
     return /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
       key: feature,
       className: "legend-item"
@@ -1371,46 +1195,48 @@ var TrackVisualizer = function TrackVisualizer() {
       style: {
         backgroundColor: color
       }
-    }), feature);
+    }), " ", feature);
   }), styleColors.size > 15 && /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
     className: "legend-item"
   }, "...and ", styleColors.size - 15, " more"), styleColors.size === 0 && /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
     className: "legend-item"
-  }, "No dominant features found for this category.")), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
+  }, "No dominant features.")), Object.keys(clusterColors).length > 0 && Object.values(clusterColors).some(function (c) {
+    return c !== NOISE_CLUSTER_COLOR;
+  }) && /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
     className: "cluster-legend"
-  }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("h4", null, "Clusters (Dominant Feature Color)"), Object.entries(clusterColors).filter(function (_ref25) {
-    var _ref26 = _slicedToArray(_ref25, 1),
-      clusterIdString = _ref26[0];
-    return parseInt(clusterIdString) !== NOISE_CLUSTER_ID;
-  }).sort(function (_ref27, _ref28) {
-    var _ref29 = _slicedToArray(_ref27, 1),
-      idA = _ref29[0];
-    var _ref30 = _slicedToArray(_ref28, 1),
-      idB = _ref30[0];
+  }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("h4", null, "Clusters (Dominant Feature Color)"), Object.entries(clusterColors).filter(function (_ref19) {
+    var _ref20 = _slicedToArray(_ref19, 1),
+      id = _ref20[0];
+    return parseInt(id) !== NOISE_CLUSTER_ID;
+  }).sort(function (_ref21, _ref22) {
+    var _ref23 = _slicedToArray(_ref21, 1),
+      idA = _ref23[0];
+    var _ref24 = _slicedToArray(_ref22, 1),
+      idB = _ref24[0];
     return parseInt(idA) - parseInt(idB);
-  }).map(function (_ref31) {
-    var _ref32 = _slicedToArray(_ref31, 2),
-      clusterIdString = _ref32[0],
-      color = _ref32[1];
+  }).map(function (_ref25) {
+    var _ref26 = _slicedToArray(_ref25, 2),
+      id = _ref26[0],
+      color = _ref26[1];
     return /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
-      key: clusterIdString,
+      key: id,
       className: "legend-item"
     }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("span", {
       className: "legend-color-swatch",
       style: {
         backgroundColor: color
       }
-    }), "Cluster ", parseInt(clusterIdString) + 1);
-  }), plotData.some(function (p) {
+    }), " Cluster ", parseInt(id) + 1);
+  })), plotData.some(function (p) {
     return p.cluster === NOISE_CLUSTER_ID;
   }) && /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
-    className: "legend-item"
+    className: "legend-item noise-legend"
   }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("span", {
     className: "legend-color-swatch",
     style: {
       backgroundColor: NOISE_CLUSTER_COLOR
     }
-  }), "Noise")))));
+  }), " Noise"))));
 };
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (TrackVisualizer);
 
@@ -1490,128 +1316,253 @@ var ___CSS_LOADER_EXPORT___ = _node_modules_css_loader_dist_runtime_api_js__WEBP
 ___CSS_LOADER_EXPORT___.push([module.id, `.track-visualizer-container {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  font-family: sans-serif;
-  padding: 20px;
-  background-color: #f4f4f9;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  max-width: 900px;
+  align-items: stretch;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  padding: 24px;
+  background-color: #1a1a1a;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  max-width: 1400px;
   margin: 20px auto;
+  color: #e0e0e0;
 }
 .track-visualizer-container h3 {
-  color: #333;
-  margin-bottom: 5px;
+  color: #e0e0e0;
+  margin: 0 0 16px 0;
+  font-size: 1.5rem;
+  font-weight: 600;
 }
 .track-visualizer-container .info-text {
-  font-size: 0.9em;
-  color: #555;
-  margin-bottom: 15px;
+  font-size: 0.9rem;
+  color: #b0b0b0;
+  margin-bottom: 20px;
   text-align: center;
+  line-height: 1.5;
+}
+.track-visualizer-container .info-text small {
+  display: block;
+  margin-top: 4px;
+  color: #808080;
+}
+
+.controls-panel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background-color: #2a2a2a;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+.controls-panel .category-toggle {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.controls-panel .category-toggle label {
+  color: #e0e0e0;
+  font-size: 0.9rem;
+  margin-right: 8px;
+}
+.controls-panel .category-toggle button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 100px;
+}
+.controls-panel .category-toggle button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+.controls-panel .category-toggle button.active {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+.controls-panel .threshold-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.controls-panel .threshold-control label {
+  color: #e0e0e0;
+  font-size: 0.9rem;
+}
+.controls-panel .threshold-control input {
+  width: 60px;
+  padding: 6px 8px;
+  border: 1px solid #4a4a4a;
+  border-radius: 4px;
+  background-color: #3a3a3a;
+  color: #e0e0e0;
+  font-size: 0.9rem;
+}
+.controls-panel .threshold-control input:focus {
+  outline: none;
+  border-color: #00bcd4;
+  box-shadow: 0 0 0 2px rgba(0, 188, 212, 0.2);
+}
+.controls-panel .reset-button {
+  padding: 8px 16px;
+  background-color: #3a3a3a;
+  color: #e0e0e0;
+  border: 1px solid #4a4a4a;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.controls-panel .reset-button:hover {
+  background-color: #4a4a4a;
+  transform: translateY(-1px);
+}
+
+.visualization-area {
+  position: relative;
+  width: 100%;
+  height: calc(100vh - 300px);
+  min-height: 500px;
+  background-color: #2a2a2a;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 20px;
 }
 
 .track-plot {
   width: 100%;
-  max-width: 800px;
-  height: auto;
-  border: 1px solid #ccc;
-  background-color: #ffffff;
-  border-radius: 4px;
-  overflow: visible;
+  height: 100%;
+  background-color: #2a2a2a;
 }
 .track-plot .track-dot {
   cursor: pointer;
   transition: r 0.2s ease-in-out, opacity 0.2s ease-in-out;
-  stroke: rgba(0, 0, 0, 0.2);
+  stroke: rgba(255, 255, 255, 0.1);
   stroke-width: 0.5px;
 }
 .track-plot .track-dot:hover {
   r: 9px;
   opacity: 0.8;
-  stroke: black;
+  stroke: rgba(255, 255, 255, 0.3);
   stroke-width: 1px;
 }
 
 .track-tooltip {
   position: fixed;
-  background-color: rgba(0, 0, 0, 0.85);
-  color: white;
-  padding: 10px 15px;
-  border-radius: 6px;
-  font-size: 0.9em;
+  background-color: rgba(26, 26, 26, 0.95);
+  color: #e0e0e0;
+  padding: 16px;
+  border-radius: 8px;
+  font-size: 0.9rem;
   pointer-events: none;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  white-space: nowrap;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
   z-index: 1000;
+  max-width: 300px;
 }
 .track-tooltip img {
-  max-width: 60px;
-  max-height: 60px;
-  margin-right: 10px;
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 4px;
+  margin-right: 12px;
   float: left;
-  border: 1px solid #555;
-  border-radius: 3px;
+  border: 1px solid #4a4a4a;
 }
 .track-tooltip div {
-  line-height: 1.4;
+  line-height: 1.5;
+  overflow: hidden;
 }
-.track-tooltip strong {
-  color: #aadeff;
+.track-tooltip div strong {
+  color: #00bcd4;
+  font-size: 1rem;
 }
-.track-tooltip em {
-  color: #aaa;
+.track-tooltip div em {
+  color: #b0b0b0;
+  font-size: 0.85rem;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  padding: 16px;
+  background-color: #2a2a2a;
+  border-radius: 8px;
+  margin-top: 20px;
+}
+.legend h4 {
+  width: 100%;
+  margin: 0 0 12px 0;
+  font-size: 1rem;
+  color: #e0e0e0;
+}
+.legend .style-legend,
+.legend .cluster-legend {
+  flex: 1;
+  min-width: 250px;
+  max-width: 400px;
+}
+.legend .legend-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 0.85rem;
+  color: #b0b0b0;
+}
+.legend .legend-item .legend-color-swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  margin-right: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.legend .legend-item.noise-legend {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #4a4a4a;
 }
 
 .track-visualizer-loading,
 .track-visualizer-error,
 .track-visualizer-empty {
-  padding: 30px;
-  font-size: 1.2em;
-  color: #555;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  font-size: 1.1rem;
+  color: #b0b0b0;
   text-align: center;
+  background-color: #2a2a2a;
+  border-radius: 8px;
+  margin: 20px 0;
 }
 
 .track-visualizer-error {
-  color: #D8000C;
-  background-color: #FFD2D2;
-  border: 1px solid #D8000C;
+  color: #ff6b6b;
+  background-color: rgba(255, 107, 107, 0.1);
+  border: 1px solid rgba(255, 107, 107, 0.3);
+}
+.track-visualizer-error button {
+  margin-left: 12px;
+  padding: 6px 12px;
+  background-color: #3a3a3a;
+  color: #e0e0e0;
+  border: 1px solid #4a4a4a;
   border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
-
-.legend {
-  margin-top: 20px;
-  padding: 15px;
-  background-color: #fff;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  max-height: 200px;
-  overflow-y: auto;
-  width: 100%;
-  max-width: 780px;
-}
-.legend h4 {
-  margin-top: 0;
-  margin-bottom: 10px;
-  font-size: 1em;
-  color: #333;
-}
-.legend .legend-item {
-  display: flex;
-  align-items: center;
-  margin-bottom: 5px;
-  font-size: 0.85em;
-}
-.legend .legend-item .legend-color-swatch {
-  width: 15px;
-  height: 15px;
-  border-radius: 3px;
-  margin-right: 8px;
-  border: 1px solid #ccc;
+.track-visualizer-error button:hover {
+  background-color: #4a4a4a;
 }
 
 img[src\$="placeholder.png"] {
   background-color: #eee;
-}`, "",{"version":3,"sources":["webpack://./src/components/TrackVisualizer.scss"],"names":[],"mappings":"AAAA;EACI,aAAA;EACA,sBAAA;EACA,mBAAA;EACA,uBAAA;EACA,aAAA;EACA,yBAAA;EACA,kBAAA;EACA,yCAAA;EACA,gBAAA;EACA,iBAAA;AACJ;AACI;EACE,WAAA;EACA,kBAAA;AACN;AAEI;EACE,gBAAA;EACA,WAAA;EACA,mBAAA;EACA,kBAAA;AAAN;;AAIE;EACE,WAAA;EACA,gBAAA;EACA,YAAA;EACA,sBAAA;EACA,yBAAA;EACA,kBAAA;EACA,iBAAA;AADJ;AAGI;EACE,eAAA;EACA,wDAAA;EACA,0BAAA;EACA,mBAAA;AADN;AAGM;EACE,MAAA;EACA,YAAA;EACA,aAAA;EACA,iBAAA;AADR;;AAME;EACE,eAAA;EACA,qCAAA;EACA,YAAA;EACA,kBAAA;EACA,kBAAA;EACA,gBAAA;EACA,oBAAA;EACA,wCAAA;EACA,mBAAA;EACA,aAAA;AAHJ;AAKI;EACE,eAAA;EACA,gBAAA;EACA,kBAAA;EACA,WAAA;EACA,sBAAA;EACA,kBAAA;AAHN;AAMI;EACE,gBAAA;AAJN;AAOI;EACE,cAAA;AALN;AAOI;EACE,WAAA;AALN;;AASE;;;EAGE,aAAA;EACA,gBAAA;EACA,WAAA;EACA,kBAAA;AANJ;;AASE;EACE,cAAA;EACA,yBAAA;EACA,yBAAA;EACA,kBAAA;AANJ;;AASE;EACE,gBAAA;EACA,aAAA;EACA,sBAAA;EACA,sBAAA;EACA,kBAAA;EACA,iBAAA;EACA,gBAAA;EACA,WAAA;EACA,gBAAA;AANJ;AAQI;EACE,aAAA;EACA,mBAAA;EACA,cAAA;EACA,WAAA;AANN;AASI;EACE,aAAA;EACA,mBAAA;EACA,kBAAA;EACA,iBAAA;AAPN;AASM;EACE,WAAA;EACA,YAAA;EACA,kBAAA;EACA,iBAAA;EACA,sBAAA;AAPR;;AAaE;EACE,sBAAA;AAVJ","sourceRoot":""}]);
+}`, "",{"version":3,"sources":["webpack://./src/components/TrackVisualizer.scss"],"names":[],"mappings":"AAAA;EACE,aAAA;EACA,sBAAA;EACA,oBAAA;EACA,yGAAA;EACA,aAAA;EACA,yBAAA;EACA,mBAAA;EACA,yCAAA;EACA,iBAAA;EACA,iBAAA;EACA,cAAA;AACF;AACE;EACE,cAAA;EACA,kBAAA;EACA,iBAAA;EACA,gBAAA;AACJ;AAEE;EACE,iBAAA;EACA,cAAA;EACA,mBAAA;EACA,kBAAA;EACA,gBAAA;AAAJ;AAEI;EACE,cAAA;EACA,eAAA;EACA,cAAA;AAAN;;AAKA;EACE,aAAA;EACA,eAAA;EACA,SAAA;EACA,mBAAA;EACA,uBAAA;EACA,aAAA;EACA,yBAAA;EACA,kBAAA;EACA,mBAAA;AAFF;AAIE;EACE,aAAA;EACA,QAAA;EACA,eAAA;EACA,mBAAA;AAFJ;AAII;EACE,cAAA;EACA,iBAAA;EACA,iBAAA;AAFN;AAKI;EACE,iBAAA;EACA,YAAA;EACA,kBAAA;EACA,iBAAA;EACA,gBAAA;EACA,eAAA;EACA,yBAAA;EACA,gBAAA;AAHN;AAKM;EACE,2BAAA;EACA,wCAAA;AAHR;AAMM;EACE,wCAAA;AAJR;AASE;EACE,aAAA;EACA,mBAAA;EACA,QAAA;AAPJ;AASI;EACE,cAAA;EACA,iBAAA;AAPN;AAUI;EACE,WAAA;EACA,gBAAA;EACA,yBAAA;EACA,kBAAA;EACA,yBAAA;EACA,cAAA;EACA,iBAAA;AARN;AAUM;EACE,aAAA;EACA,qBAAA;EACA,4CAAA;AARR;AAaE;EACE,iBAAA;EACA,yBAAA;EACA,cAAA;EACA,yBAAA;EACA,kBAAA;EACA,iBAAA;EACA,eAAA;EACA,yBAAA;AAXJ;AAaI;EACE,yBAAA;EACA,2BAAA;AAXN;;AAgBA;EACE,kBAAA;EACA,WAAA;EACA,2BAAA;EACA,iBAAA;EACA,yBAAA;EACA,kBAAA;EACA,gBAAA;EACA,mBAAA;AAbF;;AAgBA;EACE,WAAA;EACA,YAAA;EACA,yBAAA;AAbF;AAeE;EACE,eAAA;EACA,wDAAA;EACA,gCAAA;EACA,mBAAA;AAbJ;AAeI;EACE,MAAA;EACA,YAAA;EACA,gCAAA;EACA,iBAAA;AAbN;;AAkBA;EACE,eAAA;EACA,wCAAA;EACA,cAAA;EACA,aAAA;EACA,kBAAA;EACA,iBAAA;EACA,oBAAA;EACA,yCAAA;EACA,aAAA;EACA,gBAAA;AAfF;AAiBE;EACE,WAAA;EACA,YAAA;EACA,iBAAA;EACA,kBAAA;EACA,kBAAA;EACA,WAAA;EACA,yBAAA;AAfJ;AAkBE;EACE,gBAAA;EACA,gBAAA;AAhBJ;AAkBI;EACE,cAAA;EACA,eAAA;AAhBN;AAmBI;EACE,cAAA;EACA,kBAAA;AAjBN;;AAsBA;EACE,aAAA;EACA,eAAA;EACA,SAAA;EACA,aAAA;EACA,yBAAA;EACA,kBAAA;EACA,gBAAA;AAnBF;AAqBE;EACE,WAAA;EACA,kBAAA;EACA,eAAA;EACA,cAAA;AAnBJ;AAsBE;;EAEE,OAAA;EACA,gBAAA;EACA,gBAAA;AApBJ;AAuBE;EACE,aAAA;EACA,mBAAA;EACA,kBAAA;EACA,kBAAA;EACA,cAAA;AArBJ;AAuBI;EACE,WAAA;EACA,YAAA;EACA,kBAAA;EACA,iBAAA;EACA,0CAAA;AArBN;AAwBI;EACE,gBAAA;EACA,iBAAA;EACA,6BAAA;AAtBN;;AA2BA;;;EAGE,aAAA;EACA,mBAAA;EACA,uBAAA;EACA,aAAA;EACA,iBAAA;EACA,cAAA;EACA,kBAAA;EACA,yBAAA;EACA,kBAAA;EACA,cAAA;AAxBF;;AA2BA;EACE,cAAA;EACA,0CAAA;EACA,0CAAA;AAxBF;AA0BE;EACE,iBAAA;EACA,iBAAA;EACA,yBAAA;EACA,cAAA;EACA,yBAAA;EACA,kBAAA;EACA,eAAA;EACA,yBAAA;AAxBJ;AA0BI;EACE,yBAAA;AAxBN;;AA8BA;EACE,sBAAA;AA3BF","sourceRoot":""}]);
 // Exports
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (___CSS_LOADER_EXPORT___);
 

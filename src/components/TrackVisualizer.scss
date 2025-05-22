@@ -1,143 +1,285 @@
 .track-visualizer-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    font-family: sans-serif;
-    padding: 20px;
-    background-color: #f4f4f9;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    max-width: 900px;
-    margin: 20px auto;
-  
-    h3 {
-      color: #333;
-      margin-bottom: 5px;
-    }
-  
-    .info-text {
-      font-size: 0.9em;
-      color: #555;
-      margin-bottom: 15px;
-      text-align: center;
-    }
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  padding: 24px;
+  background-color: #1a1a1a;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  max-width: 1400px;
+  margin: 20px auto;
+  color: #e0e0e0;
+
+  h3 {
+    color: #e0e0e0;
+    margin: 0 0 16px 0;
+    font-size: 1.5rem;
+    font-weight: 600;
   }
-  
-  .track-plot {
-    width: 100%;
-    max-width: 800px;
-    height: auto; // For responsive aspect ratio
-    border: 1px solid #ccc;
-    background-color: #ffffff;
-    border-radius: 4px;
-    overflow: visible; // To see dots near edges if padding is small
-  
-    .track-dot {
-      cursor: pointer;
-      transition: r 0.2s ease-in-out, opacity 0.2s ease-in-out;
-      stroke: rgba(0,0,0,0.2);
-      stroke-width: 0.5px;
-  
-      &:hover {
-        r: 9px; // Enlarge on hover
-        opacity: 0.8;
-        stroke: black;
-        stroke-width: 1px;
-      }
-    }
-  }
-  
-  .track-tooltip {
-    position: fixed; // Use fixed to position relative to viewport
-    background-color: rgba(0, 0, 0, 0.85);
-    color: white;
-    padding: 10px 15px;
-    border-radius: 6px;
-    font-size: 0.9em;
-    pointer-events: none; // So it doesn't interfere with mouse events on SVG
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-    white-space: nowrap;
-    z-index: 1000; // Ensure it's on top
-  
-    img {
-      max-width: 60px;
-      max-height: 60px;
-      margin-right: 10px;
-      float: left;
-      border: 1px solid #555;
-      border-radius: 3px;
-    }
-  
-    div {
-      line-height: 1.4;
-    }
-  
-    strong {
-      color: #aadeff;
-    }
-    em {
-      color: #aaa;
-    }
-  }
-  
-  .track-visualizer-loading,
-  .track-visualizer-error,
-  .track-visualizer-empty {
-    padding: 30px;
-    font-size: 1.2em;
-    color: #555;
+
+  .info-text {
+    font-size: 0.9rem;
+    color: #b0b0b0;
+    margin-bottom: 20px;
     text-align: center;
-  }
-  
-  .track-visualizer-error {
-    color: #D8000C;
-    background-color: #FFD2D2;
-    border: 1px solid #D8000C;
-    border-radius: 4px;
-  }
-  
-  .legend {
-    margin-top: 20px;
-    padding: 15px;
-    background-color: #fff;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    max-height: 200px;
-    overflow-y: auto;
-    width: 100%;
-    max-width: 780px;
-  
-    h4 {
-      margin-top: 0;
-      margin-bottom: 10px;
-      font-size: 1em;
-      color: #333;
+    line-height: 1.5;
+
+    small {
+      display: block;
+      margin-top: 4px;
+      color: #808080;
     }
-  
-    .legend-item {
-      display: flex;
-      align-items: center;
-      margin-bottom: 5px;
-      font-size: 0.85em;
-  
-      .legend-color-swatch {
-        width: 15px;
-        height: 15px;
-        border-radius: 3px;
-        margin-right: 8px;
-        border: 1px solid #ccc;
+  }
+}
+
+.controls-panel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background-color: #2a2a2a;
+  border-radius: 8px;
+  margin-bottom: 20px;
+
+  .category-toggle {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+
+    label {
+      color: #e0e0e0;
+      font-size: 0.9rem;
+      margin-right: 8px;
+    }
+
+    button {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      min-width: 100px;
+
+      &:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      }
+
+      &.active {
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
       }
     }
   }
-  
-  // Placeholder for missing images
-  img[src$="placeholder.png"] {
-    background-color: #eee;
-    // display: inline-block; // or flex, to allow sizing
-    // width: 60px; // Match tooltip img size
-    // height: 60px;
-    // text-align: center;
-    // line-height: 60px;
-    // content: "N/A"; // CSS content doesn't work well for img tags
-    // Instead, you can use a div with a background image or a component for placeholders
+
+  .threshold-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    label {
+      color: #e0e0e0;
+      font-size: 0.9rem;
+    }
+
+    input {
+      width: 60px;
+      padding: 6px 8px;
+      border: 1px solid #4a4a4a;
+      border-radius: 4px;
+      background-color: #3a3a3a;
+      color: #e0e0e0;
+      font-size: 0.9rem;
+
+      &:focus {
+        outline: none;
+        border-color: #00bcd4;
+        box-shadow: 0 0 0 2px rgba(0, 188, 212, 0.2);
+      }
+    }
   }
+
+  .reset-button {
+    padding: 8px 16px;
+    background-color: #3a3a3a;
+    color: #e0e0e0;
+    border: 1px solid #4a4a4a;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background-color: #4a4a4a;
+      transform: translateY(-1px);
+    }
+  }
+}
+
+.visualization-area {
+  position: relative;
+  width: 100%;
+  height: calc(100vh - 300px);
+  min-height: 500px;
+  background-color: #2a2a2a;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.track-plot {
+  width: 100%;
+  height: 100%;
+  background-color: #2a2a2a;
+
+  .track-dot {
+    cursor: pointer;
+    transition: r 0.2s ease-in-out, opacity 0.2s ease-in-out;
+    stroke: rgba(255, 255, 255, 0.1);
+    stroke-width: 0.5px;
+
+    &:hover {
+      r: 9px;
+      opacity: 0.8;
+      stroke: rgba(255, 255, 255, 0.3);
+      stroke-width: 1px;
+    }
+  }
+}
+
+.track-tooltip {
+  position: fixed;
+  background-color: rgba(26, 26, 26, 0.95);
+  color: #e0e0e0;
+  padding: 16px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  pointer-events: none;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  max-width: 300px;
+
+  img {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 4px;
+    margin-right: 12px;
+    float: left;
+    border: 1px solid #4a4a4a;
+  }
+
+  div {
+    line-height: 1.5;
+    overflow: hidden;
+
+    strong {
+      color: #00bcd4;
+      font-size: 1rem;
+    }
+
+    em {
+      color: #b0b0b0;
+      font-size: 0.85rem;
+    }
+  }
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  padding: 16px;
+  background-color: #2a2a2a;
+  border-radius: 8px;
+  margin-top: 20px;
+
+  h4 {
+    width: 100%;
+    margin: 0 0 12px 0;
+    font-size: 1rem;
+    color: #e0e0e0;
+  }
+
+  .style-legend,
+  .cluster-legend {
+    flex: 1;
+    min-width: 250px;
+    max-width: 400px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 0.85rem;
+    color: #b0b0b0;
+
+    .legend-color-swatch {
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
+      margin-right: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    &.noise-legend {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #4a4a4a;
+    }
+  }
+}
+
+.track-visualizer-loading,
+.track-visualizer-error,
+.track-visualizer-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  font-size: 1.1rem;
+  color: #b0b0b0;
+  text-align: center;
+  background-color: #2a2a2a;
+  border-radius: 8px;
+  margin: 20px 0;
+}
+
+.track-visualizer-error {
+  color: #ff6b6b;
+  background-color: rgba(255, 107, 107, 0.1);
+  border: 1px solid rgba(255, 107, 107, 0.3);
+
+  button {
+    margin-left: 12px;
+    padding: 6px 12px;
+    background-color: #3a3a3a;
+    color: #e0e0e0;
+    border: 1px solid #4a4a4a;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background-color: #4a4a4a;
+    }
+  }
+}
+
+// Placeholder for missing images
+img[src$="placeholder.png"] {
+  background-color: #eee;
+  // display: inline-block; // or flex, to allow sizing
+  // width: 60px; // Match tooltip img size
+  // height: 60px;
+  // text-align: center;
+  // line-height: 60px;
+  // content: "N/A"; // CSS content doesn't work well for img tags
+  // Instead, you can use a div with a background image or a component for placeholders
+}
