@@ -43,6 +43,7 @@
     "react-window": "^1.8.10",
     "rxdb": "^12.7.16",
     "sqlite3": "^5.1.7",
+    "umap-js": "^1.4.0",
     "wavesurfer.js": "^7.8.6"
   }
 }

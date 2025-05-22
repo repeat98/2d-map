@@ -1,0 +1,143 @@
+.track-visualizer-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-family: sans-serif;
+    padding: 20px;
+    background-color: #f4f4f9;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    max-width: 900px;
+    margin: 20px auto;
+  
+    h3 {
+      color: #333;
+      margin-bottom: 5px;
+    }
+  
+    .info-text {
+      font-size: 0.9em;
+      color: #555;
+      margin-bottom: 15px;
+      text-align: center;
+    }
+  }
+  
+  .track-plot {
+    width: 100%;
+    max-width: 800px;
+    height: auto; // For responsive aspect ratio
+    border: 1px solid #ccc;
+    background-color: #ffffff;
+    border-radius: 4px;
+    overflow: visible; // To see dots near edges if padding is small
+  
+    .track-dot {
+      cursor: pointer;
+      transition: r 0.2s ease-in-out, opacity 0.2s ease-in-out;
+      stroke: rgba(0,0,0,0.2);
+      stroke-width: 0.5px;
+  
+      &:hover {
+        r: 9px; // Enlarge on hover
+        opacity: 0.8;
+        stroke: black;
+        stroke-width: 1px;
+      }
+    }
+  }
+  
+  .track-tooltip {
+    position: fixed; // Use fixed to position relative to viewport
+    background-color: rgba(0, 0, 0, 0.85);
+    color: white;
+    padding: 10px 15px;
+    border-radius: 6px;
+    font-size: 0.9em;
+    pointer-events: none; // So it doesn't interfere with mouse events on SVG
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    white-space: nowrap;
+    z-index: 1000; // Ensure it's on top
+  
+    img {
+      max-width: 60px;
+      max-height: 60px;
+      margin-right: 10px;
+      float: left;
+      border: 1px solid #555;
+      border-radius: 3px;
+    }
+  
+    div {
+      line-height: 1.4;
+    }
+  
+    strong {
+      color: #aadeff;
+    }
+    em {
+      color: #aaa;
+    }
+  }
+  
+  .track-visualizer-loading,
+  .track-visualizer-error,
+  .track-visualizer-empty {
+    padding: 30px;
+    font-size: 1.2em;
+    color: #555;
+    text-align: center;
+  }
+  
+  .track-visualizer-error {
+    color: #D8000C;
+    background-color: #FFD2D2;
+    border: 1px solid #D8000C;
+    border-radius: 4px;
+  }
+  
+  .legend {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    max-height: 200px;
+    overflow-y: auto;
+    width: 100%;
+    max-width: 780px;
+  
+    h4 {
+      margin-top: 0;
+      margin-bottom: 10px;
+      font-size: 1em;
+      color: #333;
+    }
+  
+    .legend-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: 5px;
+      font-size: 0.85em;
+  
+      .legend-color-swatch {
+        width: 15px;
+        height: 15px;
+        border-radius: 3px;
+        margin-right: 8px;
+        border: 1px solid #ccc;
+      }
+    }
+  }
+  
+  // Placeholder for missing images
+  img[src$="placeholder.png"] {
+    background-color: #eee;
+    // display: inline-block; // or flex, to allow sizing
+    // width: 60px; // Match tooltip img size
+    // height: 60px;
+    // text-align: center;
+    // line-height: 60px;
+    // content: "N/A"; // CSS content doesn't work well for img tags
+    // Instead, you can use a div with a background image or a component for placeholders
+  }
