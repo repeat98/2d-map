@@ -1318,19 +1318,18 @@ ___CSS_LOADER_EXPORT___.push([module.id, `.track-visualizer-container {
   flex-direction: column;
   align-items: stretch;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  padding: 24px;
+  padding: 0;
   background-color: #1a1a1a;
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-  max-width: 1400px;
-  margin: 20px auto;
+  min-height: 100vh;
   color: #e0e0e0;
+  position: relative;
 }
 .track-visualizer-container h3 {
   color: #e0e0e0;
   margin: 0 0 16px 0;
   font-size: 1.5rem;
   font-weight: 600;
+  padding: 24px 24px 0;
 }
 .track-visualizer-container .info-text {
   font-size: 0.9rem;
@@ -1338,6 +1337,7 @@ ___CSS_LOADER_EXPORT___.push([module.id, `.track-visualizer-container {
   margin-bottom: 20px;
   text-align: center;
   line-height: 1.5;
+  padding: 0 24px;
 }
 .track-visualizer-container .info-text small {
   display: block;
@@ -1351,10 +1351,10 @@ ___CSS_LOADER_EXPORT___.push([module.id, `.track-visualizer-container {
   gap: 16px;
   align-items: center;
   justify-content: center;
-  padding: 16px;
+  padding: 16px 24px;
   background-color: #2a2a2a;
-  border-radius: 8px;
   margin-bottom: 20px;
+  border-bottom: 1px solid #3a3a3a;
 }
 .controls-panel .category-toggle {
   display: flex;
@@ -1425,30 +1425,74 @@ ___CSS_LOADER_EXPORT___.push([module.id, `.track-visualizer-container {
 .visualization-area {
   position: relative;
   width: 100%;
-  height: calc(100vh - 300px);
-  min-height: 500px;
+  height: calc(100vh - 180px);
   background-color: #2a2a2a;
-  border-radius: 8px;
   overflow: hidden;
-  margin-bottom: 20px;
+  display: flex;
 }
-
-.track-plot {
-  width: 100%;
+.visualization-area .track-plot {
+  flex: 1;
   height: 100%;
   background-color: #2a2a2a;
 }
-.track-plot .track-dot {
+.visualization-area .track-plot .track-dot {
   cursor: pointer;
   transition: r 0.2s ease-in-out, opacity 0.2s ease-in-out;
   stroke: rgba(255, 255, 255, 0.1);
   stroke-width: 0.5px;
 }
-.track-plot .track-dot:hover {
+.visualization-area .track-plot .track-dot:hover {
   r: 9px;
   opacity: 0.8;
   stroke: rgba(255, 255, 255, 0.3);
   stroke-width: 1px;
+}
+.visualization-area .legend {
+  width: 300px;
+  background-color: #2a2a2a;
+  border-left: 1px solid #3a3a3a;
+  padding: 20px;
+  overflow-y: auto;
+  height: 100%;
+}
+.visualization-area .legend h4 {
+  margin: 0 0 16px 0;
+  font-size: 1rem;
+  color: #e0e0e0;
+  font-weight: 600;
+}
+.visualization-area .legend .style-legend,
+.visualization-area .legend .cluster-legend {
+  margin-bottom: 24px;
+}
+.visualization-area .legend .style-legend:last-child,
+.visualization-area .legend .cluster-legend:last-child {
+  margin-bottom: 0;
+}
+.visualization-area .legend .legend-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 0.85rem;
+  color: #b0b0b0;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+.visualization-area .legend .legend-item:hover {
+  background-color: #3a3a3a;
+}
+.visualization-area .legend .legend-item .legend-color-swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  margin-right: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.visualization-area .legend .legend-item.noise-legend {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #4a4a4a;
 }
 
 .track-tooltip {
@@ -1485,47 +1529,6 @@ ___CSS_LOADER_EXPORT___.push([module.id, `.track-visualizer-container {
   font-size: 0.85rem;
 }
 
-.legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20px;
-  padding: 16px;
-  background-color: #2a2a2a;
-  border-radius: 8px;
-  margin-top: 20px;
-}
-.legend h4 {
-  width: 100%;
-  margin: 0 0 12px 0;
-  font-size: 1rem;
-  color: #e0e0e0;
-}
-.legend .style-legend,
-.legend .cluster-legend {
-  flex: 1;
-  min-width: 250px;
-  max-width: 400px;
-}
-.legend .legend-item {
-  display: flex;
-  align-items: center;
-  margin-bottom: 8px;
-  font-size: 0.85rem;
-  color: #b0b0b0;
-}
-.legend .legend-item .legend-color-swatch {
-  width: 16px;
-  height: 16px;
-  border-radius: 4px;
-  margin-right: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-.legend .legend-item.noise-legend {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid #4a4a4a;
-}
-
 .track-visualizer-loading,
 .track-visualizer-error,
 .track-visualizer-empty {
@@ -1538,7 +1541,7 @@ ___CSS_LOADER_EXPORT___.push([module.id, `.track-visualizer-container {
   text-align: center;
   background-color: #2a2a2a;
   border-radius: 8px;
-  margin: 20px 0;
+  margin: 20px;
 }
 
 .track-visualizer-error {
@@ -1562,7 +1565,7 @@ ___CSS_LOADER_EXPORT___.push([module.id, `.track-visualizer-container {
 
 img[src\$="placeholder.png"] {
   background-color: #eee;
-}`, "",{"version":3,"sources":["webpack://./src/components/TrackVisualizer.scss"],"names":[],"mappings":"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","sourceRoot":""}]);
+}`, "",{"version":3,"sources":["webpack://./src/components/TrackVisualizer.scss"],"names":[],"mappings":"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","sourceRoot":""}]);
 // Exports
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (___CSS_LOADER_EXPORT___);
 

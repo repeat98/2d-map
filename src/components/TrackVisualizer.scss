@@ -3,19 +3,18 @@
   flex-direction: column;
   align-items: stretch;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  padding: 24px;
+  padding: 0;
   background-color: #1a1a1a;
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-  max-width: 1400px;
-  margin: 20px auto;
+  min-height: 100vh;
   color: #e0e0e0;
+  position: relative;
 
   h3 {
     color: #e0e0e0;
     margin: 0 0 16px 0;
     font-size: 1.5rem;
     font-weight: 600;
+    padding: 24px 24px 0;
   }
 
   .info-text {
@@ -24,6 +23,7 @@
     margin-bottom: 20px;
     text-align: center;
     line-height: 1.5;
+    padding: 0 24px;
 
     small {
       display: block;
@@ -39,10 +39,10 @@
   gap: 16px;
   align-items: center;
   justify-content: center;
-  padding: 16px;
+  padding: 16px 24px;
   background-color: #2a2a2a;
-  border-radius: 8px;
   margin-bottom: 20px;
+  border-bottom: 1px solid #3a3a3a;
 
   .category-toggle {
     display: flex;
@@ -124,30 +124,82 @@
 .visualization-area {
   position: relative;
   width: 100%;
-  height: calc(100vh - 300px);
-  min-height: 500px;
+  height: calc(100vh - 180px);
   background-color: #2a2a2a;
-  border-radius: 8px;
   overflow: hidden;
-  margin-bottom: 20px;
-}
+  display: flex;
 
-.track-plot {
-  width: 100%;
-  height: 100%;
-  background-color: #2a2a2a;
+  .track-plot {
+    flex: 1;
+    height: 100%;
+    background-color: #2a2a2a;
 
-  .track-dot {
-    cursor: pointer;
-    transition: r 0.2s ease-in-out, opacity 0.2s ease-in-out;
-    stroke: rgba(255, 255, 255, 0.1);
-    stroke-width: 0.5px;
+    .track-dot {
+      cursor: pointer;
+      transition: r 0.2s ease-in-out, opacity 0.2s ease-in-out;
+      stroke: rgba(255, 255, 255, 0.1);
+      stroke-width: 0.5px;
 
-    &:hover {
-      r: 9px;
-      opacity: 0.8;
-      stroke: rgba(255, 255, 255, 0.3);
-      stroke-width: 1px;
+      &:hover {
+        r: 9px;
+        opacity: 0.8;
+        stroke: rgba(255, 255, 255, 0.3);
+        stroke-width: 1px;
+      }
+    }
+  }
+
+  .legend {
+    width: 300px;
+    background-color: #2a2a2a;
+    border-left: 1px solid #3a3a3a;
+    padding: 20px;
+    overflow-y: auto;
+    height: 100%;
+
+    h4 {
+      margin: 0 0 16px 0;
+      font-size: 1rem;
+      color: #e0e0e0;
+      font-weight: 600;
+    }
+
+    .style-legend,
+    .cluster-legend {
+      margin-bottom: 24px;
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+      font-size: 0.85rem;
+      color: #b0b0b0;
+      padding: 4px 8px;
+      border-radius: 4px;
+      transition: background-color 0.2s ease;
+
+      &:hover {
+        background-color: #3a3a3a;
+      }
+
+      .legend-color-swatch {
+        width: 16px;
+        height: 16px;
+        border-radius: 4px;
+        margin-right: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      &.noise-legend {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid #4a4a4a;
+      }
     }
   }
 }
@@ -190,52 +242,6 @@
   }
 }
 
-.legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20px;
-  padding: 16px;
-  background-color: #2a2a2a;
-  border-radius: 8px;
-  margin-top: 20px;
-
-  h4 {
-    width: 100%;
-    margin: 0 0 12px 0;
-    font-size: 1rem;
-    color: #e0e0e0;
-  }
-
-  .style-legend,
-  .cluster-legend {
-    flex: 1;
-    min-width: 250px;
-    max-width: 400px;
-  }
-
-  .legend-item {
-    display: flex;
-    align-items: center;
-    margin-bottom: 8px;
-    font-size: 0.85rem;
-    color: #b0b0b0;
-
-    .legend-color-swatch {
-      width: 16px;
-      height: 16px;
-      border-radius: 4px;
-      margin-right: 8px;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    &.noise-legend {
-      margin-top: 12px;
-      padding-top: 12px;
-      border-top: 1px solid #4a4a4a;
-    }
-  }
-}
-
 .track-visualizer-loading,
 .track-visualizer-error,
 .track-visualizer-empty {
@@ -248,7 +254,7 @@
   text-align: center;
   background-color: #2a2a2a;
   border-radius: 8px;
-  margin: 20px 0;
+  margin: 20px;
 }
 
 .track-visualizer-error {
@@ -275,11 +281,4 @@
 // Placeholder for missing images
 img[src$="placeholder.png"] {
   background-color: #eee;
-  // display: inline-block; // or flex, to allow sizing
-  // width: 60px; // Match tooltip img size
-  // height: 60px;
-  // text-align: center;
-  // line-height: 60px;
-  // content: "N/A"; // CSS content doesn't work well for img tags
-  // Instead, you can use a div with a background image or a component for placeholders
 }
