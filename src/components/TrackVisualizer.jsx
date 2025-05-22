@@ -567,95 +567,65 @@ const TrackVisualizer = () => {
     setStyleColors(newStyleColors);
   }, [tracks, selectedCategory, featureMetadata, topNThreshold]);
 
-  const clusterColors = useMemo(() => {
-    if (!plotData || plotData.length === 0 || styleColors.size === 0) {
-      const fallbackMap = {};
-      if (plotData.length > 0) {
-        [...new Set(plotData.map(p => p.cluster))].forEach(id => fallbackMap[id] = NOISE_CLUSTER_COLOR);
-      }
-      return fallbackMap;
+  const getDominantFeature = (track, selectedCategory, styleColors) => {
+    let dominantFeature = null;
+    let maxValue = 0;
+    
+    if (selectedCategory === 'genre' || selectedCategory === 'style') {
+      try {
+        const features = typeof track.features === 'string' ? JSON.parse(track.features) : track.features;
+        Object.entries(features).forEach(([key, value]) => {
+          const [genrePart, stylePart] = key.split('---');
+          const featureName = selectedCategory === 'genre' ? genrePart : stylePart;
+          const score = parseFloat(value);
+          if (!isNaN(score) && score > maxValue && styleColors.has(featureName)) {
+            maxValue = score;
+            dominantFeature = featureName;
+          }
+        });
+      } catch (e) {}
+    } else if (selectedCategory === 'instrument') {
+      try {
+        const features = typeof track.instrument_features === 'string' ? JSON.parse(track.instrument_features) : track.instrument_features;
+        Object.entries(features).forEach(([key, value]) => {
+          const score = parseFloat(value);
+          if (!isNaN(score) && score > maxValue && styleColors.has(key)) {
+            maxValue = score;
+            dominantFeature = key;
+          }
+        });
+      } catch (e) {}
+    } else if (selectedCategory === 'mood') {
+      MOOD_KEYWORDS.forEach(key => {
+        const value = track[key];
+        if (typeof value === 'number' && !isNaN(value) && value > maxValue && styleColors.has(key)) {
+          maxValue = value;
+          dominantFeature = key;
+        }
+      });
+    } else if (selectedCategory === 'spectral') {
+      SPECTRAL_KEYWORDS.forEach(key => {
+        const value = track[key];
+        if (typeof value === 'number' && !isNaN(value) && value > maxValue && styleColors.has(key)) {
+          maxValue = value;
+          dominantFeature = key;
+        }
+      });
     }
+    
+    return dominantFeature;
+  };
 
-    const uniqueClusters = [...new Set(plotData.map(p => p.cluster))].sort((a,b) => a-b);
-    const newClusterColors = {};
-
-    uniqueClusters.forEach(clusterId => {
-      if (clusterId === NOISE_CLUSTER_ID) {
-        newClusterColors[clusterId] = NOISE_CLUSTER_COLOR; return;
-      }
-
-      const clusterTracks = plotData.filter(p => p.cluster === clusterId);
-      const clusterFeatureValues = new Map();
-
-      clusterTracks.forEach(track => {
-        if (!track) return;
-        let featuresToParse = null;
-        let keyExtractor = (key) => key;
-
-        if (selectedCategory === 'genre' || selectedCategory === 'style') {
-            featuresToParse = track.features;
-            keyExtractor = (key) => {
-                const [genrePart, stylePart] = key.split('---');
-                return selectedCategory === 'genre' ? genrePart : stylePart;
-            };
-        } else if (selectedCategory === 'instrument') {
-            featuresToParse = track.instrument_features;
-        } else if (selectedCategory === 'mood') {
-            MOOD_KEYWORDS.forEach(key => {
-                if (styleColors.has(key)) {
-                    const value = track[key];
-                    if (typeof value === 'number' && !isNaN(value)) {
-                        clusterFeatureValues.set(key, (clusterFeatureValues.get(key) || 0) + value);
-                    }
-                }
-            });
-        } else if (selectedCategory === 'spectral') {
-            SPECTRAL_KEYWORDS.forEach(key => {
-                 if (styleColors.has(key)) {
-                    const value = track[key];
-                    if (typeof value === 'number' && !isNaN(value)) {
-                        clusterFeatureValues.set(key, (clusterFeatureValues.get(key) || 0) + value);
-                    }
-                }
-            });
-        }
-        
-        if(featuresToParse){
-            try {
-                const parsed = typeof featuresToParse === 'string' ? JSON.parse(featuresToParse) : featuresToParse;
-                if (typeof parsed === 'object' && parsed !== null) {
-                    Object.entries(parsed).forEach(([key, value]) => {
-                        const featureName = keyExtractor(key);
-                        if (featureName && styleColors.has(featureName)) {
-                            const score = parseFloat(value);
-                            if (!isNaN(score) && score > 0) {
-                                clusterFeatureValues.set(featureName, (clusterFeatureValues.get(featureName) || 0) + score);
-                            }
-                        }
-                    });
-                }
-            } catch (e) { /* console.warn(...) */ }
-        }
-      });
-
-      let dominantFeature = null; let maxValue = 0; let totalValue = 0;
-      clusterFeatureValues.forEach((value, feature) => {
-        totalValue += value;
-        if (value > maxValue) { maxValue = value; dominantFeature = feature; }
-      });
-
-      if (dominantFeature) {
-        const relativeStrength = totalValue > 0 ? maxValue / totalValue : 0;
-        // Adjusted luminance factor for cluster color based on dominant feature strength
-        const luminanceOffset = (relativeStrength - 0.5) * 0.4; // Was 0.6 factor
-        const baseColor = styleColors.get(dominantFeature) || NOISE_CLUSTER_COLOR;
-        newClusterColors[clusterId] = adjustLuminance(baseColor, luminanceOffset);
-      } else {
-        newClusterColors[clusterId] = DEFAULT_CLUSTER_COLORS[clusterId % DEFAULT_CLUSTER_COLORS.length] || NOISE_CLUSTER_COLOR;
-      }
+  const trackColors = useMemo(() => {
+    return plotData.map(track => {
+      const dominantFeature = getDominantFeature(track, selectedCategory, styleColors);
+      return {
+        id: track.id,
+        color: dominantFeature ? styleColors.get(dominantFeature) : NOISE_CLUSTER_COLOR,
+        dominantFeature
+      };
     });
-    return newClusterColors;
-  }, [plotData, styleColors, selectedCategory, tracks, featureMetadata, topNThreshold]); // Removed tracks, featureMetadata, topNThreshold if not directly used for color mapping logic that changes per cluster beyond plotData & styleColors
+  }, [plotData, selectedCategory, styleColors]);
 
   const fetchTracksData = useCallback(async () => { // Renamed to avoid conflict
     try {
@@ -803,18 +773,24 @@ const TrackVisualizer = () => {
             >
             <title id="plotTitle">Track Similarity Plot</title>
             <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
-                {plotData.map(track => (
-                <circle
-                    key={track.id || String(Math.random())} // Ensure unique key
-                    cx={track.x} cy={track.y} r={6 / Math.sqrt(zoom)} // Adjust radius with zoom
-                    fill={clusterColors[track.cluster] || NOISE_CLUSTER_COLOR}
-                    onMouseMove={(e) => handleMouseOver(track, e)}
-                    onMouseOut={handleMouseOut}
-                    onClick={() => handleDotClick(track)}
-                    className="track-dot" tabIndex={0}
-                    aria-label={`Track: ${track.title || 'Unknown'} by ${track.artist || 'Unknown'}, Cluster: ${track.cluster === NOISE_CLUSTER_ID ? 'Noise' : 'C' + (track.cluster + 1)}`}
-                />
-                ))}
+                {plotData.map((track, index) => {
+                  const { color, dominantFeature } = trackColors[index];
+                  return (
+                    <circle
+                      key={track.id || String(Math.random())}
+                      cx={track.x}
+                      cy={track.y}
+                      r={6 / Math.sqrt(zoom)}
+                      fill={color}
+                      onMouseMove={(e) => handleMouseOver(track, e)}
+                      onMouseOut={handleMouseOut}
+                      onClick={() => handleDotClick(track)}
+                      className="track-dot"
+                      tabIndex={0}
+                      aria-label={`Track: ${track.title || 'Unknown'} by ${track.artist || 'Unknown'}, Feature: ${dominantFeature || 'None'}`}
+                    />
+                  );
+                })}
             </g>
             </svg>
         )}
@@ -826,27 +802,22 @@ const TrackVisualizer = () => {
         <div className="legend">
           <h4>{selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)} Legend (Top {Math.min(topNThreshold, styleColors.size, 15)})</h4>
           <div className="style-legend">
-            {Array.from(styleColors.entries()).sort((a,b)=>a[0].localeCompare(b[0])).slice(0,15).map(([feature, color]) => (
+            {Array.from(styleColors.entries())
+              .sort((a,b) => a[0].localeCompare(b[0]))
+              .slice(0,15)
+              .map(([feature, color]) => (
                 <div key={feature} className="legend-item">
-                  <span className="legend-color-swatch" style={{ backgroundColor: color }}></span> {feature}
+                  <div className="color-box" style={{ backgroundColor: color }}></div>
+                  <span className="feature-name">{feature}</span>
                 </div>
             ))}
             {styleColors.size > 15 && <div className="legend-item">...and {styleColors.size - 15} more</div>}
             {styleColors.size === 0 && <div className="legend-item">No dominant features.</div>}
           </div>
-          {Object.keys(clusterColors).length > 0 && Object.values(clusterColors).some(c => c !== NOISE_CLUSTER_COLOR) && (
-            <div className="cluster-legend">
-                <h4>Clusters (Dominant Feature Color)</h4>
-                {Object.entries(clusterColors).filter(([id]) => parseInt(id) !== NOISE_CLUSTER_ID).sort(([idA], [idB]) => parseInt(idA) - parseInt(idB)).map(([id, color]) => (
-                    <div key={id} className="legend-item">
-                    <span className="legend-color-swatch" style={{ backgroundColor: color }}></span> Cluster {parseInt(id) + 1}
-                    </div>
-                ))}
-            </div>
-          )}
           {plotData.some(p => p.cluster === NOISE_CLUSTER_ID) && (
             <div className="legend-item noise-legend">
-              <span className="legend-color-swatch" style={{ backgroundColor: NOISE_CLUSTER_COLOR }}></span> Noise
+              <div className="color-box" style={{ backgroundColor: NOISE_CLUSTER_COLOR }}></div>
+              <span className="feature-name">Noise</span>
             </div>
           )}
         </div>

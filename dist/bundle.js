@@ -817,112 +817,71 @@ var TrackVisualizer = function TrackVisualizer() {
     });
     setStyleColors(newStyleColors);
   }, [tracks, selectedCategory, featureMetadata, topNThreshold]);
-  var clusterColors = (0,react__WEBPACK_IMPORTED_MODULE_0__.useMemo)(function () {
-    if (!plotData || plotData.length === 0 || styleColors.size === 0) {
-      var fallbackMap = {};
-      if (plotData.length > 0) {
-        _toConsumableArray(new Set(plotData.map(function (p) {
-          return p.cluster;
-        }))).forEach(function (id) {
-          return fallbackMap[id] = NOISE_CLUSTER_COLOR;
+  var getDominantFeature = function getDominantFeature(track, selectedCategory, styleColors) {
+    var dominantFeature = null;
+    var maxValue = 0;
+    if (selectedCategory === 'genre' || selectedCategory === 'style') {
+      try {
+        var features = typeof track.features === 'string' ? JSON.parse(track.features) : track.features;
+        Object.entries(features).forEach(function (_ref12) {
+          var _ref13 = _slicedToArray(_ref12, 2),
+            key = _ref13[0],
+            value = _ref13[1];
+          var _key$split3 = key.split('---'),
+            _key$split4 = _slicedToArray(_key$split3, 2),
+            genrePart = _key$split4[0],
+            stylePart = _key$split4[1];
+          var featureName = selectedCategory === 'genre' ? genrePart : stylePart;
+          var score = parseFloat(value);
+          if (!isNaN(score) && score > maxValue && styleColors.has(featureName)) {
+            maxValue = score;
+            dominantFeature = featureName;
+          }
         });
-      }
-      return fallbackMap;
-    }
-    var uniqueClusters = _toConsumableArray(new Set(plotData.map(function (p) {
-      return p.cluster;
-    }))).sort(function (a, b) {
-      return a - b;
-    });
-    var newClusterColors = {};
-    uniqueClusters.forEach(function (clusterId) {
-      if (clusterId === NOISE_CLUSTER_ID) {
-        newClusterColors[clusterId] = NOISE_CLUSTER_COLOR;
-        return;
-      }
-      var clusterTracks = plotData.filter(function (p) {
-        return p.cluster === clusterId;
-      });
-      var clusterFeatureValues = new Map();
-      clusterTracks.forEach(function (track) {
-        if (!track) return;
-        var featuresToParse = null;
-        var keyExtractor = function keyExtractor(key) {
-          return key;
-        };
-        if (selectedCategory === 'genre' || selectedCategory === 'style') {
-          featuresToParse = track.features;
-          keyExtractor = function keyExtractor(key) {
-            var _key$split3 = key.split('---'),
-              _key$split4 = _slicedToArray(_key$split3, 2),
-              genrePart = _key$split4[0],
-              stylePart = _key$split4[1];
-            return selectedCategory === 'genre' ? genrePart : stylePart;
-          };
-        } else if (selectedCategory === 'instrument') {
-          featuresToParse = track.instrument_features;
-        } else if (selectedCategory === 'mood') {
-          MOOD_KEYWORDS.forEach(function (key) {
-            if (styleColors.has(key)) {
-              var value = track[key];
-              if (typeof value === 'number' && !isNaN(value)) {
-                clusterFeatureValues.set(key, (clusterFeatureValues.get(key) || 0) + value);
-              }
-            }
-          });
-        } else if (selectedCategory === 'spectral') {
-          SPECTRAL_KEYWORDS.forEach(function (key) {
-            if (styleColors.has(key)) {
-              var value = track[key];
-              if (typeof value === 'number' && !isNaN(value)) {
-                clusterFeatureValues.set(key, (clusterFeatureValues.get(key) || 0) + value);
-              }
-            }
-          });
-        }
-        if (featuresToParse) {
-          try {
-            var parsed = typeof featuresToParse === 'string' ? JSON.parse(featuresToParse) : featuresToParse;
-            if (_typeof(parsed) === 'object' && parsed !== null) {
-              Object.entries(parsed).forEach(function (_ref12) {
-                var _ref13 = _slicedToArray(_ref12, 2),
-                  key = _ref13[0],
-                  value = _ref13[1];
-                var featureName = keyExtractor(key);
-                if (featureName && styleColors.has(featureName)) {
-                  var score = parseFloat(value);
-                  if (!isNaN(score) && score > 0) {
-                    clusterFeatureValues.set(featureName, (clusterFeatureValues.get(featureName) || 0) + score);
-                  }
-                }
-              });
-            }
-          } catch (e) {/* console.warn(...) */}
-        }
-      });
-      var dominantFeature = null;
-      var maxValue = 0;
-      var totalValue = 0;
-      clusterFeatureValues.forEach(function (value, feature) {
-        totalValue += value;
-        if (value > maxValue) {
+      } catch (e) {}
+    } else if (selectedCategory === 'instrument') {
+      try {
+        var _features = typeof track.instrument_features === 'string' ? JSON.parse(track.instrument_features) : track.instrument_features;
+        Object.entries(_features).forEach(function (_ref14) {
+          var _ref15 = _slicedToArray(_ref14, 2),
+            key = _ref15[0],
+            value = _ref15[1];
+          var score = parseFloat(value);
+          if (!isNaN(score) && score > maxValue && styleColors.has(key)) {
+            maxValue = score;
+            dominantFeature = key;
+          }
+        });
+      } catch (e) {}
+    } else if (selectedCategory === 'mood') {
+      MOOD_KEYWORDS.forEach(function (key) {
+        var value = track[key];
+        if (typeof value === 'number' && !isNaN(value) && value > maxValue && styleColors.has(key)) {
           maxValue = value;
-          dominantFeature = feature;
+          dominantFeature = key;
         }
       });
-      if (dominantFeature) {
-        var relativeStrength = totalValue > 0 ? maxValue / totalValue : 0;
-        // Adjusted luminance factor for cluster color based on dominant feature strength
-        var luminanceOffset = (relativeStrength - 0.5) * 0.4; // Was 0.6 factor
-        var baseColor = styleColors.get(dominantFeature) || NOISE_CLUSTER_COLOR;
-        newClusterColors[clusterId] = adjustLuminance(baseColor, luminanceOffset);
-      } else {
-        newClusterColors[clusterId] = DEFAULT_CLUSTER_COLORS[clusterId % DEFAULT_CLUSTER_COLORS.length] || NOISE_CLUSTER_COLOR;
-      }
+    } else if (selectedCategory === 'spectral') {
+      SPECTRAL_KEYWORDS.forEach(function (key) {
+        var value = track[key];
+        if (typeof value === 'number' && !isNaN(value) && value > maxValue && styleColors.has(key)) {
+          maxValue = value;
+          dominantFeature = key;
+        }
+      });
+    }
+    return dominantFeature;
+  };
+  var trackColors = (0,react__WEBPACK_IMPORTED_MODULE_0__.useMemo)(function () {
+    return plotData.map(function (track) {
+      var dominantFeature = getDominantFeature(track, selectedCategory, styleColors);
+      return {
+        id: track.id,
+        color: dominantFeature ? styleColors.get(dominantFeature) : NOISE_CLUSTER_COLOR,
+        dominantFeature: dominantFeature
+      };
     });
-    return newClusterColors;
-  }, [plotData, styleColors, selectedCategory, tracks, featureMetadata, topNThreshold]); // Removed tracks, featureMetadata, topNThreshold if not directly used for color mapping logic that changes per cluster beyond plotData & styleColors
-
+  }, [plotData, selectedCategory, styleColors]);
   var fetchTracksData = (0,react__WEBPACK_IMPORTED_MODULE_0__.useCallback)(/*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee() {
     var response, errorData, rawData, keysWithCats, featureNames, featureCats, parsedTracks;
     return _regeneratorRuntime().wrap(function _callee$(_context) {
@@ -1099,10 +1058,10 @@ var TrackVisualizer = function TrackVisualizer() {
     className: "category-toggle"
   }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("label", {
     htmlFor: "categorySelect"
-  }, "Color by:"), Object.entries(CATEGORY_BASE_COLORS).map(function (_ref15) {
-    var _ref16 = _slicedToArray(_ref15, 2),
-      categoryKey = _ref16[0],
-      colorValue = _ref16[1];
+  }, "Color by:"), Object.entries(CATEGORY_BASE_COLORS).map(function (_ref17) {
+    var _ref18 = _slicedToArray(_ref17, 2),
+      categoryKey = _ref18[0],
+      colorValue = _ref18[1];
     return /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("button", {
       key: categoryKey,
       onClick: function onClick() {
@@ -1152,15 +1111,16 @@ var TrackVisualizer = function TrackVisualizer() {
     id: "plotTitle"
   }, "Track Similarity Plot"), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("g", {
     transform: "translate(".concat(pan.x, ", ").concat(pan.y, ") scale(").concat(zoom, ")")
-  }, plotData.map(function (track) {
+  }, plotData.map(function (track, index) {
+    var _trackColors$index = trackColors[index],
+      color = _trackColors$index.color,
+      dominantFeature = _trackColors$index.dominantFeature;
     return /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("circle", {
-      key: track.id || String(Math.random()) // Ensure unique key
-      ,
+      key: track.id || String(Math.random()),
       cx: track.x,
       cy: track.y,
-      r: 6 / Math.sqrt(zoom) // Adjust radius with zoom
-      ,
-      fill: clusterColors[track.cluster] || NOISE_CLUSTER_COLOR,
+      r: 6 / Math.sqrt(zoom),
+      fill: color,
       onMouseMove: function onMouseMove(e) {
         return handleMouseOver(track, e);
       },
@@ -1170,7 +1130,7 @@ var TrackVisualizer = function TrackVisualizer() {
       },
       className: "track-dot",
       tabIndex: 0,
-      "aria-label": "Track: ".concat(track.title || 'Unknown', " by ").concat(track.artist || 'Unknown', ", Cluster: ").concat(track.cluster === NOISE_CLUSTER_ID ? 'Noise' : 'C' + (track.cluster + 1))
+      "aria-label": "Track: ".concat(track.title || 'Unknown', " by ").concat(track.artist || 'Unknown', ", Feature: ").concat(dominantFeature || 'None')
     });
   }))), tooltip && /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
     className: "track-tooltip",
@@ -1185,60 +1145,37 @@ var TrackVisualizer = function TrackVisualizer() {
     className: "style-legend"
   }, Array.from(styleColors.entries()).sort(function (a, b) {
     return a[0].localeCompare(b[0]);
-  }).slice(0, 15).map(function (_ref17) {
-    var _ref18 = _slicedToArray(_ref17, 2),
-      feature = _ref18[0],
-      color = _ref18[1];
+  }).slice(0, 15).map(function (_ref19) {
+    var _ref20 = _slicedToArray(_ref19, 2),
+      feature = _ref20[0],
+      color = _ref20[1];
     return /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
       key: feature,
       className: "legend-item"
-    }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("span", {
-      className: "legend-color-swatch",
+    }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
+      className: "color-box",
       style: {
         backgroundColor: color
       }
-    }), " ", feature);
+    }), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("span", {
+      className: "feature-name"
+    }, feature));
   }), styleColors.size > 15 && /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
     className: "legend-item"
   }, "...and ", styleColors.size - 15, " more"), styleColors.size === 0 && /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
     className: "legend-item"
-  }, "No dominant features.")), Object.keys(clusterColors).length > 0 && Object.values(clusterColors).some(function (c) {
-    return c !== NOISE_CLUSTER_COLOR;
-  }) && /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
-    className: "cluster-legend"
-  }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("h4", null, "Clusters (Dominant Feature Color)"), Object.entries(clusterColors).filter(function (_ref19) {
-    var _ref20 = _slicedToArray(_ref19, 1),
-      id = _ref20[0];
-    return parseInt(id) !== NOISE_CLUSTER_ID;
-  }).sort(function (_ref21, _ref22) {
-    var _ref23 = _slicedToArray(_ref21, 1),
-      idA = _ref23[0];
-    var _ref24 = _slicedToArray(_ref22, 1),
-      idB = _ref24[0];
-    return parseInt(idA) - parseInt(idB);
-  }).map(function (_ref25) {
-    var _ref26 = _slicedToArray(_ref25, 2),
-      id = _ref26[0],
-      color = _ref26[1];
-    return /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
-      key: id,
-      className: "legend-item"
-    }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("span", {
-      className: "legend-color-swatch",
-      style: {
-        backgroundColor: color
-      }
-    }), " Cluster ", parseInt(id) + 1);
-  })), plotData.some(function (p) {
+  }, "No dominant features.")), plotData.some(function (p) {
     return p.cluster === NOISE_CLUSTER_ID;
   }) && /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
     className: "legend-item noise-legend"
-  }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("span", {
-    className: "legend-color-swatch",
+  }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
+    className: "color-box",
     style: {
       backgroundColor: NOISE_CLUSTER_COLOR
     }
-  }), " Noise"))));
+  }), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("span", {
+    className: "feature-name"
+  }, "Noise")))));
 };
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (TrackVisualizer);
 
