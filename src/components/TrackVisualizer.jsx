@@ -54,8 +54,8 @@ const CATEGORY_BASE_COLORS = { // Updated for better dark mode visibility
 };
 
 // Adjusted luminance for "fixing shade assignment"
-const LUMINANCE_INCREMENT = 0.1; // Was 0.15
-const MAX_LUM_OFFSET = 0.3;    // Was 0.6
+const LUMINANCE_INCREMENT = 0.3; // Increased from 0.2 for more noticeable shades
+const MAX_LUM_OFFSET = 0.5;    // Increased from 0.4 for more contrast
 
 
 // --- Helper Functions (largely unchanged, ensure console logs are intended for prod) ---
@@ -446,14 +446,16 @@ const TrackVisualizer = () => {
   const handleWheel = useCallback((e) => {
     e.preventDefault();
     const delta = e.deltaY;
-    const zoomFactor = delta > 0 ? 0.9 : 1.1;
+    // Smoother zoom factor calculation
+    const zoomFactor = Math.pow(0.95, Math.sign(delta));
     
     const svgRect = e.currentTarget.getBoundingClientRect();
     const mouseX = e.clientX - svgRect.left;
     const mouseY = e.clientY - svgRect.top;
 
     setZoom(prevZoom => {
-        const newZoom = Math.min(Math.max(prevZoom * zoomFactor, 0.1), 10);
+        // Set minimum zoom to 1, maximum to 10
+        const newZoom = Math.min(Math.max(prevZoom * zoomFactor, 1), 10);
         setPan(prevPan => ({
             x: prevPan.x - (mouseX - prevPan.x) * (newZoom / prevZoom - 1),
             y: prevPan.y - (mouseY - prevPan.y) * (newZoom / prevZoom - 1)
@@ -508,7 +510,7 @@ const TrackVisualizer = () => {
       let keyExtractor = (key) => key;
 
       if (selectedCategory === 'genre' || selectedCategory === 'style') {
-        featuresToParse = track.features; // Assuming 'features' contains 'genre---style'
+        featuresToParse = track.features;
         keyExtractor = (key) => {
             const [genrePart, stylePart] = key.split('---');
             return selectedCategory === 'genre' ? genrePart : stylePart;
@@ -554,11 +556,11 @@ const TrackVisualizer = () => {
 
     const newStyleColors = new Map();
     sortedFeatures.forEach(([featureName], index) => {
-      let luminanceFactor = 0;
-      if (index > 0) { // Base color for the most prominent (index 0)
-        const magnitude = Math.min(Math.ceil(index / 2) * LUMINANCE_INCREMENT, MAX_LUM_OFFSET);
-        luminanceFactor = (index % 2 === 1) ? magnitude : -magnitude; // Alternate lighter/darker
-      }
+      // More aggressive luminance variation
+      const luminanceFactor = index === 0 ? 0 : // Base color for most prominent
+        (index % 2 === 0 ? 
+          -Math.min(index * LUMINANCE_INCREMENT, MAX_LUM_OFFSET) : // Darker shades
+          Math.min(index * LUMINANCE_INCREMENT, MAX_LUM_OFFSET));  // Lighter shades
       const shadedColor = adjustLuminance(baseColorForCategory, luminanceFactor);
       newStyleColors.set(featureName, shadedColor);
     });

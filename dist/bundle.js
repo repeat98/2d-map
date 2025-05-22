@@ -115,8 +115,8 @@ var CATEGORY_BASE_COLORS = {
 };
 
 // Adjusted luminance for "fixing shade assignment"
-var LUMINANCE_INCREMENT = 0.1; // Was 0.15
-var MAX_LUM_OFFSET = 0.3; // Was 0.6
+var LUMINANCE_INCREMENT = 0.3; // Increased from 0.2 for more noticeable shades
+var MAX_LUM_OFFSET = 0.5; // Increased from 0.4 for more contrast
 
 // --- Helper Functions (largely unchanged, ensure console logs are intended for prod) ---
 
@@ -683,12 +683,14 @@ var TrackVisualizer = function TrackVisualizer() {
   var handleWheel = (0,react__WEBPACK_IMPORTED_MODULE_0__.useCallback)(function (e) {
     e.preventDefault();
     var delta = e.deltaY;
-    var zoomFactor = delta > 0 ? 0.9 : 1.1;
+    // Smoother zoom factor calculation
+    var zoomFactor = Math.pow(0.95, Math.sign(delta));
     var svgRect = e.currentTarget.getBoundingClientRect();
     var mouseX = e.clientX - svgRect.left;
     var mouseY = e.clientY - svgRect.top;
     setZoom(function (prevZoom) {
-      var newZoom = Math.min(Math.max(prevZoom * zoomFactor, 0.1), 10);
+      // Set minimum zoom to 1, maximum to 10
+      var newZoom = Math.min(Math.max(prevZoom * zoomFactor, 1), 10);
       setPan(function (prevPan) {
         return {
           x: prevPan.x - (mouseX - prevPan.x) * (newZoom / prevZoom - 1),
@@ -753,7 +755,7 @@ var TrackVisualizer = function TrackVisualizer() {
         return key;
       };
       if (selectedCategory === 'genre' || selectedCategory === 'style') {
-        featuresToParse = track.features; // Assuming 'features' contains 'genre---style'
+        featuresToParse = track.features;
         keyExtractor = function keyExtractor(key) {
           var _key$split = key.split('---'),
             _key$split2 = _slicedToArray(_key$split, 2),
@@ -804,12 +806,12 @@ var TrackVisualizer = function TrackVisualizer() {
     sortedFeatures.forEach(function (_ref10, index) {
       var _ref11 = _slicedToArray(_ref10, 1),
         featureName = _ref11[0];
-      var luminanceFactor = 0;
-      if (index > 0) {
-        // Base color for the most prominent (index 0)
-        var magnitude = Math.min(Math.ceil(index / 2) * LUMINANCE_INCREMENT, MAX_LUM_OFFSET);
-        luminanceFactor = index % 2 === 1 ? magnitude : -magnitude; // Alternate lighter/darker
-      }
+      // More aggressive luminance variation
+      var luminanceFactor = index === 0 ? 0 :
+      // Base color for most prominent
+      index % 2 === 0 ? -Math.min(index * LUMINANCE_INCREMENT, MAX_LUM_OFFSET) :
+      // Darker shades
+      Math.min(index * LUMINANCE_INCREMENT, MAX_LUM_OFFSET); // Lighter shades
       var shadedColor = adjustLuminance(baseColorForCategory, luminanceFactor);
       newStyleColors.set(featureName, shadedColor);
     });
@@ -1323,6 +1325,7 @@ ___CSS_LOADER_EXPORT___.push([module.id, `.track-visualizer-container {
   min-height: 100vh;
   color: #e0e0e0;
   position: relative;
+  width: 100%;
 }
 .track-visualizer-container h3 {
   color: #e0e0e0;
@@ -1423,73 +1426,102 @@ ___CSS_LOADER_EXPORT___.push([module.id, `.track-visualizer-container {
 }
 
 .visualization-area {
-  position: relative;
-  width: 100%;
-  height: calc(100vh - 180px);
-  background-color: #2a2a2a;
-  overflow: hidden;
   display: flex;
-}
-.visualization-area .track-plot {
+  flex-direction: row;
   flex: 1;
-  height: 100%;
-  background-color: #2a2a2a;
+  min-height: 0;
+  position: relative;
+  background: #1a1a1a;
+  border-radius: 8px;
+  overflow: hidden;
+  width: 100%;
+  height: calc(100vh - 200px);
 }
-.visualization-area .track-plot .track-dot {
+
+.track-plot {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  overflow: hidden;
+  width: calc(100% - 320px);
+}
+.track-plot svg {
+  width: 100%;
+  height: 100%;
+  min-height: 400px;
+  max-height: calc(100vh - 200px);
+}
+.track-plot .track-dot {
   cursor: pointer;
   transition: r 0.2s ease-in-out, opacity 0.2s ease-in-out;
   stroke: rgba(255, 255, 255, 0.1);
   stroke-width: 0.5px;
 }
-.visualization-area .track-plot .track-dot:hover {
+.track-plot .track-dot:hover {
   r: 9px;
   opacity: 0.8;
   stroke: rgba(255, 255, 255, 0.3);
   stroke-width: 1px;
 }
-.visualization-area .legend {
+
+.legend {
   width: 300px;
-  background-color: #2a2a2a;
+  min-width: 300px;
+  background: #2a2a2a;
   border-left: 1px solid #3a3a3a;
   padding: 20px;
-  overflow-y: auto;
   height: 100%;
+  overflow-y: auto;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex-shrink: 0;
 }
-.visualization-area .legend h4 {
+.legend h4 {
   margin: 0 0 16px 0;
   font-size: 1rem;
   color: #e0e0e0;
   font-weight: 600;
 }
-.visualization-area .legend .style-legend,
-.visualization-area .legend .cluster-legend {
+.legend .style-legend,
+.legend .cluster-legend {
   margin-bottom: 24px;
 }
-.visualization-area .legend .style-legend:last-child,
-.visualization-area .legend .cluster-legend:last-child {
+.legend .style-legend:last-child,
+.legend .cluster-legend:last-child {
   margin-bottom: 0;
 }
-.visualization-area .legend .legend-item {
+.legend .legend-item {
   display: flex;
   align-items: center;
-  margin-bottom: 8px;
-  font-size: 0.85rem;
-  color: #b0b0b0;
-  padding: 4px 8px;
+  gap: 8px;
+  padding: 8px;
   border-radius: 4px;
-  transition: background-color 0.2s ease;
+  cursor: pointer;
+  transition: background-color 0.2s;
 }
-.visualization-area .legend .legend-item:hover {
-  background-color: #3a3a3a;
+.legend .legend-item:hover {
+  background: #3a3a3a;
 }
-.visualization-area .legend .legend-item .legend-color-swatch {
+.legend .legend-item .color-box {
   width: 16px;
   height: 16px;
-  border-radius: 4px;
-  margin-right: 8px;
+  border-radius: 3px;
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
-.visualization-area .legend .legend-item.noise-legend {
+.legend .legend-item .feature-name {
+  font-size: 0.9em;
+  color: #e0e0e0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.legend .legend-item.noise-legend {
   margin-top: 12px;
   padding-top: 12px;
   border-top: 1px solid #4a4a4a;
@@ -1565,7 +1597,7 @@ ___CSS_LOADER_EXPORT___.push([module.id, `.track-visualizer-container {
 
 img[src\$="placeholder.png"] {
   background-color: #eee;
-}`, "",{"version":3,"sources":["webpack://./src/components/TrackVisualizer.scss"],"names":[],"mappings":"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","sourceRoot":""}]);
+}`, "",{"version":3,"sources":["webpack://./src/components/TrackVisualizer.scss"],"names":[],"mappings":"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","sourceRoot":""}]);
 // Exports
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (___CSS_LOADER_EXPORT___);
 
