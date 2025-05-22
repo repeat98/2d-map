@@ -598,51 +598,71 @@ var TrackVisualizer = function TrackVisualizer() {
     _useState12 = _slicedToArray(_useState11, 2),
     selectedCategory = _useState12[0],
     setSelectedCategory = _useState12[1];
-  var _useState13 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
+  var _useState13 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(null),
+    _useState14 = _slicedToArray(_useState13, 2),
+    selectedFeature = _useState14[0],
+    setSelectedFeature = _useState14[1];
+  var _useState15 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(''),
+    _useState16 = _slicedToArray(_useState15, 2),
+    searchQuery = _useState16[0],
+    setSearchQuery = _useState16[1];
+  var _useState17 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)([]),
+    _useState18 = _slicedToArray(_useState17, 2),
+    searchSuggestions = _useState18[0],
+    setSearchSuggestions = _useState18[1];
+  var _useState19 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(false),
+    _useState20 = _slicedToArray(_useState19, 2),
+    showSuggestions = _useState20[0],
+    setShowSuggestions = _useState20[1];
+  var _useState21 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(-1),
+    _useState22 = _slicedToArray(_useState21, 2),
+    selectedSuggestionIndex = _useState22[0],
+    setSelectedSuggestionIndex = _useState22[1];
+  var _useState23 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
       names: [],
       categories: []
     }),
-    _useState14 = _slicedToArray(_useState13, 2),
-    featureMetadata = _useState14[0],
-    setFeatureMetadata = _useState14[1];
-  var _useState15 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(new Map()),
-    _useState16 = _slicedToArray(_useState15, 2),
-    styleColors = _useState16[0],
-    setStyleColors = _useState16[1];
-  var _useState17 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(10),
-    _useState18 = _slicedToArray(_useState17, 2),
-    topNThreshold = _useState18[0],
-    setTopNThreshold = _useState18[1];
-  var _useState19 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
+    _useState24 = _slicedToArray(_useState23, 2),
+    featureMetadata = _useState24[0],
+    setFeatureMetadata = _useState24[1];
+  var _useState25 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(new Map()),
+    _useState26 = _slicedToArray(_useState25, 2),
+    styleColors = _useState26[0],
+    setStyleColors = _useState26[1];
+  var _useState27 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(new Map()),
+    _useState28 = _slicedToArray(_useState27, 2),
+    featureThresholds = _useState28[0],
+    setFeatureThresholds = _useState28[1];
+  var _useState29 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
       width: window.innerWidth,
       height: window.innerHeight - 150
     }),
-    _useState20 = _slicedToArray(_useState19, 2),
-    svgDimensions = _useState20[0],
-    setSvgDimensions = _useState20[1];
+    _useState30 = _slicedToArray(_useState29, 2),
+    svgDimensions = _useState30[0],
+    setSvgDimensions = _useState30[1];
   var viewModeRef = react__WEBPACK_IMPORTED_MODULE_0___default().useRef(null);
-  var _useState21 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(1),
-    _useState22 = _slicedToArray(_useState21, 2),
-    zoom = _useState22[0],
-    setZoom = _useState22[1];
-  var _useState23 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
+  var _useState31 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(1),
+    _useState32 = _slicedToArray(_useState31, 2),
+    zoom = _useState32[0],
+    setZoom = _useState32[1];
+  var _useState33 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
       x: 0,
       y: 0
     }),
-    _useState24 = _slicedToArray(_useState23, 2),
-    pan = _useState24[0],
-    setPan = _useState24[1];
-  var _useState25 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(false),
-    _useState26 = _slicedToArray(_useState25, 2),
-    isDragging = _useState26[0],
-    setIsDragging = _useState26[1];
-  var _useState27 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
+    _useState34 = _slicedToArray(_useState33, 2),
+    pan = _useState34[0],
+    setPan = _useState34[1];
+  var _useState35 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(false),
+    _useState36 = _slicedToArray(_useState35, 2),
+    isDragging = _useState36[0],
+    setIsDragging = _useState36[1];
+  var _useState37 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
       x: 0,
       y: 0
     }),
-    _useState28 = _slicedToArray(_useState27, 2),
-    dragStart = _useState28[0],
-    setDragStart = _useState28[1];
+    _useState38 = _slicedToArray(_useState37, 2),
+    dragStart = _useState38[0],
+    setDragStart = _useState38[1];
   var VIEW_BOX_VALUE = "0 0 ".concat(svgDimensions.width, " ").concat(svgDimensions.height);
 
   // Ref to hold the currently active/playing WaveSurfer instance from a tooltip
@@ -664,6 +684,8 @@ var TrackVisualizer = function TrackVisualizer() {
   var animationFrameRef = (0,react__WEBPACK_IMPORTED_MODULE_0__.useRef)(null);
   var lastPinchDistanceRef = (0,react__WEBPACK_IMPORTED_MODULE_0__.useRef)(null);
   var lastPinchCenterRef = (0,react__WEBPACK_IMPORTED_MODULE_0__.useRef)(null);
+  var searchInputRef = (0,react__WEBPACK_IMPORTED_MODULE_0__.useRef)(null);
+  var suggestionsRef = (0,react__WEBPACK_IMPORTED_MODULE_0__.useRef)(null);
   (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(function () {
     var updateDimensions = function updateDimensions() {
       if (viewModeRef.current) {
@@ -687,10 +709,10 @@ var TrackVisualizer = function TrackVisualizer() {
   var handleWheel = (0,react__WEBPACK_IMPORTED_MODULE_0__.useCallback)(function (e) {
     e.preventDefault();
 
-    // Handle trackpad pinch-to-zoom
-    if (e.ctrlKey) {
-      var _delta = e.deltaY;
-      var _zoomFactor = Math.pow(0.9, Math.sign(_delta));
+    // Handle trackpad pinch-to-zoom (both Ctrl and Cmd/Meta key)
+    if (e.ctrlKey || e.metaKey) {
+      // Use a smaller zoom factor for smoother zooming
+      var _zoomFactor = Math.pow(0.95, Math.sign(e.deltaY));
       var _svgRect = e.currentTarget.getBoundingClientRect();
       var _mouseX = e.clientX - _svgRect.left;
       var _mouseY = e.clientY - _svgRect.top;
@@ -709,18 +731,19 @@ var TrackVisualizer = function TrackVisualizer() {
 
     // Handle trackpad two-finger scroll for panning
     if (Math.abs(e.deltaX) > 0 || Math.abs(e.deltaY) > 0) {
+      // Increase panning speed for trackpad
+      var panSpeed = 1.5; // Increased from 0.5
       setPan(function (prevPan) {
         return {
-          x: prevPan.x - e.deltaX,
-          y: prevPan.y - e.deltaY
+          x: prevPan.x - e.deltaX * panSpeed,
+          y: prevPan.y - e.deltaY * panSpeed
         };
       });
       return;
     }
 
-    // Fallback to regular wheel zoom
-    var delta = e.deltaY;
-    var zoomFactor = Math.pow(0.9, Math.sign(delta));
+    // Fallback to regular wheel zoom with smoother factor
+    var zoomFactor = Math.pow(0.95, Math.sign(e.deltaY));
     var svgRect = e.currentTarget.getBoundingClientRect();
     var mouseX = e.clientX - svgRect.left;
     var mouseY = e.clientY - svgRect.top;
@@ -828,7 +851,7 @@ var TrackVisualizer = function TrackVisualizer() {
           y: deltaY / deltaTime
         };
 
-        // Update pan with reduced sensitivity
+        // Update pan with increased sensitivity
         setPan({
           x: e.clientX - dragStart.x,
           y: e.clientY - dragStart.y
@@ -899,43 +922,17 @@ var TrackVisualizer = function TrackVisualizer() {
   (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(function () {
     if (!tracks || tracks.length === 0 || !selectedCategory || !featureMetadata.names || featureMetadata.names.length === 0) {
       setStyleColors(new Map());
+      setFeatureThresholds(new Map());
       return;
     }
     var baseColorForCategory = CATEGORY_BASE_COLORS[selectedCategory] || NOISE_CLUSTER_COLOR;
     var featureFrequencies = new Map();
+    var featureValues = new Map();
     tracks.forEach(function (track) {
       if (!track) return;
       var featuresToParse = null;
-      var keyExtractor = function keyExtractor(key) {
-        return key;
-      };
       if (selectedCategory === 'genre' || selectedCategory === 'style') {
         featuresToParse = track.features;
-        keyExtractor = function keyExtractor(key) {
-          var _key$split = key.split('---'),
-            _key$split2 = _slicedToArray(_key$split, 2),
-            genrePart = _key$split2[0],
-            stylePart = _key$split2[1];
-          return selectedCategory === 'genre' ? genrePart : stylePart;
-        };
-      } else if (selectedCategory === 'instrument') {
-        featuresToParse = track.instrument_features;
-      } else if (selectedCategory === 'mood') {
-        MOOD_KEYWORDS.forEach(function (key) {
-          var value = track[key];
-          if (typeof value === 'number' && !isNaN(value)) {
-            featureFrequencies.set(key, (featureFrequencies.get(key) || 0) + value);
-          }
-        });
-      } else if (selectedCategory === 'spectral') {
-        SPECTRAL_KEYWORDS.forEach(function (key) {
-          var value = track[key];
-          if (typeof value === 'number' && !isNaN(value)) {
-            featureFrequencies.set(key, (featureFrequencies.get(key) || 0) + value);
-          }
-        });
-      }
-      if (featuresToParse) {
         try {
           var parsed = typeof featuresToParse === 'string' ? JSON.parse(featuresToParse) : featuresToParse;
           if (_typeof(parsed) === 'object' && parsed !== null) {
@@ -945,93 +942,179 @@ var TrackVisualizer = function TrackVisualizer() {
                 value = _ref9[1];
               var probability = parseFloat(value);
               if (isNaN(probability) || probability <= 0) return;
-              var featureName = keyExtractor(key);
-              if (featureName) {
-                featureFrequencies.set(featureName, (featureFrequencies.get(featureName) || 0) + probability);
-              }
+
+              // Split the key into genre and style parts
+              var _key$split = key.split('---'),
+                _key$split2 = _slicedToArray(_key$split, 2),
+                genrePart = _key$split2[0],
+                stylePart = _key$split2[1];
+              if (!genrePart || !stylePart) return; // Skip if format is invalid
+
+              // Store the appropriate part based on selected category
+              var featureKey = selectedCategory === 'genre' ? genrePart : stylePart;
+              featureFrequencies.set(featureKey, (featureFrequencies.get(featureKey) || 0) + probability);
+              if (!featureValues.has(featureKey)) featureValues.set(featureKey, []);
+              featureValues.get(featureKey).push(probability);
             });
           }
         } catch (e) {/* console.warn(...) */}
+      } else if (selectedCategory === 'instrument') {
+        featuresToParse = track.instrument_features;
+        try {
+          var _parsed = typeof featuresToParse === 'string' ? JSON.parse(featuresToParse) : featuresToParse;
+          if (_typeof(_parsed) === 'object' && _parsed !== null) {
+            Object.entries(_parsed).forEach(function (_ref10) {
+              var _ref11 = _slicedToArray(_ref10, 2),
+                key = _ref11[0],
+                value = _ref11[1];
+              var probability = parseFloat(value);
+              if (isNaN(probability) || probability <= 0) return;
+              featureFrequencies.set(key, (featureFrequencies.get(key) || 0) + probability);
+              if (!featureValues.has(key)) featureValues.set(key, []);
+              featureValues.get(key).push(probability);
+            });
+          }
+        } catch (e) {/* console.warn(...) */}
+      } else if (selectedCategory === 'mood') {
+        MOOD_KEYWORDS.forEach(function (key) {
+          var value = track[key];
+          if (typeof value === 'number' && !isNaN(value)) {
+            featureFrequencies.set(key, (featureFrequencies.get(key) || 0) + value);
+            if (!featureValues.has(key)) featureValues.set(key, []);
+            featureValues.get(key).push(value);
+          }
+        });
+      } else if (selectedCategory === 'spectral') {
+        SPECTRAL_KEYWORDS.forEach(function (key) {
+          var value = track[key];
+          if (typeof value === 'number' && !isNaN(value)) {
+            featureFrequencies.set(key, (featureFrequencies.get(key) || 0) + value);
+            if (!featureValues.has(key)) featureValues.set(key, []);
+            featureValues.get(key).push(value);
+          }
+        });
+      }
+    });
+
+    // Calculate thresholds based on feature variance
+    var newThresholds = new Map();
+    featureValues.forEach(function (values, feature) {
+      if (values.length > 0) {
+        var mean = values.reduce(function (a, b) {
+          return a + b;
+        }, 0) / values.length;
+        var variance = values.reduce(function (a, b) {
+          return a + Math.pow(b - mean, 2);
+        }, 0) / values.length;
+        var stdDev = Math.sqrt(variance);
+        newThresholds.set(feature, mean + 0.5 * stdDev);
       }
     });
     var sortedFeatures = Array.from(featureFrequencies.entries()).sort(function (a, b) {
       return b[1] - a[1];
-    }).slice(0, topNThreshold);
+    }); // Sort by frequency, no limit
+
     var newStyleColors = new Map();
-    sortedFeatures.forEach(function (_ref10, index) {
-      var _ref11 = _slicedToArray(_ref10, 1),
-        featureName = _ref11[0];
-      var luminanceFactor = index === 0 ? 0 : index % 2 === 0 ? -Math.min(index * LUMINANCE_INCREMENT, MAX_LUM_OFFSET) : Math.min(index * LUMINANCE_INCREMENT, MAX_LUM_OFFSET);
-      var shadedColor = adjustLuminance(baseColorForCategory, luminanceFactor);
-      newStyleColors.set(featureName, shadedColor);
+    sortedFeatures.forEach(function (_ref12) {
+      var _ref13 = _slicedToArray(_ref12, 1),
+        featureName = _ref13[0];
+      newStyleColors.set(featureName, baseColorForCategory);
     });
     setStyleColors(newStyleColors);
-  }, [tracks, selectedCategory, featureMetadata, topNThreshold]);
-  var getDominantFeature = function getDominantFeature(track, selectedCategory, styleColorsMap) {
-    var dominantFeature = null;
-    var maxValue = 0;
-    if (selectedCategory === 'genre' || selectedCategory === 'style') {
-      try {
-        var features = typeof track.features === 'string' ? JSON.parse(track.features) : track.features;
-        Object.entries(features || {}).forEach(function (_ref12) {
-          var _ref13 = _slicedToArray(_ref12, 2),
-            key = _ref13[0],
-            value = _ref13[1];
-          var _key$split3 = key.split('---'),
-            _key$split4 = _slicedToArray(_key$split3, 2),
-            genrePart = _key$split4[0],
-            stylePart = _key$split4[1];
-          var featureName = selectedCategory === 'genre' ? genrePart : stylePart;
-          var score = parseFloat(value);
-          if (!isNaN(score) && score > maxValue && styleColorsMap.has(featureName)) {
-            maxValue = score;
-            dominantFeature = featureName;
-          }
-        });
-      } catch (e) {}
-    } else if (selectedCategory === 'instrument') {
-      try {
-        var _features = typeof track.instrument_features === 'string' ? JSON.parse(track.instrument_features) : track.instrument_features;
-        Object.entries(_features || {}).forEach(function (_ref14) {
-          var _ref15 = _slicedToArray(_ref14, 2),
-            key = _ref15[0],
-            value = _ref15[1];
-          var score = parseFloat(value);
-          if (!isNaN(score) && score > maxValue && styleColorsMap.has(key)) {
-            maxValue = score;
-            dominantFeature = key;
-          }
-        });
-      } catch (e) {}
-    } else if (selectedCategory === 'mood') {
-      MOOD_KEYWORDS.forEach(function (key) {
-        var value = track[key];
-        if (typeof value === 'number' && !isNaN(value) && value > maxValue && styleColorsMap.has(key)) {
-          maxValue = value;
-          dominantFeature = key;
-        }
-      });
-    } else if (selectedCategory === 'spectral') {
-      SPECTRAL_KEYWORDS.forEach(function (key) {
-        var value = track[key];
-        if (typeof value === 'number' && !isNaN(value) && value > maxValue && styleColorsMap.has(key)) {
-          maxValue = value;
-          dominantFeature = key;
-        }
-      });
-    }
-    return dominantFeature;
-  };
+    setFeatureThresholds(newThresholds);
+  }, [tracks, selectedCategory, featureMetadata]);
   var trackColors = (0,react__WEBPACK_IMPORTED_MODULE_0__.useMemo)(function () {
     return plotData.map(function (track) {
-      var dominantFeature = getDominantFeature(track, selectedCategory, styleColors);
+      // Get the display title (filename without extension if title is unknown)
+      var displayTitle = track.title === 'Unknown Title' && track.path ? track.path.split('/').pop().replace(/\.[^/.]+$/, '') : track.title || 'Unknown Title';
+
+      // Get the filename from path if available
+      var filename = track.path ? track.path.split('/').pop().replace(/\.[^/.]+$/, '') : '';
+
+      // More comprehensive search with exact matching
+      var isSearchMatch = searchQuery && (
+      // Exact match for display title
+      displayTitle.toLowerCase() === searchQuery.toLowerCase() ||
+      // Exact match for original title
+      track.title && track.title.toLowerCase() === searchQuery.toLowerCase() ||
+      // Exact match for filename
+      filename.toLowerCase() === searchQuery.toLowerCase() ||
+      // Exact match for artist
+      track.artist && track.artist.toLowerCase() === searchQuery.toLowerCase() ||
+      // Exact match for album
+      track.album && track.album.toLowerCase() === searchQuery.toLowerCase() ||
+      // Exact match for genre/tag
+      track.tag1 && track.tag1.toLowerCase() === searchQuery.toLowerCase() ||
+      // Exact match for key
+      track.key && track.key.toLowerCase() === searchQuery.toLowerCase() ||
+      // Partial matches as fallback
+      displayTitle.toLowerCase().includes(searchQuery.toLowerCase()) || track.title && track.title.toLowerCase().includes(searchQuery.toLowerCase()) || filename.toLowerCase().includes(searchQuery.toLowerCase()) || track.artist && track.artist.toLowerCase().includes(searchQuery.toLowerCase()) || track.album && track.album.toLowerCase().includes(searchQuery.toLowerCase()) || track.tag1 && track.tag1.toLowerCase().includes(searchQuery.toLowerCase()) || track.key && track.key.toLowerCase().includes(searchQuery.toLowerCase()));
+
+      // If there's a search match, highlight in gold
+      if (isSearchMatch) {
+        return {
+          id: track.id,
+          color: '#FFD700',
+          dominantFeature: null,
+          isSearchMatch: true
+        };
+      }
+
+      // If a feature is selected, check if this track has that feature
+      if (selectedFeature) {
+        var hasFeature = false;
+        var featureValue = 0;
+        if (selectedCategory === 'genre' || selectedCategory === 'style') {
+          try {
+            var features = typeof track.features === 'string' ? JSON.parse(track.features) : track.features;
+            // Find the feature key that contains our selected feature
+            var matchingKey = Object.keys(features).find(function (key) {
+              var _key$split3 = key.split('---'),
+                _key$split4 = _slicedToArray(_key$split3, 2),
+                genrePart = _key$split4[0],
+                stylePart = _key$split4[1];
+              return selectedCategory === 'genre' ? genrePart === selectedFeature : stylePart === selectedFeature;
+            });
+            if (matchingKey) {
+              featureValue = parseFloat(features[matchingKey]);
+              hasFeature = !isNaN(featureValue) && featureValue > 0;
+            }
+          } catch (e) {
+            console.warn('Error parsing features:', e);
+          }
+        } else if (selectedCategory === 'instrument') {
+          try {
+            var _features = typeof track.instrument_features === 'string' ? JSON.parse(track.instrument_features) : track.instrument_features;
+            featureValue = parseFloat(_features[selectedFeature]);
+            hasFeature = !isNaN(featureValue) && featureValue > 0;
+          } catch (e) {
+            console.warn('Error parsing instrument features:', e);
+          }
+        } else if (selectedCategory === 'mood' || selectedCategory === 'spectral') {
+          featureValue = track[selectedFeature];
+          hasFeature = typeof featureValue === 'number' && !isNaN(featureValue) && featureValue > 0;
+        }
+
+        // Check if the feature value exceeds the threshold
+        var threshold = featureThresholds.get(selectedFeature) || 0;
+        hasFeature = hasFeature && featureValue >= threshold;
+        return {
+          id: track.id,
+          color: hasFeature ? CATEGORY_BASE_COLORS[selectedCategory] : NOISE_CLUSTER_COLOR,
+          dominantFeature: hasFeature ? selectedFeature : null,
+          isSearchMatch: false
+        };
+      }
+
+      // Default case: all tracks are neutral
       return {
         id: track.id,
-        color: dominantFeature ? styleColors.get(dominantFeature) : NOISE_CLUSTER_COLOR,
-        dominantFeature: dominantFeature
+        color: NOISE_CLUSTER_COLOR,
+        dominantFeature: null,
+        isSearchMatch: false
       };
     });
-  }, [plotData, selectedCategory, styleColors]);
+  }, [plotData, selectedCategory, selectedFeature, searchQuery, featureThresholds]);
   var fetchTracksData = (0,react__WEBPACK_IMPORTED_MODULE_0__.useCallback)(/*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee() {
     var response, errorData, rawData, keysWithCats, featureNames, featureCats, parsedTracks;
     return _regeneratorRuntime().wrap(function _callee$(_context) {
@@ -1161,20 +1244,40 @@ var TrackVisualizer = function TrackVisualizer() {
     var tooltipHeight = audioPath ? 200 : 150;
     var viewportWidth = window.innerWidth;
     var viewportHeight = window.innerHeight;
-    var x = event.clientX + TOOLTIP_OFFSET;
-    var y = event.clientY + TOOLTIP_OFFSET;
+
+    // Position tooltip vertically aligned with the cursor
+    var x = event.clientX + 5; // Minimal horizontal offset
+    var y = event.clientY - tooltipHeight - 5; // Position above the cursor by default
+
+    // If there's not enough space above, position below
+    if (y < 10) {
+      y = event.clientY + 5;
+    }
+
+    // Ensure tooltip stays within viewport bounds horizontally
     if (x + tooltipWidth > viewportWidth) {
-      x = event.clientX - tooltipWidth - TOOLTIP_OFFSET;
+      x = Math.max(10, event.clientX - tooltipWidth - 5);
     }
-    if (y + tooltipHeight > viewportHeight) {
-      y = event.clientY - tooltipHeight - TOOLTIP_OFFSET;
-    }
-    if (x < 0) x = TOOLTIP_OFFSET;
-    if (y < 0) y = TOOLTIP_OFFSET;
+
+    // Calculate cursor position relative to tooltip width for waveform centering
+    var cursorPositionRelative = (event.clientX - x) / tooltipWidth;
+
+    // Get display title - use filename without suffix if title is "Unknown Title"
+    var displayTitle = trackData.title === 'Unknown Title' && trackData.path ? trackData.path.split('/').pop().replace(/\.[^/.]+$/, '') : trackData.title || 'Unknown Title';
     setTooltip({
-      content: /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", null, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("img", {
+      content: /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
+        style: {
+          maxWidth: tooltipWidth
+        }
+      }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
+        style: {
+          display: 'flex',
+          gap: '10px',
+          marginBottom: '10px'
+        }
+      }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("img", {
         src: trackData.artwork_thumbnail_path || _assets_default_artwork_png__WEBPACK_IMPORTED_MODULE_2__["default"],
-        alt: "".concat(trackData.artist || 'Unknown', " - ").concat(trackData.title || 'Unknown'),
+        alt: "".concat(trackData.artist || 'Unknown', " - ").concat(displayTitle),
         onError: function onError(e) {
           e.target.onerror = null;
           e.target.src = _assets_default_artwork_png__WEBPACK_IMPORTED_MODULE_2__["default"];
@@ -1184,20 +1287,36 @@ var TrackVisualizer = function TrackVisualizer() {
           width: '80px',
           height: '80px',
           objectFit: 'cover',
-          marginRight: '10px',
-          "float": 'left',
           borderRadius: '4px',
-          transition: 'opacity 0.2s ease'
+          transition: 'opacity 0.2s ease',
+          flexShrink: 0
         }
       }), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
         style: {
-          overflow: 'hidden'
+          flex: 1,
+          minWidth: 0
         }
-      }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", null, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("strong", null, trackData.title || 'Unknown Title')), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", null, trackData.artist || 'Unknown Artist'), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", null, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("em", null, trackData.album || 'Unknown Album', " (", trackData.year || 'N/A', ")")), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", null, "BPM: ", ((_trackData$bpm = trackData.bpm) === null || _trackData$bpm === void 0 ? void 0 : _trackData$bpm.toFixed(1)) || 'N/A', ", Key: ", trackData.key || 'N/A'), trackData.tag1 && /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", null, "Genre: ", trackData.tag1, " (", ((_trackData$tag1_prob = trackData.tag1_prob) === null || _trackData$tag1_prob === void 0 ? void 0 : _trackData$tag1_prob.toFixed(2)) || 'N/A', ")")), audioPath && /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
+      }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
+        style: {
+          fontWeight: 'bold',
+          marginBottom: '4px'
+        }
+      }, displayTitle), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
+        style: {
+          marginBottom: '4px'
+        }
+      }, trackData.artist || 'Unknown Artist'), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
+        style: {
+          fontStyle: 'italic',
+          marginBottom: '4px'
+        }
+      }, trackData.album || 'Unknown Album', " (", trackData.year || 'N/A', ")"), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
+        style: {
+          marginBottom: '4px'
+        }
+      }, "BPM: ", ((_trackData$bpm = trackData.bpm) === null || _trackData$bpm === void 0 ? void 0 : _trackData$bpm.toFixed(1)) || 'N/A', ", Key: ", trackData.key || 'N/A'), trackData.tag1 && /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", null, "Genre: ", trackData.tag1, " (", ((_trackData$tag1_prob = trackData.tag1_prob) === null || _trackData$tag1_prob === void 0 ? void 0 : _trackData$tag1_prob.toFixed(2)) || 'N/A', ")"))), audioPath && /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
         className: "waveform-container",
         style: {
-          clear: 'both',
-          marginTop: '10px',
           width: '100%',
           height: '40px'
         }
@@ -1221,7 +1340,9 @@ var TrackVisualizer = function TrackVisualizer() {
         trackId: trackData.id.toString(),
         audioPath: audioPath,
         isInteractive: true,
-        onPlay: function onPlay() {}
+        onPlay: function onPlay() {},
+        initialPosition: cursorPositionRelative,
+        seekTo: cursorPositionRelative
       })))),
       x: x,
       y: y
@@ -1286,6 +1407,113 @@ var TrackVisualizer = function TrackVisualizer() {
       }
     };
   }, []);
+
+  // Function to generate search suggestions
+  var generateSuggestions = (0,react__WEBPACK_IMPORTED_MODULE_0__.useCallback)(function (query) {
+    if (!query || query.length < 2) {
+      setSearchSuggestions([]);
+      return;
+    }
+    var queryLower = query.toLowerCase();
+    var suggestions = new Set();
+    plotData.forEach(function (track) {
+      // Get the display title and filename
+      var displayTitle = track.title === 'Unknown Title' && track.path ? track.path.split('/').pop().replace(/\.[^/.]+$/, '') : track.title || 'Unknown Title';
+      var filename = track.path ? track.path.split('/').pop().replace(/\.[^/.]+$/, '') : '';
+
+      // Add matching suggestions
+      if (displayTitle.toLowerCase().includes(queryLower)) {
+        suggestions.add(displayTitle);
+      }
+      if (track.title && track.title.toLowerCase().includes(queryLower)) {
+        suggestions.add(track.title);
+      }
+      if (filename.toLowerCase().includes(queryLower)) {
+        suggestions.add(filename);
+      }
+      if (track.artist && track.artist.toLowerCase().includes(queryLower)) {
+        suggestions.add(track.artist);
+      }
+      if (track.album && track.album.toLowerCase().includes(queryLower)) {
+        suggestions.add(track.album);
+      }
+      if (track.tag1 && track.tag1.toLowerCase().includes(queryLower)) {
+        suggestions.add(track.tag1);
+      }
+      if (track.key && track.key.toLowerCase().includes(queryLower)) {
+        suggestions.add(track.key);
+      }
+    });
+
+    // Convert to array and sort by relevance (exact matches first, then partial matches)
+    var sortedSuggestions = Array.from(suggestions).sort(function (a, b) {
+      var aStartsWith = a.toLowerCase().startsWith(queryLower);
+      var bStartsWith = b.toLowerCase().startsWith(queryLower);
+      if (aStartsWith && !bStartsWith) return -1;
+      if (!aStartsWith && bStartsWith) return 1;
+      return a.localeCompare(b);
+    }).slice(0, 5); // Limit to 5 suggestions
+
+    setSearchSuggestions(sortedSuggestions);
+  }, [plotData]);
+
+  // Handle search input changes
+  var handleSearchChange = (0,react__WEBPACK_IMPORTED_MODULE_0__.useCallback)(function (e) {
+    var newQuery = e.target.value;
+    setSearchQuery(newQuery);
+    generateSuggestions(newQuery);
+    setShowSuggestions(true);
+    setSelectedSuggestionIndex(-1);
+  }, [generateSuggestions]);
+
+  // Handle suggestion selection
+  var handleSuggestionClick = (0,react__WEBPACK_IMPORTED_MODULE_0__.useCallback)(function (suggestion) {
+    setSearchQuery(suggestion);
+    setShowSuggestions(false);
+    setSelectedSuggestionIndex(-1);
+  }, []);
+
+  // Handle keyboard navigation
+  var handleKeyDown = (0,react__WEBPACK_IMPORTED_MODULE_0__.useCallback)(function (e) {
+    if (!showSuggestions) return;
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setSelectedSuggestionIndex(function (prev) {
+          return prev < searchSuggestions.length - 1 ? prev + 1 : prev;
+        });
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setSelectedSuggestionIndex(function (prev) {
+          return prev > -1 ? prev - 1 : -1;
+        });
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (selectedSuggestionIndex > -1) {
+          handleSuggestionClick(searchSuggestions[selectedSuggestionIndex]);
+        }
+        break;
+      case 'Escape':
+        setShowSuggestions(false);
+        setSelectedSuggestionIndex(-1);
+        break;
+    }
+  }, [showSuggestions, searchSuggestions, selectedSuggestionIndex, handleSuggestionClick]);
+
+  // Handle clicks outside the search box
+  (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(function () {
+    var handleClickOutside = function handleClickOutside(event) {
+      if (searchInputRef.current && !searchInputRef.current.contains(event.target) && suggestionsRef.current && !suggestionsRef.current.contains(event.target)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return function () {
+      return document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
   if (loading) return /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
     className: "track-visualizer-loading"
   }, "Loading tracks and features...");
@@ -1308,14 +1536,15 @@ var TrackVisualizer = function TrackVisualizer() {
     className: "category-toggle"
   }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("label", {
     htmlFor: "categorySelect"
-  }, "Color by:"), Object.entries(CATEGORY_BASE_COLORS).map(function (_ref17) {
-    var _ref18 = _slicedToArray(_ref17, 2),
-      categoryKey = _ref18[0],
-      colorValue = _ref18[1];
+  }, "Color by:"), Object.entries(CATEGORY_BASE_COLORS).map(function (_ref15) {
+    var _ref16 = _slicedToArray(_ref15, 2),
+      categoryKey = _ref16[0],
+      colorValue = _ref16[1];
     return /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("button", {
       key: categoryKey,
       onClick: function onClick() {
-        return setSelectedCategory(categoryKey);
+        setSelectedCategory(categoryKey);
+        setSelectedFeature(null);
       },
       className: selectedCategory === categoryKey ? 'active' : '',
       style: {
@@ -1325,24 +1554,68 @@ var TrackVisualizer = function TrackVisualizer() {
       }
     }, categoryKey.charAt(0).toUpperCase() + categoryKey.slice(1));
   })), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
-    className: "threshold-control"
+    className: "search-box",
+    ref: searchInputRef
   }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("label", {
-    htmlFor: "topNInput"
-  }, "Top N Features:"), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("input", {
-    id: "topNInput",
-    type: "number",
-    min: "1",
-    max: "50",
-    value: topNThreshold,
-    onChange: function onChange(e) {
-      return setTopNThreshold(Math.max(1, Math.min(50, parseInt(e.target.value) || 1)));
+    htmlFor: "trackSearch"
+  }, "Search Tracks:"), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
+    style: {
+      position: 'relative'
     }
-  })), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("button", {
+  }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("input", {
+    id: "trackSearch",
+    type: "text",
+    value: searchQuery,
+    onChange: handleSearchChange,
+    onKeyDown: handleKeyDown,
+    onFocus: function onFocus() {
+      return setShowSuggestions(true);
+    },
+    placeholder: "Search by title, filename, artist, album, genre, or key...",
+    style: {
+      backgroundColor: DARK_MODE_SURFACE_ALT,
+      color: DARK_MODE_TEXT_PRIMARY,
+      border: "1px solid ".concat(DARK_MODE_BORDER),
+      padding: '4px 8px',
+      borderRadius: '4px',
+      width: '300px'
+    }
+  }), showSuggestions && searchSuggestions.length > 0 && /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
+    ref: suggestionsRef,
+    style: {
+      position: 'absolute',
+      top: '100%',
+      left: 0,
+      right: 0,
+      backgroundColor: DARK_MODE_SURFACE_ALT,
+      border: "1px solid ".concat(DARK_MODE_BORDER),
+      borderRadius: '4px',
+      marginTop: '4px',
+      zIndex: 1000,
+      boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+    }
+  }, searchSuggestions.map(function (suggestion, index) {
+    return /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
+      key: suggestion,
+      onClick: function onClick() {
+        return handleSuggestionClick(suggestion);
+      },
+      style: {
+        padding: '8px 12px',
+        cursor: 'pointer',
+        backgroundColor: index === selectedSuggestionIndex ? adjustLuminance(DARK_MODE_SURFACE_ALT, 0.1) : 'transparent',
+        color: DARK_MODE_TEXT_PRIMARY,
+        ':hover': {
+          backgroundColor: adjustLuminance(DARK_MODE_SURFACE_ALT, 0.1)
+        }
+      }
+    }, suggestion);
+  })))), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("button", {
     onClick: handleReset,
     className: "reset-button"
   }, "Reset View")), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("p", {
     className: "info-text"
-  }, "Tracks clustered by audio feature similarity. Colors represent top ", topNThreshold, " dominant '", selectedCategory, "' features. Shades indicate prominence. Gray dots are noise.", /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("small", null, "Scroll to zoom, drag to pan.")), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
+  }, selectedFeature ? "Showing tracks with feature: ".concat(selectedFeature) : "Tracks clustered by audio feature similarity. Click a feature in the legend to highlight tracks.", searchQuery && " Search results highlighted in gold.", /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("small", null, "Scroll to zoom, drag to pan.")), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
     className: "visualization-area",
     ref: viewModeRef
   }, svgDimensions.width > 0 && svgDimensions.height > 0 && /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("svg", {
@@ -1364,20 +1637,28 @@ var TrackVisualizer = function TrackVisualizer() {
   }, "Track Similarity Plot"), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("g", {
     transform: "translate(".concat(pan.x, ", ").concat(pan.y, ") scale(").concat(zoom, ")")
   }, plotData.map(function (track, index) {
-    var colorInfo = trackColors[index] || {
-      color: NOISE_CLUSTER_COLOR,
-      dominantFeature: 'N/A'
-    };
+    return _objectSpread(_objectSpread({}, track), {}, {
+      colorInfo: trackColors[index] || {
+        color: NOISE_CLUSTER_COLOR,
+        dominantFeature: 'N/A'
+      }
+    });
+  }).sort(function (a, b) {
+    // Sort search matches to the end (top) of the array
+    if (a.colorInfo.isSearchMatch && !b.colorInfo.isSearchMatch) return 1;
+    if (!a.colorInfo.isSearchMatch && b.colorInfo.isSearchMatch) return -1;
+    return 0;
+  }).map(function (track) {
     // Calculate screen-space radius (in pixels)
     var screenRadius = 4; // Fixed screen-space radius in pixels
     // Convert to SVG space
     var svgRadius = screenRadius / zoom;
     return /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("circle", {
-      key: track.id || "track-".concat(index),
+      key: track.id || "track-".concat(track.id),
       cx: track.x,
       cy: track.y,
       r: svgRadius,
-      fill: colorInfo.color,
+      fill: track.colorInfo.color,
       onMouseMove: function onMouseMove(e) {
         return handleMouseOver(track, e);
       },
@@ -1391,7 +1672,7 @@ var TrackVisualizer = function TrackVisualizer() {
       } // Prevent any size transitions
       ,
       tabIndex: 0,
-      "aria-label": "Track: ".concat(track.title || 'Unknown', " by ").concat(track.artist || 'Unknown', ", Feature: ").concat(colorInfo.dominantFeature || 'None')
+      "aria-label": "Track: ".concat(track.title || 'Unknown', " by ").concat(track.artist || 'Unknown', ", Feature: ").concat(track.colorInfo.dominantFeature || 'None')
     });
   }))), tooltip && /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
     ref: tooltipRef,
@@ -1428,19 +1709,29 @@ var TrackVisualizer = function TrackVisualizer() {
     }
   }, tooltip.content), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
     className: "legend"
-  }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("h4", null, selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1), " Legend (Top ", Math.min(topNThreshold, styleColors.size, 15), ")"), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
+  }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("h4", null, selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1), " Features"), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
     className: "style-legend"
   }, Array.from(styleColors.entries()).sort(function (a, b) {
-    return a[0].localeCompare(b[0]);
-  }) // Sort legend items alphabetically
-  .slice(0, 15) // Limit to 15 items in legend
-  .map(function (_ref19) {
-    var _ref20 = _slicedToArray(_ref19, 2),
-      feature = _ref20[0],
-      color = _ref20[1];
+    return b[1] - a[1];
+  }) // Sort by frequency
+  .map(function (_ref17) {
+    var _ref18 = _slicedToArray(_ref17, 2),
+      feature = _ref18[0],
+      color = _ref18[1];
     return /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
       key: feature,
-      className: "legend-item"
+      className: "legend-item ".concat(selectedFeature === feature ? 'selected' : ''),
+      onClick: function onClick() {
+        return setSelectedFeature(selectedFeature === feature ? null : feature);
+      },
+      style: {
+        cursor: 'pointer',
+        backgroundColor: selectedFeature === feature ? DARK_MODE_SURFACE_ALT : 'transparent',
+        padding: '4px 8px',
+        borderRadius: '4px',
+        margin: '2px 0',
+        transition: 'background-color 0.2s ease'
+      }
     }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
       className: "color-box",
       style: {
@@ -1449,11 +1740,9 @@ var TrackVisualizer = function TrackVisualizer() {
     }), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("span", {
       className: "feature-name"
     }, feature));
-  }), styleColors.size > 15 && /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
+  }), styleColors.size === 0 && selectedCategory && /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
     className: "legend-item"
-  }, "...and ", styleColors.size - 15, " more"), styleColors.size === 0 && selectedCategory && /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
-    className: "legend-item"
-  }, "No dominant '", selectedCategory, "' features found.")), plotData.some(function (p) {
+  }, "No features found for '", selectedCategory, "'.")), plotData.some(function (p) {
     return p.cluster === NOISE_CLUSTER_ID || trackColors.some(function (tc) {
       return tc.color === NOISE_CLUSTER_COLOR;
     });

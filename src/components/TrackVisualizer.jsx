@@ -402,9 +402,14 @@ const TrackVisualizer = () => {
   const [error, setError] = useState(null);
   const [tooltip, setTooltip] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState('genre');
+  const [selectedFeature, setSelectedFeature] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchSuggestions, setSearchSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
   const [featureMetadata, setFeatureMetadata] = useState({ names: [], categories: [] });
   const [styleColors, setStyleColors] = useState(new Map());
-  const [topNThreshold, setTopNThreshold] = useState(10);
+  const [featureThresholds, setFeatureThresholds] = useState(new Map());
 
   const [svgDimensions, setSvgDimensions] = useState({ width: window.innerWidth, height: window.innerHeight - 150 });
   const viewModeRef = React.useRef(null);
@@ -430,6 +435,9 @@ const TrackVisualizer = () => {
   const lastPinchDistanceRef = useRef(null);
   const lastPinchCenterRef = useRef(null);
 
+  const searchInputRef = useRef(null);
+  const suggestionsRef = useRef(null);
+
   useEffect(() => {
     const updateDimensions = () => {
       if (viewModeRef.current) {
@@ -450,10 +458,10 @@ const TrackVisualizer = () => {
   const handleWheel = useCallback((e) => {
     e.preventDefault();
     
-    // Handle trackpad pinch-to-zoom
-    if (e.ctrlKey) {
-      const delta = e.deltaY;
-      const zoomFactor = Math.pow(0.9, Math.sign(delta));
+    // Handle trackpad pinch-to-zoom (both Ctrl and Cmd/Meta key)
+    if (e.ctrlKey || e.metaKey) {
+      // Use a smaller zoom factor for smoother zooming
+      const zoomFactor = Math.pow(0.95, Math.sign(e.deltaY));
       const svgRect = e.currentTarget.getBoundingClientRect();
       const mouseX = e.clientX - svgRect.left;
       const mouseY = e.clientY - svgRect.top;
@@ -471,16 +479,17 @@ const TrackVisualizer = () => {
 
     // Handle trackpad two-finger scroll for panning
     if (Math.abs(e.deltaX) > 0 || Math.abs(e.deltaY) > 0) {
+      // Increase panning speed for trackpad
+      const panSpeed = 1.5; // Increased from 0.5
       setPan(prevPan => ({
-        x: prevPan.x - e.deltaX,
-        y: prevPan.y - e.deltaY
+        x: prevPan.x - e.deltaX * panSpeed,
+        y: prevPan.y - e.deltaY * panSpeed
       }));
       return;
     }
 
-    // Fallback to regular wheel zoom
-    const delta = e.deltaY;
-    const zoomFactor = Math.pow(0.9, Math.sign(delta));
+    // Fallback to regular wheel zoom with smoother factor
+    const zoomFactor = Math.pow(0.95, Math.sign(e.deltaY));
     const svgRect = e.currentTarget.getBoundingClientRect();
     const mouseX = e.clientX - svgRect.left;
     const mouseY = e.clientY - svgRect.top;
@@ -589,7 +598,7 @@ const TrackVisualizer = () => {
           y: deltaY / deltaTime
         };
         
-        // Update pan with reduced sensitivity
+        // Update pan with increased sensitivity
         setPan({
           x: e.clientX - dragStart.x,
           y: e.clientY - dragStart.y
@@ -653,132 +662,201 @@ const TrackVisualizer = () => {
 
   useEffect(() => {
     if (!tracks || tracks.length === 0 || !selectedCategory || !featureMetadata.names || featureMetadata.names.length === 0) {
-      setStyleColors(new Map()); return;
+      setStyleColors(new Map());
+      setFeatureThresholds(new Map());
+      return;
     }
 
     const baseColorForCategory = CATEGORY_BASE_COLORS[selectedCategory] || NOISE_CLUSTER_COLOR;
     const featureFrequencies = new Map();
+    const featureValues = new Map();
 
     tracks.forEach(track => {
       if (!track) return;
       let featuresToParse = null;
-      let keyExtractor = (key) => key;
 
       if (selectedCategory === 'genre' || selectedCategory === 'style') {
         featuresToParse = track.features;
-        keyExtractor = (key) => {
-            const [genrePart, stylePart] = key.split('---');
-            return selectedCategory === 'genre' ? genrePart : stylePart;
-        };
-      } else if (selectedCategory === 'instrument') {
-        featuresToParse = track.instrument_features;
-      } else if (selectedCategory === 'mood') {
-        MOOD_KEYWORDS.forEach(key => {
-            const value = track[key];
-            if (typeof value === 'number' && !isNaN(value)) {
-                featureFrequencies.set(key, (featureFrequencies.get(key) || 0) + value);
-            }
-        });
-      } else if (selectedCategory === 'spectral') {
-        SPECTRAL_KEYWORDS.forEach(key => {
-            const value = track[key];
-            if (typeof value === 'number' && !isNaN(value)) {
-                featureFrequencies.set(key, (featureFrequencies.get(key) || 0) + value);
-            }
-        });
-      }
-
-      if (featuresToParse) {
         try {
           const parsed = typeof featuresToParse === 'string' ? JSON.parse(featuresToParse) : featuresToParse;
           if (typeof parsed === 'object' && parsed !== null) {
             Object.entries(parsed).forEach(([key, value]) => {
               const probability = parseFloat(value);
               if (isNaN(probability) || probability <= 0) return;
-              const featureName = keyExtractor(key);
-              if (featureName) {
-                featureFrequencies.set(featureName, (featureFrequencies.get(featureName) || 0) + probability);
-              }
+              
+              // Split the key into genre and style parts
+              const [genrePart, stylePart] = key.split('---');
+              if (!genrePart || !stylePart) return; // Skip if format is invalid
+              
+              // Store the appropriate part based on selected category
+              const featureKey = selectedCategory === 'genre' ? genrePart : stylePart;
+              featureFrequencies.set(featureKey, (featureFrequencies.get(featureKey) || 0) + probability);
+              if (!featureValues.has(featureKey)) featureValues.set(featureKey, []);
+              featureValues.get(featureKey).push(probability);
             });
           }
         } catch (e) { /* console.warn(...) */ }
+      } else if (selectedCategory === 'instrument') {
+        featuresToParse = track.instrument_features;
+        try {
+          const parsed = typeof featuresToParse === 'string' ? JSON.parse(featuresToParse) : featuresToParse;
+          if (typeof parsed === 'object' && parsed !== null) {
+            Object.entries(parsed).forEach(([key, value]) => {
+              const probability = parseFloat(value);
+              if (isNaN(probability) || probability <= 0) return;
+              featureFrequencies.set(key, (featureFrequencies.get(key) || 0) + probability);
+              if (!featureValues.has(key)) featureValues.set(key, []);
+              featureValues.get(key).push(probability);
+            });
+          }
+        } catch (e) { /* console.warn(...) */ }
+      } else if (selectedCategory === 'mood') {
+        MOOD_KEYWORDS.forEach(key => {
+          const value = track[key];
+          if (typeof value === 'number' && !isNaN(value)) {
+            featureFrequencies.set(key, (featureFrequencies.get(key) || 0) + value);
+            if (!featureValues.has(key)) featureValues.set(key, []);
+            featureValues.get(key).push(value);
+          }
+        });
+      } else if (selectedCategory === 'spectral') {
+        SPECTRAL_KEYWORDS.forEach(key => {
+          const value = track[key];
+          if (typeof value === 'number' && !isNaN(value)) {
+            featureFrequencies.set(key, (featureFrequencies.get(key) || 0) + value);
+            if (!featureValues.has(key)) featureValues.set(key, []);
+            featureValues.get(key).push(value);
+          }
+        });
+      }
+    });
+
+    // Calculate thresholds based on feature variance
+    const newThresholds = new Map();
+    featureValues.forEach((values, feature) => {
+      if (values.length > 0) {
+        const mean = values.reduce((a, b) => a + b, 0) / values.length;
+        const variance = values.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / values.length;
+        const stdDev = Math.sqrt(variance);
+        newThresholds.set(feature, mean + (0.5 * stdDev));
       }
     });
 
     const sortedFeatures = Array.from(featureFrequencies.entries())
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, topNThreshold);
+      .sort((a, b) => b[1] - a[1]); // Sort by frequency, no limit
 
     const newStyleColors = new Map();
-    sortedFeatures.forEach(([featureName], index) => {
-      const luminanceFactor = index === 0 ? 0 :
-        (index % 2 === 0 ?
-          -Math.min(index * LUMINANCE_INCREMENT, MAX_LUM_OFFSET) :
-          Math.min(index * LUMINANCE_INCREMENT, MAX_LUM_OFFSET));
-      const shadedColor = adjustLuminance(baseColorForCategory, luminanceFactor);
-      newStyleColors.set(featureName, shadedColor);
+    sortedFeatures.forEach(([featureName]) => {
+      newStyleColors.set(featureName, baseColorForCategory);
     });
+
     setStyleColors(newStyleColors);
-  }, [tracks, selectedCategory, featureMetadata, topNThreshold]);
-
-  const getDominantFeature = (track, selectedCategory, styleColorsMap) => {
-    let dominantFeature = null;
-    let maxValue = 0;
-
-    if (selectedCategory === 'genre' || selectedCategory === 'style') {
-      try {
-        const features = typeof track.features === 'string' ? JSON.parse(track.features) : track.features;
-        Object.entries(features || {}).forEach(([key, value]) => {
-          const [genrePart, stylePart] = key.split('---');
-          const featureName = selectedCategory === 'genre' ? genrePart : stylePart;
-          const score = parseFloat(value);
-          if (!isNaN(score) && score > maxValue && styleColorsMap.has(featureName)) {
-            maxValue = score;
-            dominantFeature = featureName;
-          }
-        });
-      } catch (e) {}
-    } else if (selectedCategory === 'instrument') {
-      try {
-        const features = typeof track.instrument_features === 'string' ? JSON.parse(track.instrument_features) : track.instrument_features;
-        Object.entries(features || {}).forEach(([key, value]) => {
-          const score = parseFloat(value);
-          if (!isNaN(score) && score > maxValue && styleColorsMap.has(key)) {
-            maxValue = score;
-            dominantFeature = key;
-          }
-        });
-      } catch (e) {}
-    } else if (selectedCategory === 'mood') {
-      MOOD_KEYWORDS.forEach(key => {
-        const value = track[key];
-        if (typeof value === 'number' && !isNaN(value) && value > maxValue && styleColorsMap.has(key)) {
-          maxValue = value;
-          dominantFeature = key;
-        }
-      });
-    } else if (selectedCategory === 'spectral') {
-      SPECTRAL_KEYWORDS.forEach(key => {
-        const value = track[key];
-        if (typeof value === 'number' && !isNaN(value) && value > maxValue && styleColorsMap.has(key)) {
-          maxValue = value;
-          dominantFeature = key;
-        }
-      });
-    }
-    return dominantFeature;
-  };
+    setFeatureThresholds(newThresholds);
+  }, [tracks, selectedCategory, featureMetadata]);
 
   const trackColors = useMemo(() => {
     return plotData.map(track => {
-      const dominantFeature = getDominantFeature(track, selectedCategory, styleColors);
+      // Get the display title (filename without extension if title is unknown)
+      const displayTitle = track.title === 'Unknown Title' && track.path ? 
+        track.path.split('/').pop().replace(/\.[^/.]+$/, '') : 
+        (track.title || 'Unknown Title');
+
+      // Get the filename from path if available
+      const filename = track.path ? track.path.split('/').pop().replace(/\.[^/.]+$/, '') : '';
+
+      // More comprehensive search with exact matching
+      const isSearchMatch = searchQuery && (
+        // Exact match for display title
+        displayTitle.toLowerCase() === searchQuery.toLowerCase() ||
+        // Exact match for original title
+        (track.title && track.title.toLowerCase() === searchQuery.toLowerCase()) ||
+        // Exact match for filename
+        filename.toLowerCase() === searchQuery.toLowerCase() ||
+        // Exact match for artist
+        (track.artist && track.artist.toLowerCase() === searchQuery.toLowerCase()) ||
+        // Exact match for album
+        (track.album && track.album.toLowerCase() === searchQuery.toLowerCase()) ||
+        // Exact match for genre/tag
+        (track.tag1 && track.tag1.toLowerCase() === searchQuery.toLowerCase()) ||
+        // Exact match for key
+        (track.key && track.key.toLowerCase() === searchQuery.toLowerCase()) ||
+        // Partial matches as fallback
+        displayTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (track.title && track.title.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        filename.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (track.artist && track.artist.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (track.album && track.album.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (track.tag1 && track.tag1.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (track.key && track.key.toLowerCase().includes(searchQuery.toLowerCase()))
+      );
+
+      // If there's a search match, highlight in gold
+      if (isSearchMatch) {
+        return {
+          id: track.id,
+          color: '#FFD700',
+          dominantFeature: null,
+          isSearchMatch: true
+        };
+      }
+
+      // If a feature is selected, check if this track has that feature
+      if (selectedFeature) {
+        let hasFeature = false;
+        let featureValue = 0;
+        
+        if (selectedCategory === 'genre' || selectedCategory === 'style') {
+          try {
+            const features = typeof track.features === 'string' ? JSON.parse(track.features) : track.features;
+            // Find the feature key that contains our selected feature
+            const matchingKey = Object.keys(features).find(key => {
+              const [genrePart, stylePart] = key.split('---');
+              return selectedCategory === 'genre' ? 
+                genrePart === selectedFeature : 
+                stylePart === selectedFeature;
+            });
+            
+            if (matchingKey) {
+              featureValue = parseFloat(features[matchingKey]);
+              hasFeature = !isNaN(featureValue) && featureValue > 0;
+            }
+          } catch (e) {
+            console.warn('Error parsing features:', e);
+          }
+        } else if (selectedCategory === 'instrument') {
+          try {
+            const features = typeof track.instrument_features === 'string' ? JSON.parse(track.instrument_features) : track.instrument_features;
+            featureValue = parseFloat(features[selectedFeature]);
+            hasFeature = !isNaN(featureValue) && featureValue > 0;
+          } catch (e) {
+            console.warn('Error parsing instrument features:', e);
+          }
+        } else if (selectedCategory === 'mood' || selectedCategory === 'spectral') {
+          featureValue = track[selectedFeature];
+          hasFeature = typeof featureValue === 'number' && !isNaN(featureValue) && featureValue > 0;
+        }
+
+        // Check if the feature value exceeds the threshold
+        const threshold = featureThresholds.get(selectedFeature) || 0;
+        hasFeature = hasFeature && featureValue >= threshold;
+
+        return {
+          id: track.id,
+          color: hasFeature ? CATEGORY_BASE_COLORS[selectedCategory] : NOISE_CLUSTER_COLOR,
+          dominantFeature: hasFeature ? selectedFeature : null,
+          isSearchMatch: false
+        };
+      }
+
+      // Default case: all tracks are neutral
       return {
         id: track.id,
-        color: dominantFeature ? styleColors.get(dominantFeature) : NOISE_CLUSTER_COLOR,
-        dominantFeature
+        color: NOISE_CLUSTER_COLOR,
+        dominantFeature: null,
+        isSearchMatch: false
       };
     });
-  }, [plotData, selectedCategory, styleColors]);
+  }, [plotData, selectedCategory, selectedFeature, searchQuery, featureThresholds]);
 
   const fetchTracksData = useCallback(async () => {
     try {
@@ -863,48 +941,59 @@ const TrackVisualizer = () => {
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
 
-    let x = event.clientX + TOOLTIP_OFFSET;
-    let y = event.clientY + TOOLTIP_OFFSET;
+    // Position tooltip vertically aligned with the cursor
+    let x = event.clientX + 5; // Minimal horizontal offset
+    let y = event.clientY - tooltipHeight - 5; // Position above the cursor by default
 
+    // If there's not enough space above, position below
+    if (y < 10) {
+      y = event.clientY + 5;
+    }
+
+    // Ensure tooltip stays within viewport bounds horizontally
     if (x + tooltipWidth > viewportWidth) {
-      x = event.clientX - tooltipWidth - TOOLTIP_OFFSET;
+      x = Math.max(10, event.clientX - tooltipWidth - 5);
     }
-    if (y + tooltipHeight > viewportHeight) {
-      y = event.clientY - tooltipHeight - TOOLTIP_OFFSET;
-    }
-    if (x < 0) x = TOOLTIP_OFFSET;
-    if (y < 0) y = TOOLTIP_OFFSET;
+
+    // Calculate cursor position relative to tooltip width for waveform centering
+    const cursorPositionRelative = (event.clientX - x) / tooltipWidth;
+
+    // Get display title - use filename without suffix if title is "Unknown Title"
+    const displayTitle = trackData.title === 'Unknown Title' && trackData.path ? 
+      trackData.path.split('/').pop().replace(/\.[^/.]+$/, '') : 
+      (trackData.title || 'Unknown Title');
 
     setTooltip({
       content: (
-        <div>
-          <img
-            src={trackData.artwork_thumbnail_path || defaultArtwork}
-            alt={`${trackData.artist || 'Unknown'} - ${trackData.title || 'Unknown'}`}
-            onError={(e) => {
-              e.target.onerror = null;
-              e.target.src = defaultArtwork;
-              e.target.style.opacity = '0.7';
-            }}
-            style={{
-              width: '80px',
-              height: '80px',
-              objectFit: 'cover',
-              marginRight: '10px',
-              float: 'left',
-              borderRadius: '4px',
-              transition: 'opacity 0.2s ease'
-            }}
-          />
-          <div style={{ overflow: 'hidden'}}>
-            <div><strong>{trackData.title || 'Unknown Title'}</strong></div>
-            <div>{trackData.artist || 'Unknown Artist'}</div>
-            <div><em>{trackData.album || 'Unknown Album'} ({trackData.year || 'N/A'})</em></div>
-            <div>BPM: {trackData.bpm?.toFixed(1) || 'N/A'}, Key: {trackData.key || 'N/A'}</div>
-            {trackData.tag1 && <div>Genre: {trackData.tag1} ({trackData.tag1_prob?.toFixed(2) || 'N/A'})</div>}
+        <div style={{ maxWidth: tooltipWidth }}>
+          <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+            <img
+              src={trackData.artwork_thumbnail_path || defaultArtwork}
+              alt={`${trackData.artist || 'Unknown'} - ${displayTitle}`}
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = defaultArtwork;
+                e.target.style.opacity = '0.7';
+              }}
+              style={{
+                width: '80px',
+                height: '80px',
+                objectFit: 'cover',
+                borderRadius: '4px',
+                transition: 'opacity 0.2s ease',
+                flexShrink: 0
+              }}
+            />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{displayTitle}</div>
+              <div style={{ marginBottom: '4px' }}>{trackData.artist || 'Unknown Artist'}</div>
+              <div style={{ fontStyle: 'italic', marginBottom: '4px' }}>{trackData.album || 'Unknown Album'} ({trackData.year || 'N/A'})</div>
+              <div style={{ marginBottom: '4px' }}>BPM: {trackData.bpm?.toFixed(1) || 'N/A'}, Key: {trackData.key || 'N/A'}</div>
+              {trackData.tag1 && <div>Genre: {trackData.tag1} ({trackData.tag1_prob?.toFixed(2) || 'N/A'})</div>}
+            </div>
           </div>
           {audioPath && (
-            <div className="waveform-container" style={{ clear: 'both', marginTop: '10px', width: '100%', height: '40px' }}>
+            <div className="waveform-container" style={{ width: '100%', height: '40px' }}>
               <PlaybackContext.Provider value={{
                 setPlayingWaveSurfer: (newlyPlayingWavesurfer) => {
                   if (wavesurferRef.current && wavesurferRef.current !== newlyPlayingWavesurfer) {
@@ -925,6 +1014,8 @@ const TrackVisualizer = () => {
                   audioPath={audioPath}
                   isInteractive={true}
                   onPlay={() => {}}
+                  initialPosition={cursorPositionRelative}
+                  seekTo={cursorPositionRelative}
                 />
               </PlaybackContext.Provider>
             </div>
@@ -998,6 +1089,118 @@ const TrackVisualizer = () => {
     };
   }, []);
 
+  // Function to generate search suggestions
+  const generateSuggestions = useCallback((query) => {
+    if (!query || query.length < 2) {
+      setSearchSuggestions([]);
+      return;
+    }
+
+    const queryLower = query.toLowerCase();
+    const suggestions = new Set();
+
+    plotData.forEach(track => {
+      // Get the display title and filename
+      const displayTitle = track.title === 'Unknown Title' && track.path ? 
+        track.path.split('/').pop().replace(/\.[^/.]+$/, '') : 
+        (track.title || 'Unknown Title');
+      const filename = track.path ? track.path.split('/').pop().replace(/\.[^/.]+$/, '') : '';
+
+      // Add matching suggestions
+      if (displayTitle.toLowerCase().includes(queryLower)) {
+        suggestions.add(displayTitle);
+      }
+      if (track.title && track.title.toLowerCase().includes(queryLower)) {
+        suggestions.add(track.title);
+      }
+      if (filename.toLowerCase().includes(queryLower)) {
+        suggestions.add(filename);
+      }
+      if (track.artist && track.artist.toLowerCase().includes(queryLower)) {
+        suggestions.add(track.artist);
+      }
+      if (track.album && track.album.toLowerCase().includes(queryLower)) {
+        suggestions.add(track.album);
+      }
+      if (track.tag1 && track.tag1.toLowerCase().includes(queryLower)) {
+        suggestions.add(track.tag1);
+      }
+      if (track.key && track.key.toLowerCase().includes(queryLower)) {
+        suggestions.add(track.key);
+      }
+    });
+
+    // Convert to array and sort by relevance (exact matches first, then partial matches)
+    const sortedSuggestions = Array.from(suggestions)
+      .sort((a, b) => {
+        const aStartsWith = a.toLowerCase().startsWith(queryLower);
+        const bStartsWith = b.toLowerCase().startsWith(queryLower);
+        if (aStartsWith && !bStartsWith) return -1;
+        if (!aStartsWith && bStartsWith) return 1;
+        return a.localeCompare(b);
+      })
+      .slice(0, 5); // Limit to 5 suggestions
+
+    setSearchSuggestions(sortedSuggestions);
+  }, [plotData]);
+
+  // Handle search input changes
+  const handleSearchChange = useCallback((e) => {
+    const newQuery = e.target.value;
+    setSearchQuery(newQuery);
+    generateSuggestions(newQuery);
+    setShowSuggestions(true);
+    setSelectedSuggestionIndex(-1);
+  }, [generateSuggestions]);
+
+  // Handle suggestion selection
+  const handleSuggestionClick = useCallback((suggestion) => {
+    setSearchQuery(suggestion);
+    setShowSuggestions(false);
+    setSelectedSuggestionIndex(-1);
+  }, []);
+
+  // Handle keyboard navigation
+  const handleKeyDown = useCallback((e) => {
+    if (!showSuggestions) return;
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setSelectedSuggestionIndex(prev => 
+          prev < searchSuggestions.length - 1 ? prev + 1 : prev
+        );
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setSelectedSuggestionIndex(prev => prev > -1 ? prev - 1 : -1);
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (selectedSuggestionIndex > -1) {
+          handleSuggestionClick(searchSuggestions[selectedSuggestionIndex]);
+        }
+        break;
+      case 'Escape':
+        setShowSuggestions(false);
+        setSelectedSuggestionIndex(-1);
+        break;
+    }
+  }, [showSuggestions, searchSuggestions, selectedSuggestionIndex, handleSuggestionClick]);
+
+  // Handle clicks outside the search box
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (searchInputRef.current && !searchInputRef.current.contains(event.target) &&
+          suggestionsRef.current && !suggestionsRef.current.contains(event.target)) {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   if (loading) return <div className="track-visualizer-loading">Loading tracks and features...</div>;
   if (error) return <div className="track-visualizer-error">Error: {error} <button onClick={fetchTracksData}>Try Reload</button></div>;
   if (plotData.length === 0 && !loading && tracks.length > 0) return <div className="track-visualizer-empty">Data processed, but no points to visualize. Check feature processing.</div>;
@@ -1012,7 +1215,10 @@ const TrackVisualizer = () => {
           {Object.entries(CATEGORY_BASE_COLORS).map(([categoryKey, colorValue]) => (
             <button
               key={categoryKey}
-              onClick={() => setSelectedCategory(categoryKey)}
+              onClick={() => {
+                setSelectedCategory(categoryKey);
+                setSelectedFeature(null);
+              }}
               className={selectedCategory === categoryKey ? 'active' : ''}
               style={{
                 backgroundColor: selectedCategory === categoryKey ? colorValue : DARK_MODE_SURFACE_ALT,
@@ -1024,17 +1230,72 @@ const TrackVisualizer = () => {
             </button>
           ))}
         </div>
-        <div className="threshold-control">
-          <label htmlFor="topNInput">Top N Features:</label>
-          <input
-            id="topNInput" type="number" min="1" max="50" value={topNThreshold}
-            onChange={(e) => setTopNThreshold(Math.max(1, Math.min(50, parseInt(e.target.value) || 1)))}
-          />
+        <div className="search-box" ref={searchInputRef}>
+          <label htmlFor="trackSearch">Search Tracks:</label>
+          <div style={{ position: 'relative' }}>
+            <input
+              id="trackSearch"
+              type="text"
+              value={searchQuery}
+              onChange={handleSearchChange}
+              onKeyDown={handleKeyDown}
+              onFocus={() => setShowSuggestions(true)}
+              placeholder="Search by title, filename, artist, album, genre, or key..."
+              style={{
+                backgroundColor: DARK_MODE_SURFACE_ALT,
+                color: DARK_MODE_TEXT_PRIMARY,
+                border: `1px solid ${DARK_MODE_BORDER}`,
+                padding: '4px 8px',
+                borderRadius: '4px',
+                width: '300px'
+              }}
+            />
+            {showSuggestions && searchSuggestions.length > 0 && (
+              <div
+                ref={suggestionsRef}
+                style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  right: 0,
+                  backgroundColor: DARK_MODE_SURFACE_ALT,
+                  border: `1px solid ${DARK_MODE_BORDER}`,
+                  borderRadius: '4px',
+                  marginTop: '4px',
+                  zIndex: 1000,
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                }}
+              >
+                {searchSuggestions.map((suggestion, index) => (
+                  <div
+                    key={suggestion}
+                    onClick={() => handleSuggestionClick(suggestion)}
+                    style={{
+                      padding: '8px 12px',
+                      cursor: 'pointer',
+                      backgroundColor: index === selectedSuggestionIndex ? 
+                        adjustLuminance(DARK_MODE_SURFACE_ALT, 0.1) : 
+                        'transparent',
+                      color: DARK_MODE_TEXT_PRIMARY,
+                      ':hover': {
+                        backgroundColor: adjustLuminance(DARK_MODE_SURFACE_ALT, 0.1)
+                      }
+                    }}
+                  >
+                    {suggestion}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
         <button onClick={handleReset} className="reset-button">Reset View</button>
       </div>
       <p className="info-text">
-        Tracks clustered by audio feature similarity. Colors represent top {topNThreshold} dominant '{selectedCategory}' features. Shades indicate prominence. Gray dots are noise.
+        {selectedFeature ? 
+          `Showing tracks with feature: ${selectedFeature}` :
+          `Tracks clustered by audio feature similarity. Click a feature in the legend to highlight tracks.`}
+        {searchQuery && ` Search results highlighted in gold.`}
         <small>Scroll to zoom, drag to pan.</small>
       </p>
       <div className="visualization-area" ref={viewModeRef}>
@@ -1050,29 +1311,39 @@ const TrackVisualizer = () => {
             >
             <title id="plotTitle">Track Similarity Plot</title>
             <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
-                {plotData.map((track, index) => {
-                  const colorInfo = trackColors[index] || { color: NOISE_CLUSTER_COLOR, dominantFeature: 'N/A' };
-                  // Calculate screen-space radius (in pixels)
-                  const screenRadius = 4; // Fixed screen-space radius in pixels
-                  // Convert to SVG space
-                  const svgRadius = screenRadius / zoom;
-                  return (
-                    <circle
-                      key={track.id || `track-${index}`}
-                      cx={track.x}
-                      cy={track.y}
-                      r={svgRadius}
-                      fill={colorInfo.color}
-                      onMouseMove={(e) => handleMouseOver(track, e)}
-                      onMouseOut={handleMouseOut}
-                      onClick={() => handleDotClick(track)}
-                      className="track-dot"
-                      style={{ transition: 'none' }} // Prevent any size transitions
-                      tabIndex={0}
-                      aria-label={`Track: ${track.title || 'Unknown'} by ${track.artist || 'Unknown'}, Feature: ${colorInfo.dominantFeature || 'None'}`}
-                    />
-                  );
-                })}
+                {plotData
+                  .map((track, index) => ({
+                    ...track,
+                    colorInfo: trackColors[index] || { color: NOISE_CLUSTER_COLOR, dominantFeature: 'N/A' }
+                  }))
+                  .sort((a, b) => {
+                    // Sort search matches to the end (top) of the array
+                    if (a.colorInfo.isSearchMatch && !b.colorInfo.isSearchMatch) return 1;
+                    if (!a.colorInfo.isSearchMatch && b.colorInfo.isSearchMatch) return -1;
+                    return 0;
+                  })
+                  .map((track) => {
+                    // Calculate screen-space radius (in pixels)
+                    const screenRadius = 4; // Fixed screen-space radius in pixels
+                    // Convert to SVG space
+                    const svgRadius = screenRadius / zoom;
+                    return (
+                      <circle
+                        key={track.id || `track-${track.id}`}
+                        cx={track.x}
+                        cy={track.y}
+                        r={svgRadius}
+                        fill={track.colorInfo.color}
+                        onMouseMove={(e) => handleMouseOver(track, e)}
+                        onMouseOut={handleMouseOut}
+                        onClick={() => handleDotClick(track)}
+                        className="track-dot"
+                        style={{ transition: 'none' }} // Prevent any size transitions
+                        tabIndex={0}
+                        aria-label={`Track: ${track.title || 'Unknown'} by ${track.artist || 'Unknown'}, Feature: ${track.colorInfo.dominantFeature || 'None'}`}
+                      />
+                    );
+                  })}
             </g>
             </svg>
         )}
@@ -1115,19 +1386,31 @@ const TrackVisualizer = () => {
           </div>
         )}
         <div className="legend">
-          <h4>{selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)} Legend (Top {Math.min(topNThreshold, styleColors.size, 15)})</h4>
+          <h4>{selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)} Features</h4>
           <div className="style-legend">
             {Array.from(styleColors.entries())
-              .sort((a,b) => a[0].localeCompare(b[0])) // Sort legend items alphabetically
-              .slice(0,15) // Limit to 15 items in legend
+              .sort((a, b) => b[1] - a[1]) // Sort by frequency
               .map(([feature, color]) => (
-                <div key={feature} className="legend-item">
+                <div 
+                  key={feature} 
+                  className={`legend-item ${selectedFeature === feature ? 'selected' : ''}`}
+                  onClick={() => setSelectedFeature(selectedFeature === feature ? null : feature)}
+                  style={{
+                    cursor: 'pointer',
+                    backgroundColor: selectedFeature === feature ? DARK_MODE_SURFACE_ALT : 'transparent',
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    margin: '2px 0',
+                    transition: 'background-color 0.2s ease'
+                  }}
+                >
                   <div className="color-box" style={{ backgroundColor: color }}></div>
                   <span className="feature-name">{feature}</span>
                 </div>
             ))}
-            {styleColors.size > 15 && <div className="legend-item">...and {styleColors.size - 15} more</div>}
-            {styleColors.size === 0 && selectedCategory && <div className="legend-item">No dominant '{selectedCategory}' features found.</div>}
+            {styleColors.size === 0 && selectedCategory && (
+              <div className="legend-item">No features found for '{selectedCategory}'.</div>
+            )}
           </div>
           {plotData.some(p => p.cluster === NOISE_CLUSTER_ID || trackColors.some(tc => tc.color === NOISE_CLUSTER_COLOR)) && (
             <div className="legend-item noise-legend">
