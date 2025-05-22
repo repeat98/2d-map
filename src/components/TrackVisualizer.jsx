@@ -1,32 +1,34 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import './TrackVisualizer.scss';
+// import WaveSurfer from 'wavesurfer.js'; // WaveSurfer is used by the Waveform component, not directly here usually
+import defaultArtwork from "../../assets/default-artwork.png";
+import Waveform from './Waveform'; // Assuming Waveform.jsx is in the same directory or correctly pathed
+import { PlaybackContext } from '../context/PlaybackContext'; // Assuming PlaybackContext.js is in ../context/
 
 // --- Dark Mode Theme Variables (mirroring SCSS for JS logic if needed) ---
 const DARK_MODE_TEXT_PRIMARY = '#e0e0e0';
 const DARK_MODE_TEXT_SECONDARY = '#b0b0b0';
 const DARK_MODE_SURFACE_ALT = '#3a3a3a';
 const DARK_MODE_BORDER = '#4a4a4a';
-const DARK_MODE_ACCENT = '#00bcd4';
+// const DARK_MODE_ACCENT = '#00bcd4'; // Not directly used in JS logic shown, but good for reference
 
 
 // --- Constants ---
-// SVG_WIDTH and SVG_HEIGHT are now managed by svgDimensions state
 const PADDING = 50;
 const PCA_N_COMPONENTS = 2;
 const HDBSCAN_DEFAULT_MIN_CLUSTER_SIZE = 5;
 const HDBSCAN_DEFAULT_MIN_SAMPLES = 3;
 const TOOLTIP_OFFSET = 15;
 const NOISE_CLUSTER_ID = -1;
-const NOISE_CLUSTER_COLOR = '#555555'; // Updated for dark mode
-const DEFAULT_CLUSTER_COLORS = [ // Kept for potential fallback
+const NOISE_CLUSTER_COLOR = '#555555';
+const DEFAULT_CLUSTER_COLORS = [
   '#e6194B', '#3cb44b', '#ffe119', '#4363d8', '#f58231',
   '#911eb4', '#46f0f0', '#f032e6', '#bcf60c', '#fabebe',
   '#008080', '#e6beff', '#9A6324', '#fffac8', '#800000',
   '#aaffc3', '#808000', '#ffd8b1', '#000075', '#808080',
   '#54A0FF', '#F4D03F', '#1ABC9C', '#E74C3C', '#8E44AD'
 ];
-// VIEW_BOX_VALUE is now dynamic, derived from svgDimensions state
-const PLACEHOLDER_IMAGE = '/placeholder.png'; // Ensure this is dark-mode friendly or generic
+// const PLACEHOLDER_IMAGE = '/placeholder.png'; // Not used, defaultArtwork is used
 
 const CATEGORY_WEIGHTS = {
   'genre': 4.0,
@@ -45,30 +47,23 @@ const MOOD_KEYWORDS = [
   'happiness', 'party', 'aggressive', 'danceability', 'relaxed', 'sad', 'engagement', 'approachability'
 ];
 
-const CATEGORY_BASE_COLORS = { // Updated for better dark mode visibility
-    'genre': '#F44336',      // Material Red
-    'style': '#4CAF50',      // Material Green
-    'spectral': '#2196F3',   // Material Blue
-    'mood': '#FF9800',       // Material Orange
-    'instrument': '#9C27B0', // Material Purple
+const CATEGORY_BASE_COLORS = {
+    'genre': '#F44336',
+    'style': '#4CAF50',
+    'spectral': '#2196F3',
+    'mood': '#FF9800',
+    'instrument': '#9C27B0',
 };
 
-// Adjusted luminance for "fixing shade assignment"
-const LUMINANCE_INCREMENT = 0.3; // Increased from 0.2 for more noticeable shades
-const MAX_LUM_OFFSET = 0.5;    // Increased from 0.4 for more contrast
+const LUMINANCE_INCREMENT = 0.3;
+const MAX_LUM_OFFSET = 0.5;
 
 
-// --- Helper Functions (largely unchanged, ensure console logs are intended for prod) ---
+// --- Helper Functions ---
 
 function calculateDistance(vec1, vec2) {
-  if (!vec1 || !vec2) {
-    // console.warn('Missing vectors for distance calculation');
-    return Infinity;
-  }
-  if (vec1.length !== vec2.length) {
-    // console.warn('Vectors have different lengths for distance calculation:', { len1: vec1.length, len2: vec2.length });
-    return Infinity;
-  }
+  if (!vec1 || !vec2) return Infinity;
+  if (vec1.length !== vec2.length) return Infinity;
   let sumOfSquares = 0;
   for (let i = 0; i < vec1.length; i++) {
     const val1 = vec1[i] || 0;
@@ -81,7 +76,6 @@ function calculateDistance(vec1, vec2) {
 
 function getAllFeatureKeysAndCategories(tracks) {
   const featuresWithCategories = new Map();
-
   const determineFinalCategory = (keyName, sourceCategory) => {
     const lowerKeyName = keyName.toLowerCase();
     if (SPECTRAL_KEYWORDS.includes(lowerKeyName)) return 'spectral';
@@ -126,7 +120,9 @@ function getAllFeatureKeysAndCategories(tracks) {
 
 function mergeFeatureVectors(track, allFeatureNames) {
   const mergedFeatures = {};
-  allFeatureNames.forEach(key => { mergedFeatures[key] = 0; });
+  allFeatureNames.forEach(key => {
+    mergedFeatures[key] = 0;
+  });
 
   const parseAndMerge = (featureObj) => {
     if (!featureObj) return;
@@ -160,7 +156,6 @@ function mergeFeatureVectors(track, allFeatureNames) {
       if (!isNaN(num)) mergedFeatures[key] = num;
     }
   });
-
   return allFeatureNames.map(key => mergedFeatures[key]);
 }
 
@@ -172,7 +167,6 @@ function normalizeFeatures(featureVectors, featureCategories) {
 
   let categories = featureCategories;
   if (categories.length !== numFeatures) {
-    // console.error(`Normalization Error: Mismatch features (${numFeatures}) & categories (${categories.length}). Using defaults.`);
     categories = Array(numFeatures).fill('default');
   }
 
@@ -210,8 +204,7 @@ function pca(processedData, nComponents = PCA_N_COMPONENTS) {
   nComponents = Math.min(nComponents, numFeatures > 0 ? numFeatures : nComponents);
   if (nComponents <= 0) return processedData.map(() => []);
   if (numSamples <= 1) return processedData.map(() => Array(nComponents).fill(0.5));
-  
-  // Standard PCA implementation (remains largely the same)
+
   const means = processedData[0].map((_, colIndex) => processedData.reduce((sum, row) => sum + row[colIndex], 0) / numSamples);
   const centeredData = processedData.map(row => row.map((val, colIndex) => val - means[colIndex]));
 
@@ -305,7 +298,6 @@ function pca(processedData, nComponents = PCA_N_COMPONENTS) {
 }
 
 function hdbscan(data, minClusterSize = HDBSCAN_DEFAULT_MIN_CLUSTER_SIZE, minSamples = HDBSCAN_DEFAULT_MIN_SAMPLES) {
-  // HDBSCAN implementation (remains largely the same)
   if (!data || data.length === 0) return [];
   const n = data.length;
   if (n === 0) return [];
@@ -414,8 +406,8 @@ const TrackVisualizer = () => {
   const [styleColors, setStyleColors] = useState(new Map());
   const [topNThreshold, setTopNThreshold] = useState(10);
 
-  const [svgDimensions, setSvgDimensions] = useState({ width: window.innerWidth, height: window.innerHeight - 150 }); // Adjust height for controls
-  const viewModeRef = React.useRef(null); // Ref for visualization area dimensions
+  const [svgDimensions, setSvgDimensions] = useState({ width: window.innerWidth, height: window.innerHeight - 150 });
+  const viewModeRef = React.useRef(null);
 
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -423,6 +415,20 @@ const TrackVisualizer = () => {
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
   const VIEW_BOX_VALUE = `0 0 ${svgDimensions.width} ${svgDimensions.height}`;
+
+  // Ref to hold the currently active/playing WaveSurfer instance from a tooltip
+  const wavesurferRef = useRef(null);
+  // const activeAudioUrlRef = useRef(null); // This ref seems unused for tooltip waveform playback in the current setup
+
+  const hoverTimeoutRef = useRef(null);
+  const isHoveringRef = useRef(false);
+  const tooltipRef = useRef(null);
+  const lastMousePosRef = useRef({ x: 0, y: 0 });
+  const velocityRef = useRef({ x: 0, y: 0 });
+  const lastTimeRef = useRef(Date.now());
+  const animationFrameRef = useRef(null);
+  const lastPinchDistanceRef = useRef(null);
+  const lastPinchCenterRef = useRef(null);
 
   useEffect(() => {
     const updateDimensions = () => {
@@ -432,12 +438,10 @@ const TrackVisualizer = () => {
           height: viewModeRef.current.clientHeight,
         });
       } else {
-         // Fallback if ref not ready, though less ideal.
-         // Adjust height to account for controls/header, or make it dynamic.
         setSvgDimensions({ width: window.innerWidth, height: window.innerHeight - 180 });
       }
     };
-    updateDimensions(); // Initial set
+    updateDimensions();
     window.addEventListener('resize', updateDimensions);
     return () => window.removeEventListener('resize', updateDimensions);
   }, []);
@@ -445,42 +449,193 @@ const TrackVisualizer = () => {
 
   const handleWheel = useCallback((e) => {
     e.preventDefault();
-    const delta = e.deltaY;
-    // Smoother zoom factor calculation
-    const zoomFactor = Math.pow(0.95, Math.sign(delta));
     
+    // Handle trackpad pinch-to-zoom
+    if (e.ctrlKey) {
+      const delta = e.deltaY;
+      const zoomFactor = Math.pow(0.9, Math.sign(delta));
+      const svgRect = e.currentTarget.getBoundingClientRect();
+      const mouseX = e.clientX - svgRect.left;
+      const mouseY = e.clientY - svgRect.top;
+
+      setZoom(prevZoom => {
+        const newZoom = Math.min(Math.max(prevZoom * zoomFactor, 1), 200);
+        setPan(prevPan => ({
+          x: prevPan.x - (mouseX - prevPan.x) * (newZoom / prevZoom - 1),
+          y: prevPan.y - (mouseY - prevPan.y) * (newZoom / prevZoom - 1)
+        }));
+        return newZoom;
+      });
+      return;
+    }
+
+    // Handle trackpad two-finger scroll for panning
+    if (Math.abs(e.deltaX) > 0 || Math.abs(e.deltaY) > 0) {
+      setPan(prevPan => ({
+        x: prevPan.x - e.deltaX,
+        y: prevPan.y - e.deltaY
+      }));
+      return;
+    }
+
+    // Fallback to regular wheel zoom
+    const delta = e.deltaY;
+    const zoomFactor = Math.pow(0.9, Math.sign(delta));
     const svgRect = e.currentTarget.getBoundingClientRect();
     const mouseX = e.clientX - svgRect.left;
     const mouseY = e.clientY - svgRect.top;
 
     setZoom(prevZoom => {
-        // Set minimum zoom to 1, maximum to 10
-        const newZoom = Math.min(Math.max(prevZoom * zoomFactor, 1), 10);
-        setPan(prevPan => ({
-            x: prevPan.x - (mouseX - prevPan.x) * (newZoom / prevZoom - 1),
-            y: prevPan.y - (mouseY - prevPan.y) * (newZoom / prevZoom - 1)
-        }));
-        return newZoom;
+      const newZoom = Math.min(Math.max(prevZoom * zoomFactor, 1), 200);
+      setPan(prevPan => ({
+        x: prevPan.x - (mouseX - prevPan.x) * (newZoom / prevZoom - 1),
+        y: prevPan.y - (mouseY - prevPan.y) * (newZoom / prevZoom - 1)
+      }));
+      return newZoom;
     });
+  }, []);
+
+  const handleTouchStart = useCallback((e) => {
+    if (e.touches.length === 2) {
+      const touch1 = e.touches[0];
+      const touch2 = e.touches[1];
+      lastPinchDistanceRef.current = Math.hypot(
+        touch2.clientX - touch1.clientX,
+        touch2.clientY - touch1.clientY
+      );
+      lastPinchCenterRef.current = {
+        x: (touch1.clientX + touch2.clientX) / 2,
+        y: (touch1.clientY + touch2.clientY) / 2
+      };
+    }
+  }, []);
+
+  const handleTouchMove = useCallback((e) => {
+    if (e.touches.length === 2) {
+      const touch1 = e.touches[0];
+      const touch2 = e.touches[1];
+      const currentDistance = Math.hypot(
+        touch2.clientX - touch1.clientX,
+        touch2.clientY - touch1.clientY
+      );
+      const currentCenter = {
+        x: (touch1.clientX + touch2.clientX) / 2,
+        y: (touch1.clientY + touch2.clientY) / 2
+      };
+
+      if (lastPinchDistanceRef.current !== null) {
+        const scale = currentDistance / lastPinchDistanceRef.current;
+        const svgRect = e.currentTarget.getBoundingClientRect();
+        const centerX = currentCenter.x - svgRect.left;
+        const centerY = currentCenter.y - svgRect.top;
+
+        setZoom(prevZoom => {
+          const newZoom = Math.min(Math.max(prevZoom * scale, 1), 200);
+          setPan(prevPan => ({
+            x: prevPan.x - (centerX - prevPan.x) * (newZoom / prevZoom - 1),
+            y: prevPan.y - (centerY - prevPan.y) * (newZoom / prevZoom - 1)
+          }));
+          return newZoom;
+        });
+      }
+
+      // Handle panning during pinch
+      if (lastPinchCenterRef.current) {
+        const deltaX = currentCenter.x - lastPinchCenterRef.current.x;
+        const deltaY = currentCenter.y - lastPinchCenterRef.current.y;
+        setPan(prevPan => ({
+          x: prevPan.x + deltaX,
+          y: prevPan.y + deltaY
+        }));
+      }
+
+      lastPinchDistanceRef.current = currentDistance;
+      lastPinchCenterRef.current = currentCenter;
+    }
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    lastPinchDistanceRef.current = null;
+    lastPinchCenterRef.current = null;
   }, []);
 
   const handleMouseDown = useCallback((e) => {
     if (e.button === 0) {
       setIsDragging(true);
       setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+      lastMousePosRef.current = { x: e.clientX, y: e.clientY };
+      lastTimeRef.current = Date.now();
+      velocityRef.current = { x: 0, y: 0 };
+      
+      // Cancel any ongoing animation
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
     }
   }, [pan]);
 
   const handleMouseMove = useCallback((e) => {
     if (isDragging) {
-      setPan({
-        x: e.clientX - dragStart.x,
-        y: e.clientY - dragStart.y
-      });
+      const currentTime = Date.now();
+      const deltaTime = currentTime - lastTimeRef.current;
+      
+      if (deltaTime > 0) {
+        const deltaX = e.clientX - lastMousePosRef.current.x;
+        const deltaY = e.clientY - lastMousePosRef.current.y;
+        
+        // Calculate velocity (pixels per millisecond)
+        velocityRef.current = {
+          x: deltaX / deltaTime,
+          y: deltaY / deltaTime
+        };
+        
+        // Update pan with reduced sensitivity
+        setPan({
+          x: e.clientX - dragStart.x,
+          y: e.clientY - dragStart.y
+        });
+        
+        lastMousePosRef.current = { x: e.clientX, y: e.clientY };
+        lastTimeRef.current = currentTime;
+      }
     }
   }, [isDragging, dragStart]);
 
-  const handleMouseUp = useCallback(() => setIsDragging(false), []);
+  const handleMouseUp = useCallback(() => {
+    if (isDragging) {
+      setIsDragging(false);
+      
+      // Apply momentum if velocity is significant
+      if (Math.abs(velocityRef.current.x) > 0.1 || Math.abs(velocityRef.current.y) > 0.1) {
+        const applyMomentum = () => {
+          const currentTime = Date.now();
+          const deltaTime = currentTime - lastTimeRef.current;
+          
+          // Decay velocity
+          velocityRef.current = {
+            x: velocityRef.current.x * Math.pow(0.95, deltaTime / 16),
+            y: velocityRef.current.y * Math.pow(0.95, deltaTime / 16)
+          };
+          
+          // Apply velocity to pan
+          setPan(prevPan => ({
+            x: prevPan.x + velocityRef.current.x * deltaTime,
+            y: prevPan.y + velocityRef.current.y * deltaTime
+          }));
+          
+          lastTimeRef.current = currentTime;
+          
+          // Continue animation if velocity is still significant
+          if (Math.abs(velocityRef.current.x) > 0.01 || Math.abs(velocityRef.current.y) > 0.01) {
+            animationFrameRef.current = requestAnimationFrame(applyMomentum);
+          }
+        };
+        
+        animationFrameRef.current = requestAnimationFrame(applyMomentum);
+      }
+    }
+  }, [isDragging]);
+
   const handleReset = useCallback(() => { setZoom(1); setPan({ x: 0, y: 0 }); }, []);
 
   const adjustLuminance = (hex, lum) => {
@@ -556,29 +711,28 @@ const TrackVisualizer = () => {
 
     const newStyleColors = new Map();
     sortedFeatures.forEach(([featureName], index) => {
-      // More aggressive luminance variation
-      const luminanceFactor = index === 0 ? 0 : // Base color for most prominent
-        (index % 2 === 0 ? 
-          -Math.min(index * LUMINANCE_INCREMENT, MAX_LUM_OFFSET) : // Darker shades
-          Math.min(index * LUMINANCE_INCREMENT, MAX_LUM_OFFSET));  // Lighter shades
+      const luminanceFactor = index === 0 ? 0 :
+        (index % 2 === 0 ?
+          -Math.min(index * LUMINANCE_INCREMENT, MAX_LUM_OFFSET) :
+          Math.min(index * LUMINANCE_INCREMENT, MAX_LUM_OFFSET));
       const shadedColor = adjustLuminance(baseColorForCategory, luminanceFactor);
       newStyleColors.set(featureName, shadedColor);
     });
     setStyleColors(newStyleColors);
   }, [tracks, selectedCategory, featureMetadata, topNThreshold]);
 
-  const getDominantFeature = (track, selectedCategory, styleColors) => {
+  const getDominantFeature = (track, selectedCategory, styleColorsMap) => {
     let dominantFeature = null;
     let maxValue = 0;
-    
+
     if (selectedCategory === 'genre' || selectedCategory === 'style') {
       try {
         const features = typeof track.features === 'string' ? JSON.parse(track.features) : track.features;
-        Object.entries(features).forEach(([key, value]) => {
+        Object.entries(features || {}).forEach(([key, value]) => {
           const [genrePart, stylePart] = key.split('---');
           const featureName = selectedCategory === 'genre' ? genrePart : stylePart;
           const score = parseFloat(value);
-          if (!isNaN(score) && score > maxValue && styleColors.has(featureName)) {
+          if (!isNaN(score) && score > maxValue && styleColorsMap.has(featureName)) {
             maxValue = score;
             dominantFeature = featureName;
           }
@@ -587,9 +741,9 @@ const TrackVisualizer = () => {
     } else if (selectedCategory === 'instrument') {
       try {
         const features = typeof track.instrument_features === 'string' ? JSON.parse(track.instrument_features) : track.instrument_features;
-        Object.entries(features).forEach(([key, value]) => {
+        Object.entries(features || {}).forEach(([key, value]) => {
           const score = parseFloat(value);
-          if (!isNaN(score) && score > maxValue && styleColors.has(key)) {
+          if (!isNaN(score) && score > maxValue && styleColorsMap.has(key)) {
             maxValue = score;
             dominantFeature = key;
           }
@@ -598,7 +752,7 @@ const TrackVisualizer = () => {
     } else if (selectedCategory === 'mood') {
       MOOD_KEYWORDS.forEach(key => {
         const value = track[key];
-        if (typeof value === 'number' && !isNaN(value) && value > maxValue && styleColors.has(key)) {
+        if (typeof value === 'number' && !isNaN(value) && value > maxValue && styleColorsMap.has(key)) {
           maxValue = value;
           dominantFeature = key;
         }
@@ -606,13 +760,12 @@ const TrackVisualizer = () => {
     } else if (selectedCategory === 'spectral') {
       SPECTRAL_KEYWORDS.forEach(key => {
         const value = track[key];
-        if (typeof value === 'number' && !isNaN(value) && value > maxValue && styleColors.has(key)) {
+        if (typeof value === 'number' && !isNaN(value) && value > maxValue && styleColorsMap.has(key)) {
           maxValue = value;
           dominantFeature = key;
         }
       });
     }
-    
     return dominantFeature;
   };
 
@@ -627,7 +780,7 @@ const TrackVisualizer = () => {
     });
   }, [plotData, selectedCategory, styleColors]);
 
-  const fetchTracksData = useCallback(async () => { // Renamed to avoid conflict
+  const fetchTracksData = useCallback(async () => {
     try {
       setLoading(true); setError(null);
       const response = await fetch('http://localhost:3000/tracks');
@@ -667,7 +820,7 @@ const TrackVisualizer = () => {
     if (loading || tracks.length === 0 || svgDimensions.width === 0 || svgDimensions.height === 0) {
       setPlotData([]); return;
     }
-    if (featureMetadata.names.length === 0 && tracks.length > 0) return; // Wait for metadata
+    if (featureMetadata.names.length === 0 && tracks.length > 0) return;
 
     const validTracksForProcessing = tracks.filter(t => t.featureVector && t.featureVector.length === featureMetadata.names.length);
     if (validTracksForProcessing.length === 0) {
@@ -677,33 +830,71 @@ const TrackVisualizer = () => {
 
     const featureVectors = validTracksForProcessing.map(t => t.featureVector);
     const processedFeatureData = normalizeFeatures(featureVectors, featureMetadata.categories);
-    const clusterLabels = hdbscan(processedFeatureData); // Using default constants
-    const projectedData = pca(processedFeatureData); // Using default constants
+    const clusterLabels = hdbscan(processedFeatureData);
+    const projectedData = pca(processedFeatureData);
 
     const newPlotData = validTracksForProcessing.map((track, index) => {
       const p_coords = (projectedData && index < projectedData.length && projectedData[index]?.length === PCA_N_COMPONENTS)
                 ? projectedData[index] : [0.5, 0.5];
       return {
         ...track,
-        originalX: p_coords[0], // Store original normalized coordinate
-        originalY: p_coords[1], // Store original normalized coordinate
+        originalX: p_coords[0],
+        originalY: p_coords[1],
         x: PADDING + p_coords[0] * (svgDimensions.width - 2 * PADDING),
         y: PADDING + p_coords[1] * (svgDimensions.height - 2 * PADDING),
         cluster: clusterLabels[index] ?? NOISE_CLUSTER_ID,
       };
     });
     setPlotData(newPlotData);
-  }, [tracks, featureMetadata, loading, svgDimensions]); // svgDimensions dependency added
+  }, [tracks, featureMetadata, loading, svgDimensions]);
 
   const handleMouseOver = useCallback((trackData, event) => {
+    // Clear any existing timeout
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+
+    isHoveringRef.current = true;
+
+    const audioPath = trackData.audioUrl || (trackData.path ? `http://localhost:3000/audio/${trackData.id}` : null);
+    const tooltipWidth = 300;
+    const tooltipHeight = audioPath ? 200 : 150;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    let x = event.clientX + TOOLTIP_OFFSET;
+    let y = event.clientY + TOOLTIP_OFFSET;
+
+    if (x + tooltipWidth > viewportWidth) {
+      x = event.clientX - tooltipWidth - TOOLTIP_OFFSET;
+    }
+    if (y + tooltipHeight > viewportHeight) {
+      y = event.clientY - tooltipHeight - TOOLTIP_OFFSET;
+    }
+    if (x < 0) x = TOOLTIP_OFFSET;
+    if (y < 0) y = TOOLTIP_OFFSET;
+
     setTooltip({
       content: (
-        <>
+        <div>
           <img
-            src={trackData.artwork_thumbnail_path ? `file://${trackData.artwork_thumbnail_path}` : PLACEHOLDER_IMAGE}
+            src={trackData.artwork_thumbnail_path || defaultArtwork}
             alt={`${trackData.artist || 'Unknown'} - ${trackData.title || 'Unknown'}`}
-            onError={(e) => { e.target.onerror = null; e.target.src = PLACEHOLDER_IMAGE; }}
-            style={{ width: '80px', height: '80px', objectFit: 'cover', marginRight: '10px', float: 'left', borderRadius: '4px' /* border handled by SCSS */}}
+            onError={(e) => {
+              e.target.onerror = null;
+              e.target.src = defaultArtwork;
+              e.target.style.opacity = '0.7';
+            }}
+            style={{
+              width: '80px',
+              height: '80px',
+              objectFit: 'cover',
+              marginRight: '10px',
+              float: 'left',
+              borderRadius: '4px',
+              transition: 'opacity 0.2s ease'
+            }}
           />
           <div style={{ overflow: 'hidden'}}>
             <div><strong>{trackData.title || 'Unknown Title'}</strong></div>
@@ -712,19 +903,104 @@ const TrackVisualizer = () => {
             <div>BPM: {trackData.bpm?.toFixed(1) || 'N/A'}, Key: {trackData.key || 'N/A'}</div>
             {trackData.tag1 && <div>Genre: {trackData.tag1} ({trackData.tag1_prob?.toFixed(2) || 'N/A'})</div>}
           </div>
-        </>
+          {audioPath && (
+            <div className="waveform-container" style={{ clear: 'both', marginTop: '10px', width: '100%', height: '40px' }}>
+              <PlaybackContext.Provider value={{
+                setPlayingWaveSurfer: (newlyPlayingWavesurfer) => {
+                  if (wavesurferRef.current && wavesurferRef.current !== newlyPlayingWavesurfer) {
+                    try {
+                      wavesurferRef.current.stop();
+                    } catch (e) {
+                      console.warn("Error stopping previous wavesurfer:", e);
+                    }
+                  }
+                  wavesurferRef.current = newlyPlayingWavesurfer;
+                },
+                currentTrack: trackData,
+                setCurrentTrack: () => {}
+              }}>
+                <Waveform
+                  key={`waveform-tooltip-${trackData.id}`}
+                  trackId={trackData.id.toString()}
+                  audioPath={audioPath}
+                  isInteractive={true}
+                  onPlay={() => {}}
+                />
+              </PlaybackContext.Provider>
+            </div>
+          )}
+        </div>
       ),
-      x: event.clientX + TOOLTIP_OFFSET,
-      y: event.clientY + TOOLTIP_OFFSET,
+      x,
+      y,
     });
+  }, [wavesurferRef]);
+
+  const handleMouseOut = useCallback(() => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+    
+    // Check if we're actually hovering over the tooltip
+    const tooltipElement = tooltipRef.current;
+    if (tooltipElement) {
+      const rect = tooltipElement.getBoundingClientRect();
+      const mouseX = event.clientX;
+      const mouseY = event.clientY;
+      
+      if (mouseX >= rect.left && mouseX <= rect.right && 
+          mouseY >= rect.top && mouseY <= rect.bottom) {
+        isHoveringRef.current = true;
+        return;
+      }
+    }
+    
+    isHoveringRef.current = false;
+    hoverTimeoutRef.current = setTimeout(() => {
+      if (!isHoveringRef.current) {
+        setTooltip(null);
+      }
+    }, 500);
   }, []);
 
-  const handleMouseOut = useCallback(() => setTooltip(null), []);
+  // Clean up timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const handleDotClick = useCallback((trackData) => console.log("Clicked track:", trackData.id, trackData.title), []);
+
+  // Effect to clean up the main wavesurferRef when the component unmounts
+  useEffect(() => {
+    return () => {
+      if (wavesurferRef.current) {
+        try {
+          wavesurferRef.current.stop();
+          // wavesurferRef.current.destroy(); // The instance is owned by Waveform.jsx, it will destroy it.
+        } catch(e) {
+            // console.warn("Error stopping wavesurfer on TrackVisualizer unmount", e);
+        }
+        wavesurferRef.current = null;
+      }
+    };
+  }, []);
+
+  // Clean up animation frame on unmount
+  useEffect(() => {
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, []);
 
   if (loading) return <div className="track-visualizer-loading">Loading tracks and features...</div>;
   if (error) return <div className="track-visualizer-error">Error: {error} <button onClick={fetchTracksData}>Try Reload</button></div>;
-  if (plotData.length === 0 && !loading && tracks.length > 0) return <div className="track-visualizer-empty">Data processed, but no points to visualize. Check console for errors.</div>;
+  if (plotData.length === 0 && !loading && tracks.length > 0) return <div className="track-visualizer-empty">Data processed, but no points to visualize. Check feature processing.</div>;
   if (plotData.length === 0 && !loading && tracks.length === 0) return <div className="track-visualizer-empty">No tracks data loaded.</div>;
 
   return (
@@ -740,7 +1016,7 @@ const TrackVisualizer = () => {
               className={selectedCategory === categoryKey ? 'active' : ''}
               style={{
                 backgroundColor: selectedCategory === categoryKey ? colorValue : DARK_MODE_SURFACE_ALT,
-                color: selectedCategory === categoryKey ? (parseInt(colorValue.slice(1,3),16)*0.299 + parseInt(colorValue.slice(3,5),16)*0.587 + parseInt(colorValue.slice(5,7),16)*0.114 > 160 ? '#000000' : DARK_MODE_TEXT_PRIMARY) : DARK_MODE_TEXT_SECONDARY, // Adjusted threshold for dark bg text
+                color: selectedCategory === categoryKey ? (parseInt(colorValue.slice(1,3),16)*0.299 + parseInt(colorValue.slice(3,5),16)*0.587 + parseInt(colorValue.slice(5,7),16)*0.114 > 160 ? '#000000' : DARK_MODE_TEXT_PRIMARY) : DARK_MODE_TEXT_SECONDARY,
                 border: `2px solid ${selectedCategory === categoryKey ? adjustLuminance(colorValue, -0.2) : DARK_MODE_BORDER}`,
               }}
             >
@@ -770,24 +1046,30 @@ const TrackVisualizer = () => {
                 aria-labelledby="plotTitle" role="graphics-document"
                 onWheel={handleWheel} onMouseDown={handleMouseDown}
                 onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}
+                onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}
             >
             <title id="plotTitle">Track Similarity Plot</title>
             <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
                 {plotData.map((track, index) => {
-                  const { color, dominantFeature } = trackColors[index];
+                  const colorInfo = trackColors[index] || { color: NOISE_CLUSTER_COLOR, dominantFeature: 'N/A' };
+                  // Calculate screen-space radius (in pixels)
+                  const screenRadius = 4; // Fixed screen-space radius in pixels
+                  // Convert to SVG space
+                  const svgRadius = screenRadius / zoom;
                   return (
                     <circle
-                      key={track.id || String(Math.random())}
+                      key={track.id || `track-${index}`}
                       cx={track.x}
                       cy={track.y}
-                      r={6 / Math.sqrt(zoom)}
-                      fill={color}
+                      r={svgRadius}
+                      fill={colorInfo.color}
                       onMouseMove={(e) => handleMouseOver(track, e)}
                       onMouseOut={handleMouseOut}
                       onClick={() => handleDotClick(track)}
                       className="track-dot"
+                      style={{ transition: 'none' }} // Prevent any size transitions
                       tabIndex={0}
-                      aria-label={`Track: ${track.title || 'Unknown'} by ${track.artist || 'Unknown'}, Feature: ${dominantFeature || 'None'}`}
+                      aria-label={`Track: ${track.title || 'Unknown'} by ${track.artist || 'Unknown'}, Feature: ${colorInfo.dominantFeature || 'None'}`}
                     />
                   );
                 })}
@@ -795,7 +1077,40 @@ const TrackVisualizer = () => {
             </svg>
         )}
         {tooltip && (
-          <div className="track-tooltip" style={{ top: tooltip.y, left: tooltip.x }} role="tooltip">
+          <div 
+            ref={tooltipRef}
+            className="track-tooltip" 
+            style={{ 
+              top: tooltip.y, 
+              left: tooltip.x,
+              position: 'fixed',
+              zIndex: 1000,
+              backgroundColor: DARK_MODE_SURFACE_ALT,
+              color: DARK_MODE_TEXT_PRIMARY,
+              padding: '10px',
+              borderRadius: '4px',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+              pointerEvents: 'auto',
+              border: `1px solid ${DARK_MODE_BORDER}`
+            }} 
+            role="tooltip"
+            onMouseEnter={() => {
+              isHoveringRef.current = true;
+              if (hoverTimeoutRef.current) {
+                clearTimeout(hoverTimeoutRef.current);
+                hoverTimeoutRef.current = null;
+              }
+            }}
+            onMouseLeave={(e) => {
+              // Check if we're moving to a child element
+              const relatedTarget = e.relatedTarget;
+              if (tooltipRef.current && tooltipRef.current.contains(relatedTarget)) {
+                return;
+              }
+              isHoveringRef.current = false;
+              handleMouseOut();
+            }}
+          >
             {tooltip.content}
           </div>
         )}
@@ -803,8 +1118,8 @@ const TrackVisualizer = () => {
           <h4>{selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)} Legend (Top {Math.min(topNThreshold, styleColors.size, 15)})</h4>
           <div className="style-legend">
             {Array.from(styleColors.entries())
-              .sort((a,b) => a[0].localeCompare(b[0]))
-              .slice(0,15)
+              .sort((a,b) => a[0].localeCompare(b[0])) // Sort legend items alphabetically
+              .slice(0,15) // Limit to 15 items in legend
               .map(([feature, color]) => (
                 <div key={feature} className="legend-item">
                   <div className="color-box" style={{ backgroundColor: color }}></div>
@@ -812,12 +1127,12 @@ const TrackVisualizer = () => {
                 </div>
             ))}
             {styleColors.size > 15 && <div className="legend-item">...and {styleColors.size - 15} more</div>}
-            {styleColors.size === 0 && <div className="legend-item">No dominant features.</div>}
+            {styleColors.size === 0 && selectedCategory && <div className="legend-item">No dominant '{selectedCategory}' features found.</div>}
           </div>
-          {plotData.some(p => p.cluster === NOISE_CLUSTER_ID) && (
+          {plotData.some(p => p.cluster === NOISE_CLUSTER_ID || trackColors.some(tc => tc.color === NOISE_CLUSTER_COLOR)) && (
             <div className="legend-item noise-legend">
               <div className="color-box" style={{ backgroundColor: NOISE_CLUSTER_COLOR }}></div>
-              <span className="feature-name">Noise</span>
+              <span className="feature-name">Noise / Other</span>
             </div>
           )}
         </div>
