@@ -45,8 +45,8 @@ const SPECTRAL_KEYWORDS = [
 ];
 
 // HDBSCAN constants
-const HDBSCAN_DEFAULT_MIN_CLUSTER_SIZE = 5;
-const HDBSCAN_DEFAULT_MIN_SAMPLES = 3;
+const HDBSCAN_DEFAULT_MIN_CLUSTER_SIZE = 3; // Reduced from 5 to allow smaller clusters
+const HDBSCAN_DEFAULT_MIN_SAMPLES = 2; // Reduced from 3 to be more sensitive to local structure
 const NOISE_CLUSTER_ID = -1;
 const NOISE_CLUSTER_COLOR = 0xcccccc;
 
@@ -398,11 +398,11 @@ function hdbscan(data, minClusterSize = HDBSCAN_DEFAULT_MIN_CLUSTER_SIZE, minSam
 
   if (n === 0) return []; // No data, no labels
 
-  // Adjust minClusterSize and minSamples if n is too small
-  minClusterSize = Math.max(1, Math.min(minClusterSize, n));
-  minSamples = Math.max(1, Math.min(minSamples, n > 1 ? n - 1 : 1));
+  // Adaptive parameters based on dataset size
+  const adaptiveMinClusterSize = Math.max(2, Math.min(minClusterSize, Math.floor(n * 0.05))); // 5% of dataset size, min 2
+  const adaptiveMinSamples = Math.max(2, Math.min(minSamples, Math.floor(n * 0.02))); // 2% of dataset size, min 2
 
-  if (n < minClusterSize && n > 0) { // Not enough points to form any cluster of minClusterSize
+  if (n < adaptiveMinClusterSize && n > 0) { // Not enough points to form any cluster of minClusterSize
     return Array(n).fill(NOISE_CLUSTER_ID);
   }
 
@@ -413,9 +413,9 @@ function hdbscan(data, minClusterSize = HDBSCAN_DEFAULT_MIN_CLUSTER_SIZE, minSam
 
     if (n === 0) return { distances, coreDistances };
 
-    // Calculate core distances
+    // Calculate core distances with adaptive k
     for (let i = 0; i < n; i++) {
-      if (n <= 1 || minSamples >= n) { // If n=1 or minSamples too high, core_k is effectively infinite
+      if (n <= 1 || adaptiveMinSamples >= n) { // If n=1 or minSamples too high, core_k is effectively infinite
         coreDistances[i] = Infinity;
         continue;
       }
@@ -426,10 +426,10 @@ function hdbscan(data, minClusterSize = HDBSCAN_DEFAULT_MIN_CLUSTER_SIZE, minSam
       }
       pointDistances.sort((a, b) => a - b);
       // Core distance is the k-th nearest neighbor distance (minSamples-th as arrays are 0-indexed)
-      coreDistances[i] = pointDistances[minSamples - 1] ?? Infinity;
+      coreDistances[i] = pointDistances[adaptiveMinSamples - 1] ?? Infinity;
     }
 
-    // Calculate mutual reachability distances
+    // Calculate mutual reachability distances with improved distance metric
     for (let i = 0; i < n; i++) {
       for (let j = i + 1; j < n; j++) { // Iterate only upper triangle for efficiency
         const directDist = calculateDistance(data[i], data[j]);
@@ -1571,8 +1571,9 @@ const VisualizationCanvas = () => {
                     } else {
                         const umap = new UMAP({
                             nComponents: 2,
-                            nNeighbors: nNeighbors,
-                            minDist: 0.1,
+                            nNeighbors: Math.min(30, Math.max(15, Math.floor(data.features.length * 0.1))), // Adaptive neighbors based on dataset size
+                            minDist: 0.3, // Increased from 0.1 to spread points more
+                            spread: 1.0, // Added spread parameter to control the scale of the embedding
                             random: () => 0.5 // For deterministic UMAP for now
                         });
                         const result = await umap.fit(data.features); // umap-js fit is async

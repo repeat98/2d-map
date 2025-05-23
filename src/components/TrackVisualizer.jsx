@@ -16,8 +16,8 @@ const DARK_MODE_BORDER = '#4a4a4a';
 // --- Constants ---
 const PADDING = 50;
 const PCA_N_COMPONENTS = 2;
-const HDBSCAN_DEFAULT_MIN_CLUSTER_SIZE = 5;
-const HDBSCAN_DEFAULT_MIN_SAMPLES = 3;
+const HDBSCAN_DEFAULT_MIN_CLUSTER_SIZE = 3;
+const HDBSCAN_DEFAULT_MIN_SAMPLES = 2;
 const TOOLTIP_OFFSET = 15;
 const NOISE_CLUSTER_ID = -1;
 const NOISE_CLUSTER_COLOR = '#555555';
@@ -162,27 +162,36 @@ function normalizeFeatures(featureVectors, featureCategories) {
     categories = Array(numFeatures).fill('default');
   }
 
-  const means = new Array(numFeatures).fill(0);
-  const stdDevs = new Array(numFeatures).fill(0);
+  // First pass: Calculate robust statistics
+  const medians = new Array(numFeatures).fill(0);
+  const madValues = new Array(numFeatures).fill(0); // Median Absolute Deviation
 
-  for (const vector of featureVectors) {
-    for (let j = 0; j < numFeatures; j++) means[j] += vector[j] || 0;
+  // Calculate medians
+  for (let j = 0; j < numFeatures; j++) {
+    const values = featureVectors.map(v => v[j] || 0).sort((a, b) => a - b);
+    medians[j] = values[Math.floor(values.length / 2)];
   }
-  for (let j = 0; j < numFeatures; j++) means[j] /= numSamples;
 
-  for (const vector of featureVectors) {
-    for (let j = 0; j < numFeatures; j++) stdDevs[j] += Math.pow((vector[j] || 0) - means[j], 2);
+  // Calculate MAD values
+  for (let j = 0; j < numFeatures; j++) {
+    const deviations = featureVectors.map(v => Math.abs((v[j] || 0) - medians[j]));
+    madValues[j] = deviations.sort((a, b) => a - b)[Math.floor(deviations.length / 2)] * 1.4826; // Scale factor for normal distribution
   }
-  for (let j = 0; j < numFeatures; j++) stdDevs[j] = Math.sqrt(stdDevs[j] / numSamples);
 
+  // Second pass: Apply robust normalization
   return featureVectors.map(vector =>
     vector.map((value, j) => {
-      const std = stdDevs[j];
-      const mean = means[j];
-      const normalizedValue = (std < 1e-10) ? 0 : ((value || 0) - mean) / std;
+      const mad = madValues[j];
+      const median = medians[j];
+      const normalizedValue = (mad < 1e-10) ? 0 : ((value || 0) - median) / mad;
+      
+      // Apply category weights with improved scaling
       const category = (j < categories.length && categories[j]) ? categories[j] : 'default';
       const weight = CATEGORY_WEIGHTS[category] || CATEGORY_WEIGHTS['default'];
-      return normalizedValue * weight;
+      
+      // Apply sigmoid function to bound the values
+      const sigmoid = (x) => 2 / (1 + Math.exp(-x)) - 1;
+      return sigmoid(normalizedValue * weight);
     })
   );
 }
@@ -197,35 +206,70 @@ function pca(processedData, nComponents = PCA_N_COMPONENTS) {
   if (nComponents <= 0) return processedData.map(() => []);
   if (numSamples <= 1) return processedData.map(() => Array(nComponents).fill(0.5));
 
-  const means = processedData[0].map((_, colIndex) => processedData.reduce((sum, row) => sum + row[colIndex], 0) / numSamples);
-  const centeredData = processedData.map(row => row.map((val, colIndex) => val - means[colIndex]));
+  // Center the data
+  const means = processedData[0].map((_, colIndex) => 
+    processedData.reduce((sum, row) => sum + (row[colIndex] || 0), 0) / numSamples
+  );
+  const centeredData = processedData.map(row => 
+    row.map((val, colIndex) => (val || 0) - means[colIndex])
+  );
 
+  // Calculate covariance matrix with improved numerical stability
   const covarianceMatrix = Array(numFeatures).fill(0).map(() => Array(numFeatures).fill(0));
   for (let i = 0; i < numFeatures; i++) {
-    for (let j = 0; j < numFeatures; j++) {
+    for (let j = i; j < numFeatures; j++) {
       let sum = 0;
-      for (let k = 0; k < numSamples; k++) sum += centeredData[k][i] * centeredData[k][j];
+      for (let k = 0; k < numSamples; k++) {
+        sum += centeredData[k][i] * centeredData[k][j];
+      }
       covarianceMatrix[i][j] = sum / (numSamples - 1);
+      if (i !== j) covarianceMatrix[j][i] = covarianceMatrix[i][j];
     }
   }
 
+  // Power iteration with improved convergence
   const powerIteration = (matrix, numIterations = 100) => {
     const n = matrix.length;
     if (n === 0 || !matrix[0] || matrix[0].length === 0) return [];
+    
+    // Initialize with a random vector
     let vector = Array(n).fill(0).map(() => Math.random() - 0.5);
     let norm = Math.sqrt(vector.reduce((s, v) => s + v * v, 0));
-    if (norm < 1e-10) vector = Array(n).fill(0); else vector = vector.map(v => v / norm);
+    if (norm < 1e-10) vector = Array(n).fill(0);
+    else vector = vector.map(v => v / norm);
+    
     if (vector.every(v => v === 0) && n > 0) vector[0] = 1;
 
-    for (let iter = 0; iter < numIterations; iter++) {
+    // Improved convergence with adaptive iterations
+    let prevVector = null;
+    let iter = 0;
+    const maxIter = numIterations;
+    const convergenceThreshold = 1e-10;
+
+    while (iter < maxIter) {
       let newVector = Array(n).fill(0);
       for (let r = 0; r < n; r++) {
-        for (let c = 0; c < n; c++) newVector[r] += (matrix[r]?.[c] || 0) * vector[c];
+        for (let c = 0; c < n; c++) {
+          newVector[r] += (matrix[r]?.[c] || 0) * vector[c];
+        }
       }
+      
       norm = Math.sqrt(newVector.reduce((s, val) => s + val * val, 0));
       if (norm < 1e-10) return Array(n).fill(0);
-      vector = newVector.map(val => val / norm);
+      
+      newVector = newVector.map(val => val / norm);
+      
+      // Check convergence
+      if (prevVector) {
+        const diff = Math.sqrt(newVector.reduce((s, v, i) => s + Math.pow(v - prevVector[i], 2), 0));
+        if (diff < convergenceThreshold) break;
+      }
+      
+      prevVector = [...newVector];
+      vector = newVector;
+      iter++;
     }
+    
     return vector;
   };
 
@@ -234,38 +278,39 @@ function pca(processedData, nComponents = PCA_N_COMPONENTS) {
 
   for (let k = 0; k < nComponents; k++) {
     if (tempCovarianceMatrix.length === 0 || tempCovarianceMatrix.every(row => row.every(val => isNaN(val) || val === 0))) {
-        const fallbackPc = Array(numFeatures).fill(0); if (k < numFeatures) fallbackPc[k] = 1;
-        principalComponents.push(fallbackPc); continue;
+      const fallbackPc = Array(numFeatures).fill(0);
+      if (k < numFeatures) fallbackPc[k] = 1;
+      principalComponents.push(fallbackPc);
+      continue;
     }
+    
     const pc = powerIteration(tempCovarianceMatrix);
     if (pc.length === 0 || pc.every(v => v === 0)) {
-      const fallbackPc = Array(numFeatures).fill(0); if (k < numFeatures) fallbackPc[k] = 1;
-      principalComponents.push(fallbackPc); continue;
+      const fallbackPc = Array(numFeatures).fill(0);
+      if (k < numFeatures) fallbackPc[k] = 1;
+      principalComponents.push(fallbackPc);
+      continue;
     }
+    
     principalComponents.push(pc);
 
     if (k < nComponents - 1 && pc.length > 0) {
-      let lambda = 0; const C_v = Array(numFeatures).fill(0);
-      for (let i = 0; i < numFeatures; i++) {
-        for (let j = 0; j < numFeatures; j++) C_v[i] += (tempCovarianceMatrix[i]?.[j] || 0) * pc[j];
-        lambda += pc[i] * C_v[i];
-      }
+      // Deflate the matrix
+      const lambda = pc.reduce((sum, val, i) => 
+        sum + val * tempCovarianceMatrix[i].reduce((s, v, j) => s + v * pc[j], 0), 0
+      );
+      
       const newTempCovMatrix = Array(numFeatures).fill(0).map(() => Array(numFeatures).fill(0));
       for (let i = 0; i < numFeatures; i++) {
-        for (let j = 0; j < numFeatures; j++) newTempCovMatrix[i][j] = (tempCovarianceMatrix[i]?.[j] || 0) - lambda * pc[i] * pc[j];
+        for (let j = 0; j < numFeatures; j++) {
+          newTempCovMatrix[i][j] = tempCovarianceMatrix[i][j] - lambda * pc[i] * pc[j];
+        }
       }
       tempCovarianceMatrix = newTempCovMatrix;
     }
   }
-  while (principalComponents.length < nComponents && numFeatures > 0) {
-    const fallbackPc = Array(numFeatures).fill(0);
-    if (principalComponents.length < numFeatures) fallbackPc[principalComponents.length] = 1;
-    principalComponents.push(fallbackPc);
-  }
-  if (numFeatures === 0 && principalComponents.length < nComponents) {
-    while(principalComponents.length < nComponents) principalComponents.push([]);
-  }
 
+  // Project the data
   const projected = centeredData.map(row =>
     principalComponents.map(pcVector => {
       if (pcVector.length !== row.length) return 0;
@@ -273,19 +318,23 @@ function pca(processedData, nComponents = PCA_N_COMPONENTS) {
     })
   );
 
-  if (projected.length === 0 || nComponents === 0) return projected.map(() => Array(nComponents).fill(0.5));
-  const actualNumOutputComponents = projected[0]?.length || 0;
-  if (actualNumOutputComponents === 0) return projected.map(() => Array(nComponents).fill(0.5));
-
-  const minMax = Array(actualNumOutputComponents).fill(null).map((_, i) => ({
+  // Normalize the projection to better utilize the canvas space
+  const minMax = Array(nComponents).fill(null).map((_, i) => ({
     min: Math.min(...projected.map(p => p[i])),
     max: Math.max(...projected.map(p => p[i])),
   }));
 
+  // Apply sigmoid-like scaling for better distribution
   return projected.map(p => p.map((val, i) => {
     if (i >= minMax.length || minMax[i] === null) return 0.5;
     const range = minMax[i].max - minMax[i].min;
-    return (range > 1e-10) ? (val - minMax[i].min) / range : 0.5;
+    if (range < 1e-10) return 0.5;
+    
+    // Center and scale
+    const centered = (val - minMax[i].min) / range;
+    // Apply sigmoid-like transformation
+    const sigmoid = (x) => 2 / (1 + Math.exp(-4 * (x - 0.5))) - 1;
+    return (sigmoid(centered) + 1) / 2;
   }));
 }
 
@@ -294,88 +343,119 @@ function hdbscan(data, minClusterSize = HDBSCAN_DEFAULT_MIN_CLUSTER_SIZE, minSam
   const n = data.length;
   if (n === 0) return [];
 
-  minClusterSize = Math.max(1, Math.min(minClusterSize, n));
-  minSamples = Math.max(1, Math.min(minSamples, n > 1 ? n - 1 : 1));
+  // Adaptive parameters based on dataset size and density
+  const adaptiveMinClusterSize = Math.max(2, Math.min(minClusterSize, Math.floor(n * 0.03))); // 3% of dataset size
+  const adaptiveMinSamples = Math.max(2, Math.min(minSamples, Math.floor(n * 0.01))); // 1% of dataset size
 
-  if (n < minClusterSize && n > 0) return Array(n).fill(NOISE_CLUSTER_ID);
+  if (n < adaptiveMinClusterSize && n > 0) return Array(n).fill(NOISE_CLUSTER_ID);
 
   function computeMutualReachabilityDistance() {
     const distances = Array(n).fill(null).map(() => Array(n).fill(0));
     const coreDistances = Array(n).fill(Infinity);
     if (n === 0) return { distances, coreDistances };
 
+    // Calculate core distances with adaptive k
     for (let i = 0; i < n; i++) {
-      if (n <= 1 || minSamples >= n) { coreDistances[i] = Infinity; continue; }
+      if (n <= 1 || adaptiveMinSamples >= n) { coreDistances[i] = Infinity; continue; }
       const pointDistances = [];
       for (let j = 0; j < n; j++) {
         if (i === j) continue;
         pointDistances.push(calculateDistance(data[i], data[j]));
       }
       pointDistances.sort((a, b) => a - b);
-      coreDistances[i] = pointDistances[minSamples - 1] ?? Infinity;
+      coreDistances[i] = pointDistances[adaptiveMinSamples - 1] ?? Infinity;
     }
 
+    // Calculate mutual reachability distances with improved distance metric
     for (let i = 0; i < n; i++) {
       for (let j = i + 1; j < n; j++) {
         const directDist = calculateDistance(data[i], data[j]);
-        const mrDist = Math.max(coreDistances[i], coreDistances[j], directDist);
-        distances[i][j] = mrDist; distances[j][i] = mrDist;
+        // Use geometric mean for better balance
+        const mrDist = Math.sqrt(coreDistances[i] * coreDistances[j]) * directDist;
+        distances[i][j] = mrDist;
+        distances[j][i] = mrDist;
       }
     }
     return distances;
   }
 
-   function buildMST(mutualReachabilityDistances) {
+  function buildMST(mutualReachabilityDistances) {
     if (n === 0) return [];
-    const mstEdges = []; const visited = new Array(n).fill(false);
-    const minEdgeWeight = new Array(n).fill(Infinity); const edgeToVertex = new Array(n).fill(-1);
+    const mstEdges = [];
+    const visited = new Array(n).fill(false);
+    const minEdgeWeight = new Array(n).fill(Infinity);
+    const edgeToVertex = new Array(n).fill(-1);
     if (n > 0) minEdgeWeight[0] = 0;
 
     for (let count = 0; count < n; count++) {
-        let u = -1, currentMin = Infinity;
-        for (let v = 0; v < n; v++) {
-            if (!visited[v] && minEdgeWeight[v] < currentMin) { currentMin = minEdgeWeight[v]; u = v; }
+      let u = -1, currentMin = Infinity;
+      for (let v = 0; v < n; v++) {
+        if (!visited[v] && minEdgeWeight[v] < currentMin) {
+          currentMin = minEdgeWeight[v];
+          u = v;
         }
-        if (u === -1) break;
-        visited[u] = true;
-        if (edgeToVertex[u] !== -1) mstEdges.push([u, edgeToVertex[u], minEdgeWeight[u]]);
-        for (let v = 0; v < n; v++) {
-            if (!visited[v]) {
-                const weightUV = mutualReachabilityDistances[u]?.[v] ?? Infinity;
-                if (weightUV < minEdgeWeight[v]) { minEdgeWeight[v] = weightUV; edgeToVertex[v] = u;}
-            }
+      }
+      if (u === -1) break;
+      visited[u] = true;
+      if (edgeToVertex[u] !== -1) {
+        mstEdges.push([u, edgeToVertex[u], minEdgeWeight[u]]);
+      }
+      for (let v = 0; v < n; v++) {
+        if (!visited[v]) {
+          const weightUV = mutualReachabilityDistances[u]?.[v] ?? Infinity;
+          if (weightUV < minEdgeWeight[v]) {
+            minEdgeWeight[v] = weightUV;
+            edgeToVertex[v] = u;
+          }
         }
+      }
     }
     return mstEdges;
   }
 
   function extractClustersSimplified(mst) {
     const labels = Array(n).fill(NOISE_CLUSTER_ID);
-    if (n === 0 || (mst.length === 0 && n > 0 && minClusterSize > 1)) return labels;
-    if (n > 0 && minClusterSize === 1) return Array(n).fill(0).map((_,i)=>i);
+    if (n === 0 || (mst.length === 0 && n > 0 && adaptiveMinClusterSize > 1)) return labels;
+    if (n > 0 && adaptiveMinClusterSize === 1) return Array(n).fill(0).map((_,i)=>i);
 
     let currentClusterId = 0;
     const parent = Array(n).fill(0).map((_, i) => i);
     const componentSize = Array(n).fill(1);
+    const edgeWeights = new Map();
 
-    function findSet(i) { if (parent[i] === i) return i; return parent[i] = findSet(parent[i]); }
-    function uniteSets(i, j) {
+    function findSet(i) {
+      if (parent[i] === i) return i;
+      return parent[i] = findSet(parent[i]);
+    }
+
+    function uniteSets(i, j, weight) {
       let rootI = findSet(i), rootJ = findSet(j);
       if (rootI !== rootJ) {
         if (componentSize[rootI] < componentSize[rootJ]) [rootI, rootJ] = [rootJ, rootI];
-        parent[rootJ] = rootI; componentSize[rootI] += componentSize[rootJ]; return true;
-      } return false;
+        parent[rootJ] = rootI;
+        componentSize[rootI] += componentSize[rootJ];
+        edgeWeights.set(rootI, Math.max(edgeWeights.get(rootI) || 0, weight));
+        return true;
+      }
+      return false;
     }
+
     const sortedMSTEdges = mst.sort((a, b) => a[2] - b[2]);
-    for (const edge of sortedMSTEdges) uniteSets(edge[0], edge[1]);
+    for (const edge of sortedMSTEdges) {
+      uniteSets(edge[0], edge[1], edge[2]);
+    }
 
     const rootToClusterId = new Map();
-    for(let i = 0; i < n; i++){
-        const root = findSet(i);
-        if(componentSize[root] >= minClusterSize){
-            if(!rootToClusterId.has(root)) rootToClusterId.set(root, currentClusterId++);
-            labels[i] = rootToClusterId.get(root);
-        } else { labels[i] = NOISE_CLUSTER_ID; }
+    for(let i = 0; i < n; i++) {
+      const root = findSet(i);
+      if(componentSize[root] >= adaptiveMinClusterSize) {
+        if(!rootToClusterId.has(root)) {
+          rootToClusterId.set(root, currentClusterId++);
+        }
+        labels[i] = rootToClusterId.get(root);
+      } else {
+        labels[i] = NOISE_CLUSTER_ID;
+      }
     }
     return labels;
   }
@@ -805,17 +885,34 @@ const TrackVisualizer = () => {
           try {
             const features = typeof track.style_features === 'string' ? JSON.parse(track.style_features) : track.style_features;
             if (features && typeof features === 'object') {
-              // Find the feature key that contains our selected feature
-              const matchingKey = Object.keys(features).find(key => {
-                const [genrePart, stylePart] = key.split('---');
-                return selectedCategory === 'genre' ? 
-                  genrePart === selectedFeature : 
-                  stylePart === selectedFeature;
-              });
-              
-              if (matchingKey) {
-                featureValue = parseFloat(features[matchingKey]);
-                hasFeature = !isNaN(featureValue) && featureValue > 0;
+              if (selectedCategory === 'genre') {
+                // For genre, find the most probable genre
+                let maxProb = 0;
+                let maxGenre = null;
+                
+                Object.entries(features).forEach(([key, value]) => {
+                  const [genrePart] = key.split('---');
+                  const prob = parseFloat(value);
+                  if (!isNaN(prob) && prob > maxProb) {
+                    maxProb = prob;
+                    maxGenre = genrePart;
+                  }
+                });
+                
+                // Only highlight if this is the most probable genre
+                hasFeature = maxGenre === selectedFeature;
+                featureValue = maxProb;
+              } else {
+                // For style, keep existing behavior
+                const matchingKey = Object.keys(features).find(key => {
+                  const [_, stylePart] = key.split('---');
+                  return stylePart === selectedFeature;
+                });
+                
+                if (matchingKey) {
+                  featureValue = parseFloat(features[matchingKey]);
+                  hasFeature = !isNaN(featureValue) && featureValue > 0;
+                }
               }
             }
           } catch (e) {

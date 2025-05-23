@@ -58,11 +58,11 @@ function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" 
 function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e = t[Symbol.toPrimitive]; if (void 0 !== e) { var i = e.call(t, r || "default"); if ("object" != _typeof(i)) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === r ? String : Number)(t); }
 function asyncGeneratorStep(n, t, e, r, o, a, c) { try { var i = n[a](c), u = i.value; } catch (n) { return void e(n); } i.done ? t(u) : Promise.resolve(u).then(r, o); }
 function _asyncToGenerator(n) { return function () { var t = this, e = arguments; return new Promise(function (r, o) { var a = n.apply(t, e); function _next(n) { asyncGeneratorStep(a, r, o, _next, _throw, "next", n); } function _throw(n) { asyncGeneratorStep(a, r, o, _next, _throw, "throw", n); } _next(void 0); }); }; }
+function _createForOfIteratorHelper(r, e) { var t = "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (!t) { if (Array.isArray(r) || (t = _unsupportedIterableToArray(r)) || e && r && "number" == typeof r.length) { t && (r = t); var _n = 0, F = function F() {}; return { s: F, n: function n() { return _n >= r.length ? { done: !0 } : { done: !1, value: r[_n++] }; }, e: function e(r) { throw r; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var o, a = !0, u = !1; return { s: function s() { t = t.call(r); }, n: function n() { var r = t.next(); return a = r.done, r; }, e: function e(r) { u = !0, o = r; }, f: function f() { try { a || null == t["return"] || t["return"](); } finally { if (u) throw o; } } }; }
 function _toConsumableArray(r) { return _arrayWithoutHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray(r) || _nonIterableSpread(); }
 function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
 function _iterableToArray(r) { if ("undefined" != typeof Symbol && null != r[Symbol.iterator] || null != r["@@iterator"]) return Array.from(r); }
 function _arrayWithoutHoles(r) { if (Array.isArray(r)) return _arrayLikeToArray(r); }
-function _createForOfIteratorHelper(r, e) { var t = "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (!t) { if (Array.isArray(r) || (t = _unsupportedIterableToArray(r)) || e && r && "number" == typeof r.length) { t && (r = t); var _n = 0, F = function F() {}; return { s: F, n: function n() { return _n >= r.length ? { done: !0 } : { done: !1, value: r[_n++] }; }, e: function e(r) { throw r; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var o, a = !0, u = !1; return { s: function s() { t = t.call(r); }, n: function n() { var r = t.next(); return a = r.done, r; }, e: function e(r) { u = !0, o = r; }, f: function f() { try { a || null == t["return"] || t["return"](); } finally { if (u) throw o; } } }; }
 function _slicedToArray(r, e) { return _arrayWithHoles(r) || _iterableToArrayLimit(r, e) || _unsupportedIterableToArray(r, e) || _nonIterableRest(); }
 function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
 function _unsupportedIterableToArray(r, a) { if (r) { if ("string" == typeof r) return _arrayLikeToArray(r, a); var t = {}.toString.call(r).slice(8, -1); return "Object" === t && r.constructor && (t = r.constructor.name), "Map" === t || "Set" === t ? Array.from(r) : "Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t) ? _arrayLikeToArray(r, a) : void 0; } }
@@ -87,8 +87,8 @@ var DARK_MODE_BORDER = '#4a4a4a';
 // --- Constants ---
 var PADDING = 50;
 var PCA_N_COMPONENTS = 2;
-var HDBSCAN_DEFAULT_MIN_CLUSTER_SIZE = 5;
-var HDBSCAN_DEFAULT_MIN_SAMPLES = 3;
+var HDBSCAN_DEFAULT_MIN_CLUSTER_SIZE = 3;
+var HDBSCAN_DEFAULT_MIN_SAMPLES = 2;
 var TOOLTIP_OFFSET = 15;
 var NOISE_CLUSTER_ID = -1;
 var NOISE_CLUSTER_COLOR = '#555555';
@@ -227,47 +227,58 @@ function normalizeFeatures(featureVectors, featureCategories) {
   if (categories.length !== numFeatures) {
     categories = Array(numFeatures).fill('default');
   }
-  var means = new Array(numFeatures).fill(0);
-  var stdDevs = new Array(numFeatures).fill(0);
-  var _iterator = _createForOfIteratorHelper(featureVectors),
-    _step;
-  try {
-    for (_iterator.s(); !(_step = _iterator.n()).done;) {
-      var vector = _step.value;
-      for (var _j2 = 0; _j2 < numFeatures; _j2++) means[_j2] += vector[_j2] || 0;
-    }
-  } catch (err) {
-    _iterator.e(err);
-  } finally {
-    _iterator.f();
+
+  // First pass: Calculate robust statistics
+  var medians = new Array(numFeatures).fill(0);
+  var madValues = new Array(numFeatures).fill(0); // Median Absolute Deviation
+
+  // Calculate medians
+  var _loop = function _loop(j) {
+    var values = featureVectors.map(function (v) {
+      return v[j] || 0;
+    }).sort(function (a, b) {
+      return a - b;
+    });
+    medians[j] = values[Math.floor(values.length / 2)];
+  };
+  for (var j = 0; j < numFeatures; j++) {
+    _loop(j);
   }
-  for (var j = 0; j < numFeatures; j++) means[j] /= numSamples;
-  var _iterator2 = _createForOfIteratorHelper(featureVectors),
-    _step2;
-  try {
-    for (_iterator2.s(); !(_step2 = _iterator2.n()).done;) {
-      var _vector = _step2.value;
-      for (var _j3 = 0; _j3 < numFeatures; _j3++) stdDevs[_j3] += Math.pow((_vector[_j3] || 0) - means[_j3], 2);
-    }
-  } catch (err) {
-    _iterator2.e(err);
-  } finally {
-    _iterator2.f();
+
+  // Calculate MAD values
+  var _loop2 = function _loop2(_j) {
+    var deviations = featureVectors.map(function (v) {
+      return Math.abs((v[_j] || 0) - medians[_j]);
+    });
+    madValues[_j] = deviations.sort(function (a, b) {
+      return a - b;
+    })[Math.floor(deviations.length / 2)] * 1.4826; // Scale factor for normal distribution
+  };
+  for (var _j = 0; _j < numFeatures; _j++) {
+    _loop2(_j);
   }
-  for (var _j = 0; _j < numFeatures; _j++) stdDevs[_j] = Math.sqrt(stdDevs[_j] / numSamples);
+
+  // Second pass: Apply robust normalization
   return featureVectors.map(function (vector) {
     return vector.map(function (value, j) {
-      var std = stdDevs[j];
-      var mean = means[j];
-      var normalizedValue = std < 1e-10 ? 0 : ((value || 0) - mean) / std;
+      var mad = madValues[j];
+      var median = medians[j];
+      var normalizedValue = mad < 1e-10 ? 0 : ((value || 0) - median) / mad;
+
+      // Apply category weights with improved scaling
       var category = j < categories.length && categories[j] ? categories[j] : 'default';
       var weight = CATEGORY_WEIGHTS[category] || CATEGORY_WEIGHTS['default'];
-      return normalizedValue * weight;
+
+      // Apply sigmoid function to bound the values
+      var sigmoid = function sigmoid(x) {
+        return 2 / (1 + Math.exp(-x)) - 1;
+      };
+      return sigmoid(normalizedValue * weight);
     });
   });
 }
 function pca(processedData) {
-  var _processedData$, _projected$;
+  var _processedData$;
   var nComponents = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : PCA_N_COMPONENTS;
   if (!processedData || processedData.length === 0) return [];
   var numSamples = processedData.length;
@@ -282,30 +293,41 @@ function pca(processedData) {
   if (numSamples <= 1) return processedData.map(function () {
     return Array(nComponents).fill(0.5);
   });
+
+  // Center the data
   var means = processedData[0].map(function (_, colIndex) {
     return processedData.reduce(function (sum, row) {
-      return sum + row[colIndex];
+      return sum + (row[colIndex] || 0);
     }, 0) / numSamples;
   });
   var centeredData = processedData.map(function (row) {
     return row.map(function (val, colIndex) {
-      return val - means[colIndex];
+      return (val || 0) - means[colIndex];
     });
   });
+
+  // Calculate covariance matrix with improved numerical stability
   var covarianceMatrix = Array(numFeatures).fill(0).map(function () {
     return Array(numFeatures).fill(0);
   });
   for (var i = 0; i < numFeatures; i++) {
-    for (var j = 0; j < numFeatures; j++) {
+    for (var j = i; j < numFeatures; j++) {
       var sum = 0;
-      for (var k = 0; k < numSamples; k++) sum += centeredData[k][i] * centeredData[k][j];
+      for (var k = 0; k < numSamples; k++) {
+        sum += centeredData[k][i] * centeredData[k][j];
+      }
       covarianceMatrix[i][j] = sum / (numSamples - 1);
+      if (i !== j) covarianceMatrix[j][i] = covarianceMatrix[i][j];
     }
   }
+
+  // Power iteration with improved convergence
   var powerIteration = function powerIteration(matrix) {
     var numIterations = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 100;
     var n = matrix.length;
     if (n === 0 || !matrix[0] || matrix[0].length === 0) return [];
+
+    // Initialize with a random vector
     var vector = Array(n).fill(0).map(function () {
       return Math.random() - 0.5;
     });
@@ -318,7 +340,13 @@ function pca(processedData) {
     if (vector.every(function (v) {
       return v === 0;
     }) && n > 0) vector[0] = 1;
-    for (var iter = 0; iter < numIterations; iter++) {
+
+    // Improved convergence with adaptive iterations
+    var prevVector = null;
+    var iter = 0;
+    var maxIter = numIterations;
+    var convergenceThreshold = 1e-10;
+    while (iter < maxIter) {
       var newVector = Array(n).fill(0);
       for (var r = 0; r < n; r++) {
         for (var c = 0; c < n; c++) {
@@ -330,9 +358,20 @@ function pca(processedData) {
         return s + val * val;
       }, 0));
       if (norm < 1e-10) return Array(n).fill(0);
-      vector = newVector.map(function (val) {
+      newVector = newVector.map(function (val) {
         return val / norm;
       });
+
+      // Check convergence
+      if (prevVector) {
+        var diff = Math.sqrt(newVector.reduce(function (s, v, i) {
+          return s + Math.pow(v - prevVector[i], 2);
+        }, 0));
+        if (diff < convergenceThreshold) break;
+      }
+      prevVector = _toConsumableArray(newVector);
+      vector = newVector;
+      iter++;
     }
     return vector;
   };
@@ -340,57 +379,52 @@ function pca(processedData) {
   var tempCovarianceMatrix = covarianceMatrix.map(function (row) {
     return _toConsumableArray(row);
   });
+  var _loop3 = function _loop3() {
+      if (tempCovarianceMatrix.length === 0 || tempCovarianceMatrix.every(function (row) {
+        return row.every(function (val) {
+          return isNaN(val) || val === 0;
+        });
+      })) {
+        var fallbackPc = Array(numFeatures).fill(0);
+        if (_k < numFeatures) fallbackPc[_k] = 1;
+        principalComponents.push(fallbackPc);
+        return 0; // continue
+      }
+      var pc = powerIteration(tempCovarianceMatrix);
+      if (pc.length === 0 || pc.every(function (v) {
+        return v === 0;
+      })) {
+        var _fallbackPc = Array(numFeatures).fill(0);
+        if (_k < numFeatures) _fallbackPc[_k] = 1;
+        principalComponents.push(_fallbackPc);
+        return 0; // continue
+      }
+      principalComponents.push(pc);
+      if (_k < nComponents - 1 && pc.length > 0) {
+        // Deflate the matrix
+        var lambda = pc.reduce(function (sum, val, i) {
+          return sum + val * tempCovarianceMatrix[i].reduce(function (s, v, j) {
+            return s + v * pc[j];
+          }, 0);
+        }, 0);
+        var newTempCovMatrix = Array(numFeatures).fill(0).map(function () {
+          return Array(numFeatures).fill(0);
+        });
+        for (var _i = 0; _i < numFeatures; _i++) {
+          for (var _j2 = 0; _j2 < numFeatures; _j2++) {
+            newTempCovMatrix[_i][_j2] = tempCovarianceMatrix[_i][_j2] - lambda * pc[_i] * pc[_j2];
+          }
+        }
+        tempCovarianceMatrix = newTempCovMatrix;
+      }
+    },
+    _ret;
   for (var _k = 0; _k < nComponents; _k++) {
-    if (tempCovarianceMatrix.length === 0 || tempCovarianceMatrix.every(function (row) {
-      return row.every(function (val) {
-        return isNaN(val) || val === 0;
-      });
-    })) {
-      var fallbackPc = Array(numFeatures).fill(0);
-      if (_k < numFeatures) fallbackPc[_k] = 1;
-      principalComponents.push(fallbackPc);
-      continue;
-    }
-    var pc = powerIteration(tempCovarianceMatrix);
-    if (pc.length === 0 || pc.every(function (v) {
-      return v === 0;
-    })) {
-      var _fallbackPc = Array(numFeatures).fill(0);
-      if (_k < numFeatures) _fallbackPc[_k] = 1;
-      principalComponents.push(_fallbackPc);
-      continue;
-    }
-    principalComponents.push(pc);
-    if (_k < nComponents - 1 && pc.length > 0) {
-      var lambda = 0;
-      var C_v = Array(numFeatures).fill(0);
-      for (var _i = 0; _i < numFeatures; _i++) {
-        for (var _j4 = 0; _j4 < numFeatures; _j4++) {
-          var _tempCovarianceMatrix;
-          C_v[_i] += (((_tempCovarianceMatrix = tempCovarianceMatrix[_i]) === null || _tempCovarianceMatrix === void 0 ? void 0 : _tempCovarianceMatrix[_j4]) || 0) * pc[_j4];
-        }
-        lambda += pc[_i] * C_v[_i];
-      }
-      var newTempCovMatrix = Array(numFeatures).fill(0).map(function () {
-        return Array(numFeatures).fill(0);
-      });
-      for (var _i2 = 0; _i2 < numFeatures; _i2++) {
-        for (var _j5 = 0; _j5 < numFeatures; _j5++) {
-          var _tempCovarianceMatrix2;
-          newTempCovMatrix[_i2][_j5] = (((_tempCovarianceMatrix2 = tempCovarianceMatrix[_i2]) === null || _tempCovarianceMatrix2 === void 0 ? void 0 : _tempCovarianceMatrix2[_j5]) || 0) - lambda * pc[_i2] * pc[_j5];
-        }
-      }
-      tempCovarianceMatrix = newTempCovMatrix;
-    }
+    _ret = _loop3();
+    if (_ret === 0) continue;
   }
-  while (principalComponents.length < nComponents && numFeatures > 0) {
-    var _fallbackPc2 = Array(numFeatures).fill(0);
-    if (principalComponents.length < numFeatures) _fallbackPc2[principalComponents.length] = 1;
-    principalComponents.push(_fallbackPc2);
-  }
-  if (numFeatures === 0 && principalComponents.length < nComponents) {
-    while (principalComponents.length < nComponents) principalComponents.push([]);
-  }
+
+  // Project the data
   var projected = centeredData.map(function (row) {
     return principalComponents.map(function (pcVector) {
       if (pcVector.length !== row.length) return 0;
@@ -399,14 +433,9 @@ function pca(processedData) {
       }, 0);
     });
   });
-  if (projected.length === 0 || nComponents === 0) return projected.map(function () {
-    return Array(nComponents).fill(0.5);
-  });
-  var actualNumOutputComponents = ((_projected$ = projected[0]) === null || _projected$ === void 0 ? void 0 : _projected$.length) || 0;
-  if (actualNumOutputComponents === 0) return projected.map(function () {
-    return Array(nComponents).fill(0.5);
-  });
-  var minMax = Array(actualNumOutputComponents).fill(null).map(function (_, i) {
+
+  // Normalize the projection to better utilize the canvas space
+  var minMax = Array(nComponents).fill(null).map(function (_, i) {
     return {
       min: Math.min.apply(Math, _toConsumableArray(projected.map(function (p) {
         return p[i];
@@ -416,11 +445,21 @@ function pca(processedData) {
       })))
     };
   });
+
+  // Apply sigmoid-like scaling for better distribution
   return projected.map(function (p) {
     return p.map(function (val, i) {
       if (i >= minMax.length || minMax[i] === null) return 0.5;
       var range = minMax[i].max - minMax[i].min;
-      return range > 1e-10 ? (val - minMax[i].min) / range : 0.5;
+      if (range < 1e-10) return 0.5;
+
+      // Center and scale
+      var centered = (val - minMax[i].min) / range;
+      // Apply sigmoid-like transformation
+      var sigmoid = function sigmoid(x) {
+        return 2 / (1 + Math.exp(-4 * (x - 0.5))) - 1;
+      };
+      return (sigmoid(centered) + 1) / 2;
     });
   });
 }
@@ -430,9 +469,12 @@ function hdbscan(data) {
   if (!data || data.length === 0) return [];
   var n = data.length;
   if (n === 0) return [];
-  minClusterSize = Math.max(1, Math.min(minClusterSize, n));
-  minSamples = Math.max(1, Math.min(minSamples, n > 1 ? n - 1 : 1));
-  if (n < minClusterSize && n > 0) return Array(n).fill(NOISE_CLUSTER_ID);
+
+  // Adaptive parameters based on dataset size and density
+  var adaptiveMinClusterSize = Math.max(2, Math.min(minClusterSize, Math.floor(n * 0.03))); // 3% of dataset size
+  var adaptiveMinSamples = Math.max(2, Math.min(minSamples, Math.floor(n * 0.01))); // 1% of dataset size
+
+  if (n < adaptiveMinClusterSize && n > 0) return Array(n).fill(NOISE_CLUSTER_ID);
   function computeMutualReachabilityDistance() {
     var distances = Array(n).fill(null).map(function () {
       return Array(n).fill(0);
@@ -442,9 +484,11 @@ function hdbscan(data) {
       distances: distances,
       coreDistances: coreDistances
     };
+
+    // Calculate core distances with adaptive k
     for (var i = 0; i < n; i++) {
       var _pointDistances;
-      if (n <= 1 || minSamples >= n) {
+      if (n <= 1 || adaptiveMinSamples >= n) {
         coreDistances[i] = Infinity;
         continue;
       }
@@ -456,14 +500,17 @@ function hdbscan(data) {
       pointDistances.sort(function (a, b) {
         return a - b;
       });
-      coreDistances[i] = (_pointDistances = pointDistances[minSamples - 1]) !== null && _pointDistances !== void 0 ? _pointDistances : Infinity;
+      coreDistances[i] = (_pointDistances = pointDistances[adaptiveMinSamples - 1]) !== null && _pointDistances !== void 0 ? _pointDistances : Infinity;
     }
-    for (var _i3 = 0; _i3 < n; _i3++) {
-      for (var _j6 = _i3 + 1; _j6 < n; _j6++) {
-        var directDist = calculateDistance(data[_i3], data[_j6]);
-        var mrDist = Math.max(coreDistances[_i3], coreDistances[_j6], directDist);
-        distances[_i3][_j6] = mrDist;
-        distances[_j6][_i3] = mrDist;
+
+    // Calculate mutual reachability distances with improved distance metric
+    for (var _i2 = 0; _i2 < n; _i2++) {
+      for (var _j3 = _i2 + 1; _j3 < n; _j3++) {
+        var directDist = calculateDistance(data[_i2], data[_j3]);
+        // Use geometric mean for better balance
+        var mrDist = Math.sqrt(coreDistances[_i2] * coreDistances[_j3]) * directDist;
+        distances[_i2][_j3] = mrDist;
+        distances[_j3][_i2] = mrDist;
       }
     }
     return distances;
@@ -486,7 +533,9 @@ function hdbscan(data) {
       }
       if (u === -1) break;
       visited[u] = true;
-      if (edgeToVertex[u] !== -1) mstEdges.push([u, edgeToVertex[u], minEdgeWeight[u]]);
+      if (edgeToVertex[u] !== -1) {
+        mstEdges.push([u, edgeToVertex[u], minEdgeWeight[u]]);
+      }
       for (var _v = 0; _v < n; _v++) {
         if (!visited[_v]) {
           var _mutualReachabilityDi, _mutualReachabilityDi2;
@@ -502,8 +551,8 @@ function hdbscan(data) {
   }
   function extractClustersSimplified(mst) {
     var labels = Array(n).fill(NOISE_CLUSTER_ID);
-    if (n === 0 || mst.length === 0 && n > 0 && minClusterSize > 1) return labels;
-    if (n > 0 && minClusterSize === 1) return Array(n).fill(0).map(function (_, i) {
+    if (n === 0 || mst.length === 0 && n > 0 && adaptiveMinClusterSize > 1) return labels;
+    if (n > 0 && adaptiveMinClusterSize === 1) return Array(n).fill(0).map(function (_, i) {
       return i;
     });
     var currentClusterId = 0;
@@ -511,11 +560,12 @@ function hdbscan(data) {
       return i;
     });
     var componentSize = Array(n).fill(1);
+    var edgeWeights = new Map();
     function findSet(i) {
       if (parent[i] === i) return i;
       return parent[i] = findSet(parent[i]);
     }
-    function uniteSets(i, j) {
+    function uniteSets(i, j, weight) {
       var rootI = findSet(i),
         rootJ = findSet(j);
       if (rootI !== rootJ) {
@@ -526,6 +576,7 @@ function hdbscan(data) {
         }
         parent[rootJ] = rootI;
         componentSize[rootI] += componentSize[rootJ];
+        edgeWeights.set(rootI, Math.max(edgeWeights.get(rootI) || 0, weight));
         return true;
       }
       return false;
@@ -533,23 +584,25 @@ function hdbscan(data) {
     var sortedMSTEdges = mst.sort(function (a, b) {
       return a[2] - b[2];
     });
-    var _iterator3 = _createForOfIteratorHelper(sortedMSTEdges),
-      _step3;
+    var _iterator = _createForOfIteratorHelper(sortedMSTEdges),
+      _step;
     try {
-      for (_iterator3.s(); !(_step3 = _iterator3.n()).done;) {
-        var edge = _step3.value;
-        uniteSets(edge[0], edge[1]);
+      for (_iterator.s(); !(_step = _iterator.n()).done;) {
+        var edge = _step.value;
+        uniteSets(edge[0], edge[1], edge[2]);
       }
     } catch (err) {
-      _iterator3.e(err);
+      _iterator.e(err);
     } finally {
-      _iterator3.f();
+      _iterator.f();
     }
     var rootToClusterId = new Map();
     for (var i = 0; i < n; i++) {
       var root = findSet(i);
-      if (componentSize[root] >= minClusterSize) {
-        if (!rootToClusterId.has(root)) rootToClusterId.set(root, currentClusterId++);
+      if (componentSize[root] >= adaptiveMinClusterSize) {
+        if (!rootToClusterId.has(root)) {
+          rootToClusterId.set(root, currentClusterId++);
+        }
         labels[i] = rootToClusterId.get(root);
       } else {
         labels[i] = NOISE_CLUSTER_ID;
@@ -1069,17 +1122,40 @@ var TrackVisualizer = function TrackVisualizer() {
           try {
             var features = typeof track.style_features === 'string' ? JSON.parse(track.style_features) : track.style_features;
             if (features && _typeof(features) === 'object') {
-              // Find the feature key that contains our selected feature
-              var matchingKey = Object.keys(features).find(function (key) {
-                var _key$split3 = key.split('---'),
-                  _key$split4 = _slicedToArray(_key$split3, 2),
-                  genrePart = _key$split4[0],
-                  stylePart = _key$split4[1];
-                return selectedCategory === 'genre' ? genrePart === selectedFeature : stylePart === selectedFeature;
-              });
-              if (matchingKey) {
-                featureValue = parseFloat(features[matchingKey]);
-                hasFeature = !isNaN(featureValue) && featureValue > 0;
+              if (selectedCategory === 'genre') {
+                // For genre, find the most probable genre
+                var maxProb = 0;
+                var maxGenre = null;
+                Object.entries(features).forEach(function (_ref14) {
+                  var _ref15 = _slicedToArray(_ref14, 2),
+                    key = _ref15[0],
+                    value = _ref15[1];
+                  var _key$split3 = key.split('---'),
+                    _key$split4 = _slicedToArray(_key$split3, 1),
+                    genrePart = _key$split4[0];
+                  var prob = parseFloat(value);
+                  if (!isNaN(prob) && prob > maxProb) {
+                    maxProb = prob;
+                    maxGenre = genrePart;
+                  }
+                });
+
+                // Only highlight if this is the most probable genre
+                hasFeature = maxGenre === selectedFeature;
+                featureValue = maxProb;
+              } else {
+                // For style, keep existing behavior
+                var matchingKey = Object.keys(features).find(function (key) {
+                  var _key$split5 = key.split('---'),
+                    _key$split6 = _slicedToArray(_key$split5, 2),
+                    _ = _key$split6[0],
+                    stylePart = _key$split6[1];
+                  return stylePart === selectedFeature;
+                });
+                if (matchingKey) {
+                  featureValue = parseFloat(features[matchingKey]);
+                  hasFeature = !isNaN(featureValue) && featureValue > 0;
+                }
               }
             }
           } catch (e) {
@@ -1340,10 +1416,10 @@ var TrackVisualizer = function TrackVisualizer() {
             var features = typeof trackData.style_features === 'string' ? JSON.parse(trackData.style_features) : trackData.style_features;
             if (features && _typeof(features) === 'object') {
               var matchingKey = Object.keys(features).find(function (key) {
-                var _key$split5 = key.split('---'),
-                  _key$split6 = _slicedToArray(_key$split5, 2),
-                  genrePart = _key$split6[0],
-                  stylePart = _key$split6[1];
+                var _key$split7 = key.split('---'),
+                  _key$split8 = _slicedToArray(_key$split7, 2),
+                  genrePart = _key$split8[0],
+                  stylePart = _key$split8[1];
                 return selectedCategory === 'genre' ? genrePart === selectedFeature : stylePart === selectedFeature;
               });
               if (matchingKey) {
@@ -1584,10 +1660,10 @@ var TrackVisualizer = function TrackVisualizer() {
     className: "category-toggle"
   }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("label", {
     htmlFor: "categorySelect"
-  }, "Color by:"), Object.entries(CATEGORY_BASE_COLORS).map(function (_ref15) {
-    var _ref16 = _slicedToArray(_ref15, 2),
-      categoryKey = _ref16[0],
-      colorValue = _ref16[1];
+  }, "Color by:"), Object.entries(CATEGORY_BASE_COLORS).map(function (_ref17) {
+    var _ref18 = _slicedToArray(_ref17, 2),
+      categoryKey = _ref18[0],
+      colorValue = _ref18[1];
     return /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("button", {
       key: categoryKey,
       onClick: function onClick() {
@@ -1795,10 +1871,10 @@ var TrackVisualizer = function TrackVisualizer() {
   }, Array.from(styleColors.entries()).sort(function (a, b) {
     return b[1] - a[1];
   }) // Sort by frequency
-  .map(function (_ref17) {
-    var _ref18 = _slicedToArray(_ref17, 2),
-      feature = _ref18[0],
-      color = _ref18[1];
+  .map(function (_ref19) {
+    var _ref20 = _slicedToArray(_ref19, 2),
+      feature = _ref20[0],
+      color = _ref20[1];
     return /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
       key: feature,
       className: "legend-item ".concat(selectedFeature === feature ? 'selected' : ''),
