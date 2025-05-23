@@ -321,7 +321,7 @@ function pca(processedData) {
     }
   }
 
-  // Power iteration with improved convergence
+  // Power iteration with improved convergence and robust sign consistency
   var powerIteration = function powerIteration(matrix) {
     var numIterations = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 100;
     var n = matrix.length;
@@ -379,7 +379,24 @@ function pca(processedData) {
   var tempCovarianceMatrix = covarianceMatrix.map(function (row) {
     return _toConsumableArray(row);
   });
-  var _loop3 = function _loop3() {
+
+  // Calculate reference points for sign consistency
+  var referencePoints = [];
+  var _loop3 = function _loop3(_i) {
+    var values = centeredData.map(function (row) {
+      return row[_i];
+    });
+    var sortedValues = _toConsumableArray(values).sort(function (a, b) {
+      return a - b;
+    });
+    var q1 = sortedValues[Math.floor(sortedValues.length * 0.25)];
+    var q3 = sortedValues[Math.floor(sortedValues.length * 0.75)];
+    referencePoints.push((q1 + q3) / 2); // Use median of quartiles as reference
+  };
+  for (var _i = 0; _i < numFeatures; _i++) {
+    _loop3(_i);
+  }
+  var _loop4 = function _loop4() {
       if (tempCovarianceMatrix.length === 0 || tempCovarianceMatrix.every(function (row) {
         return row.every(function (val) {
           return isNaN(val) || val === 0;
@@ -399,6 +416,16 @@ function pca(processedData) {
         principalComponents.push(_fallbackPc);
         return 0; // continue
       }
+
+      // Ensure sign consistency using reference points
+      var projection = referencePoints.reduce(function (sum, val, i) {
+        return sum + val * pc[i];
+      }, 0);
+      if (projection < 0) {
+        pc.forEach(function (_, i) {
+          return pc[i] = -pc[i];
+        });
+      }
       principalComponents.push(pc);
       if (_k < nComponents - 1 && pc.length > 0) {
         // Deflate the matrix
@@ -410,9 +437,9 @@ function pca(processedData) {
         var newTempCovMatrix = Array(numFeatures).fill(0).map(function () {
           return Array(numFeatures).fill(0);
         });
-        for (var _i = 0; _i < numFeatures; _i++) {
+        for (var _i2 = 0; _i2 < numFeatures; _i2++) {
           for (var _j2 = 0; _j2 < numFeatures; _j2++) {
-            newTempCovMatrix[_i][_j2] = tempCovarianceMatrix[_i][_j2] - lambda * pc[_i] * pc[_j2];
+            newTempCovMatrix[_i2][_j2] = tempCovarianceMatrix[_i2][_j2] - lambda * pc[_i2] * pc[_j2];
           }
         }
         tempCovarianceMatrix = newTempCovMatrix;
@@ -420,7 +447,7 @@ function pca(processedData) {
     },
     _ret;
   for (var _k = 0; _k < nComponents; _k++) {
-    _ret = _loop3();
+    _ret = _loop4();
     if (_ret === 0) continue;
   }
 
@@ -504,13 +531,13 @@ function hdbscan(data) {
     }
 
     // Calculate mutual reachability distances with improved distance metric
-    for (var _i2 = 0; _i2 < n; _i2++) {
-      for (var _j3 = _i2 + 1; _j3 < n; _j3++) {
-        var directDist = calculateDistance(data[_i2], data[_j3]);
+    for (var _i3 = 0; _i3 < n; _i3++) {
+      for (var _j3 = _i3 + 1; _j3 < n; _j3++) {
+        var directDist = calculateDistance(data[_i3], data[_j3]);
         // Use geometric mean for better balance
-        var mrDist = Math.sqrt(coreDistances[_i2] * coreDistances[_j3]) * directDist;
-        distances[_i2][_j3] = mrDist;
-        distances[_j3][_i2] = mrDist;
+        var mrDist = Math.sqrt(coreDistances[_i3] * coreDistances[_j3]) * directDist;
+        distances[_i3][_j3] = mrDist;
+        distances[_j3][_i3] = mrDist;
       }
     }
     return distances;

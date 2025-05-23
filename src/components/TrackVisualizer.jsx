@@ -227,7 +227,7 @@ function pca(processedData, nComponents = PCA_N_COMPONENTS) {
     }
   }
 
-  // Power iteration with improved convergence
+  // Power iteration with improved convergence and robust sign consistency
   const powerIteration = (matrix, numIterations = 100) => {
     const n = matrix.length;
     if (n === 0 || !matrix[0] || matrix[0].length === 0) return [];
@@ -276,6 +276,16 @@ function pca(processedData, nComponents = PCA_N_COMPONENTS) {
   const principalComponents = [];
   let tempCovarianceMatrix = covarianceMatrix.map(row => [...row]);
 
+  // Calculate reference points for sign consistency
+  const referencePoints = [];
+  for (let i = 0; i < numFeatures; i++) {
+    const values = centeredData.map(row => row[i]);
+    const sortedValues = [...values].sort((a, b) => a - b);
+    const q1 = sortedValues[Math.floor(sortedValues.length * 0.25)];
+    const q3 = sortedValues[Math.floor(sortedValues.length * 0.75)];
+    referencePoints.push((q1 + q3) / 2); // Use median of quartiles as reference
+  }
+
   for (let k = 0; k < nComponents; k++) {
     if (tempCovarianceMatrix.length === 0 || tempCovarianceMatrix.every(row => row.every(val => isNaN(val) || val === 0))) {
       const fallbackPc = Array(numFeatures).fill(0);
@@ -290,6 +300,12 @@ function pca(processedData, nComponents = PCA_N_COMPONENTS) {
       if (k < numFeatures) fallbackPc[k] = 1;
       principalComponents.push(fallbackPc);
       continue;
+    }
+
+    // Ensure sign consistency using reference points
+    const projection = referencePoints.reduce((sum, val, i) => sum + val * pc[i], 0);
+    if (projection < 0) {
+      pc.forEach((_, i) => pc[i] = -pc[i]);
     }
     
     principalComponents.push(pc);
