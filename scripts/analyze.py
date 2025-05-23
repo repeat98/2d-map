@@ -49,6 +49,7 @@ try:
 except OSError:
     # Use sys.__stderr__ for pre-redirection output if normal stderr is already captured
     print("Warning: Could not redirect C++ stderr to /dev/null.", file=sys.__stderr__)
+    _cpp_stderr_redirected = False
 
 # Attempt to import pyloudnorm for improved LUFS calculation
 try:
@@ -114,11 +115,19 @@ approachability_model_path = os.path.join(
     script_dir, "essentia_model/approachability_2c-discogs-effnet-1.pb")
 instrument_model_path = os.path.join(
     script_dir, "essentia_model/mtg_jamendo_instrument-discogs-effnet-1.pb")
+tonal_model_path = os.path.join(
+    script_dir, "essentia_model/tonal_atonal-discogs-effnet-1.pb")
+timbre_model_path = os.path.join(
+    script_dir, "essentia_model/timbre-discogs-effnet-1.pb")
+moodtheme_model_path = os.path.join(
+    script_dir, "essentia_model/mtg_jamendo_moodtheme-discogs-effnet-1.pb")
 
 class_labels_path = os.path.join(
     script_dir, 'essentia_model/genre_discogs400-discogs-effnet-1.json')
 instrument_labels_path = os.path.join(
     script_dir, 'essentia_model/mtg_jamendo_instrument-discogs-effnet-1.json')
+moodtheme_labels_path = os.path.join(
+    script_dir, 'essentia_model/mtg_jamendo_moodtheme-discogs-effnet-1.json')
 
 db_name = "tracks.db"
 db_folder = os.path.join(script_dir, "../db/")
@@ -173,6 +182,9 @@ approachability_model = load_optional_model(
     approachability_model_path, "Approachability")
 instrument_model = load_optional_model(
     instrument_model_path, "Instrument", output_name="model/Sigmoid")
+tonal_model = load_optional_model(tonal_model_path, "Tonal/Atonal")
+timbre_model = load_optional_model(timbre_model_path, "Timbre")
+moodtheme_model = load_optional_model(moodtheme_model_path, "Mood Theme", output_name="model/Sigmoid")
 
 try:
     with open(class_labels_path, 'r') as file:
@@ -196,6 +208,15 @@ except Exception as e:
         f"Error loading instrument class labels from {instrument_labels_path}: {e}", file=sys.stderr)
     instrument_labels = []
 
+try:
+    with open(moodtheme_labels_path, 'r') as file:
+        moodtheme_labels = json.load(file).get("classes", [])
+    if not moodtheme_labels:
+        print(
+            f"Warning: Mood theme class labels file {moodtheme_labels_path} is empty or malformed.", file=sys.stderr)
+except Exception as e:
+    print(
+        f"Error loading mood theme class labels from {moodtheme_labels_path}: {e}", file=sys.stderr)
 db_lock = Lock()
 
 # ------------------------------------------------------------------------------
@@ -206,17 +227,13 @@ def init_db():
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
-    instrument_cols_sql_create = ""
-    for i in range(1, 11):
-        instrument_cols_sql_create += f",\n            instrument{i} TEXT DEFAULT NULL"
-        instrument_cols_sql_create += f",\n            instrument{i}_prob REAL DEFAULT NULL"
-
     cursor.execute(f'''
         CREATE TABLE IF NOT EXISTS classified_tracks (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             path TEXT NOT NULL UNIQUE,
-            features BLOB NOT NULL,
+            style_features BLOB NOT NULL,
             instrument_features BLOB NOT NULL,
+            mood_features BLOB NOT NULL,
             artist TEXT DEFAULT 'Unknown Artist',
             title TEXT DEFAULT 'Unknown Title',
             album TEXT DEFAULT 'Unknown Album',
@@ -225,34 +242,15 @@ def init_db():
             bpm REAL DEFAULT 0.00,
             key TEXT DEFAULT 'Unknown',
             date TEXT NOT NULL,
-            tag1 TEXT, tag1_prob REAL DEFAULT NULL,
-            tag2 TEXT, tag2_prob REAL DEFAULT NULL,
-            tag3 TEXT, tag3_prob REAL DEFAULT NULL,
-            tag4 TEXT, tag4_prob REAL DEFAULT NULL,
-            tag5 TEXT, tag5_prob REAL DEFAULT NULL,
-            tag6 TEXT, tag6_prob REAL DEFAULT NULL,
-            tag7 TEXT, tag7_prob REAL DEFAULT NULL,
-            tag8 TEXT, tag8_prob REAL DEFAULT NULL,
-            tag9 TEXT, tag9_prob REAL DEFAULT NULL,
-            tag10 TEXT, tag10_prob REAL DEFAULT NULL
-            {instrument_cols_sql_create},
             artwork_path TEXT DEFAULT NULL,
             artwork_thumbnail_path TEXT DEFAULT NULL,
-            noisy REAL DEFAULT NULL,
+            atonal REAL DEFAULT NULL,
             tonal REAL DEFAULT NULL,
             dark REAL DEFAULT NULL,
             bright REAL DEFAULT NULL,
             percussive REAL DEFAULT NULL,
             smooth REAL DEFAULT NULL,
-            lufs TEXT DEFAULT NULL,
-            happiness REAL DEFAULT NULL,
-            party REAL DEFAULT NULL,
-            aggressive REAL DEFAULT NULL,
-            danceability REAL DEFAULT NULL,
-            relaxed REAL DEFAULT NULL,
-            sad REAL DEFAULT NULL,
-            engagement REAL DEFAULT NULL,
-            approachability REAL DEFAULT NULL
+            lufs TEXT DEFAULT NULL
         )
     ''')
     conn.commit()
@@ -285,20 +283,53 @@ def md5_hash(data):
 # ------------------------------------------------------------------------------
 # Audio Processing and Classification
 # ------------------------------------------------------------------------------
-def classify_track(filepath):
+def load_audio(file_path):
     try:
-        features, audio_16k, audio_44k, happiness_score, party_score, aggressive_score, \
-        danceability_score, relaxed_score, sad_score, engagement_score, approachability_score, \
-        instrument_scores_dict = process_audio_file(
-            filepath, embedding_model, classification_model, instrument_model)
-        if features:
-            return features, audio_16k, audio_44k, happiness_score, party_score, aggressive_score, \
-                   danceability_score, relaxed_score, sad_score, engagement_score, approachability_score, \
-                   instrument_scores_dict
-        return {}, None, None, None, None, None, None, None, None, None, None, None
+        audio_44k_orig = MonoLoader(
+            filename=file_path, sampleRate=44100, resampleQuality=4)()
+        audio_44k = normalize_audio(audio_44k_orig)
+
+        resampler = Resample(inputSampleRate=44100,
+                             outputSampleRate=16000, quality=4)
+        audio_16k = resampler(audio_44k)
+        return audio_16k, audio_44k
     except Exception as e:
-        print(f"Error classifying {filepath}: {e}", file=sys.stderr)
-        return {}, None, None, None, None, None, None, None, None, None, None, None
+        print(f"Error loading audio file {file_path}: {e}", file=sys.stderr)
+        return None, None
+
+def classify_track(file_path):
+    try:
+        audio_16k, audio_44k = load_audio(file_path)
+        if audio_16k is None or audio_44k is None:
+            return None, None, None, None, None, None, None, None, None, None, None, None
+
+        embeddings = embedding_model(audio_16k)
+        predictions = classification_model(embeddings)
+        predictions_mean = np.mean(predictions, axis=0)
+        genre_features = {
+            class_labels[i]: float(predictions_mean[i])
+            for i in range(len(class_labels))
+            if predictions_mean[i] > 0.01
+        }
+
+        instrument_features_dict = {}
+        if instrument_model is not None and instrument_labels:
+            try:
+                predictions = instrument_model(embeddings)
+                predictions_mean = np.mean(predictions, axis=0)
+                instrument_features_dict = {
+                    instrument_labels[i]: float(predictions_mean[i])
+                    for i in range(len(instrument_labels))
+                    if predictions_mean[i] > 0.01  # Only include predictions > 1%
+                }
+            except Exception as e:
+                print(f"Error in instrument prediction for {file_path}: {e}", file=sys.stderr)
+
+        return genre_features, audio_16k, audio_44k, None, None, None, None, None, None, None, None, instrument_features_dict
+
+    except Exception as e:
+        print(f"Error in classify_track for {file_path}: {e}", file=sys.stderr)
+        return None, None, None, None, None, None, None, None, None, None, None, None
 
 def process_audio_file(audio_file_path, emb_model, class_model, instr_model):
     try:
@@ -338,21 +369,8 @@ def process_audio_file(audio_file_path, emb_model, class_model, instr_model):
         engagement_score = predict_mood(engagement_model, embeddings, "engagement")
         approachability_score = predict_mood(approachability_model, embeddings, "approachability")
 
-        instrument_scores_dict = None
-        if instr_model is not None and instrument_labels:
-            try:
-                instrument_predictions = instr_model(embeddings)
-                instrument_predictions_mean = np.mean(
-                    instrument_predictions, axis=0)
-                instrument_scores_dict = {instrument_labels[i]: float(
-                    instrument_predictions_mean[i]) for i in range(len(instrument_labels))}
-            except Exception as ie:
-                print(
-                    f"Error in instrument prediction for {audio_file_path}: {ie}", file=sys.stderr)
-
         return genre_result, audio_16k, audio_44k_orig, happiness_score, party_score, aggressive_score, \
-               danceability_score, relaxed_score, sad_score, engagement_score, approachability_score, \
-               instrument_scores_dict
+               danceability_score, relaxed_score, sad_score, engagement_score, approachability_score, None
     except Exception as e:
         print(
             f"Error processing audio file {audio_file_path}: {e}", file=sys.stderr)
@@ -371,9 +389,11 @@ def track_exists(filepath):
 def extract_metadata(filepath):
     try:
         tag = TinyTag.get(filepath, image=False)
+        # Get filename without extension as fallback for title
+        filename = os.path.splitext(os.path.basename(filepath))[0]
         return {
             'artist': tag.artist if tag.artist else 'Unknown Artist',
-            'title': tag.title if tag.title else 'Unknown Title',
+            'title': tag.title if tag.title else filename,
             'album': tag.album if tag.album else 'Unknown Album',
             'year': str(tag.year) if tag.year else 'Unknown Year',
             'duration': (f"{int(tag.duration // 60)}:{int(tag.duration % 60):02d}"
@@ -382,9 +402,11 @@ def extract_metadata(filepath):
     except Exception as e:
         print(
             f"Error extracting metadata from {filepath}: {e}", file=sys.stderr)
+        # Get filename without extension as fallback for title
+        filename = os.path.splitext(os.path.basename(filepath))[0]
         return {
             'artist': 'Unknown Artist',
-            'title': 'Unknown Title',
+            'title': filename,
             'album': 'Unknown Album',
             'year': 'Unknown Year',
             'duration': '00:00'
@@ -498,31 +520,30 @@ def init_spectral_columns():
     cursor.execute("PRAGMA table_info(classified_tracks)")
     existing_cols_info = {row[1]: row[2] for row in cursor.fetchall()}
 
+    # Note: 'atonal' column stores atonal score from the tonal/atonal model
+    # and 'tonal' column stores the tonal score from the same model
     new_feature_cols = [
-        ("noisy", "REAL"), ("tonal", "REAL"), ("dark", "REAL"), ("bright", "REAL"),
-        ("percussive", "REAL"), ("smooth", "REAL"), ("lufs", "TEXT"),
-        ("happiness", "REAL"), ("party", "REAL"), ("aggressive", "REAL"),
-        ("danceability", "REAL"), ("relaxed", "REAL"), ("sad", "REAL"),
-        ("engagement", "REAL"), ("approachability", "REAL"),
-        ("instrument_features", "BLOB")
+        ("atonal", "REAL"), ("tonal", "REAL"), ("dark", "REAL"), ("bright", "REAL"),
+        ("percussive", "REAL"), ("smooth", "REAL"), ("lufs", "TEXT")
     ]
-    for i in range(1, 11):
-        new_feature_cols.append((f"instrument{i}", "TEXT"))
-        new_feature_cols.append((f"instrument{i}_prob", "REAL"))
 
     old_spectral_columns = [
         "spectral_centroid", "spectral_bandwidth", "spectral_rolloff",
         "spectral_contrast", "spectral_flatness", "rms", "idx", "x", "y",
-        "combined_features", "mfcc_features", "chroma_features"
+        "combined_features", "mfcc_features", "chroma_features", "noisy",
+        "happiness", "party", "aggressive", "danceability", "relaxed",
+        "sad", "engagement", "approachability"
     ]
+
+    # Add instrument columns to old columns to remove
+    for i in range(1, 11):
+        old_spectral_columns.extend([f"instrument{i}", f"instrument{i}_prob"])
 
     for old_col in old_spectral_columns:
         if old_col in existing_cols_info:
             try:
-                # print(f"Attempting to remove old column: {old_col}") # Optional: for debugging
                 cursor.execute(f"ALTER TABLE classified_tracks DROP COLUMN {old_col}")
                 conn.commit()
-                # print(f"Removed old column {old_col} from classified_tracks.") # Optional
                 existing_cols_info.pop(old_col)
             except sqlite3.OperationalError as e:
                 print(f"Warning: Could not remove column {old_col}: {e}", file=sys.stderr)
@@ -533,7 +554,6 @@ def init_spectral_columns():
                 default_clause = "DEFAULT NULL"
                 cursor.execute(f"ALTER TABLE classified_tracks ADD COLUMN {col_name} {col_type} {default_clause}")
                 conn.commit()
-                # print(f"Added column {col_name} ({col_type}) to classified_tracks.") # Optional
             except sqlite3.OperationalError as e:
                 print(f"Warning: Could not add column {col_name}: {e}", file=sys.stderr)
     conn.close()
@@ -562,32 +582,66 @@ def analyze_spectral_features(file_path):
                 print(f"Soundfile not available, cannot load {file_path} for spectral analysis.", file=sys.stderr)
                 return None
 
-
         if y is None or len(y) == 0:
             print(f"Warning: Audio loaded from {file_path} is empty. Skipping spectral analysis.", file=sys.stderr)
             return None
 
-        spectral_flatness = librosa.feature.spectral_flatness(y=y)
-        zcr = librosa.feature.zero_crossing_rate(y)
-        mean_flatness = np.mean(spectral_flatness)
-        mean_zcr = np.mean(zcr)
-        noisy_score = float(np.clip((mean_flatness + mean_zcr) / 2.0, 0.0, 1.0))
-        tonal_score = 1.0 - noisy_score
+        # Get tonal/atonal scores from the model
+        resampler = Resample(inputSampleRate=22050, outputSampleRate=16000, quality=4)
+        audio_16k = resampler(y)
+        embeddings = embedding_model(audio_16k)
+        
+        tonal_score = None
+        atonal_score = None
+        if tonal_model is not None:
+            try:
+                predictions = tonal_model(embeddings)
+                predictions_mean = np.mean(predictions, axis=0)
+                if predictions_mean.shape[0] >= 2:
+                    tonal_score = float(predictions_mean[0])  # First class is tonal
+                    atonal_score = float(predictions_mean[1])  # Second class is atonal
+                else:
+                    tonal_score = float(predictions_mean[0])
+                    atonal_score = 1.0 - tonal_score
+            except Exception as e:
+                print(f"Error in tonal/atonal prediction for {file_path}: {e}", file=sys.stderr)
+                # Fallback to spectral analysis if model fails
+                spectral_flatness = librosa.feature.spectral_flatness(y=y)
+                zcr = librosa.feature.zero_crossing_rate(y)
+                mean_flatness = np.mean(spectral_flatness)
+                mean_zcr = np.mean(zcr)
+                atonal_score = float(np.clip((mean_flatness + mean_zcr) / 2.0, 0.0, 1.0))
+                tonal_score = 1.0 - atonal_score
 
-        spectral_centroid = librosa.feature.spectral_centroid(y=y, sr=sr)
-        mfccs = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13)
-        norm_centroid = np.mean(spectral_centroid) / (sr / 2.0)
-        abs_mfcc0_frames = np.abs(mfccs[0,:])
-        mfcc0_min, mfcc0_max = np.min(abs_mfcc0_frames), np.max(abs_mfcc0_frames)
-        mean_norm_mfcc0_energy = 0.0
-        if (mfcc0_max - mfcc0_min) > 1e-6:
-            norm_mfcc0_energy_frames = (abs_mfcc0_frames - mfcc0_min) / (mfcc0_max - mfcc0_min)
-            mean_norm_mfcc0_energy = np.mean(norm_mfcc0_energy_frames)
-        elif mfcc0_max > 1e-6 :
-            mean_norm_mfcc0_energy = 1.0 if mfcc0_max > np.median(abs_mfcc0_frames) else 0.0
-
-        bright_score = float(np.clip((norm_centroid + mean_norm_mfcc0_energy) / 2.0, 0.0, 1.0))
-        dark_score = 1.0 - bright_score
+        # Get dark/bright scores from the timbre model
+        dark_score = None
+        bright_score = None
+        if timbre_model is not None:
+            try:
+                predictions = timbre_model(embeddings)
+                predictions_mean = np.mean(predictions, axis=0)
+                if predictions_mean.shape[0] >= 2:
+                    dark_score = float(predictions_mean[0])  # First class is dark
+                    bright_score = float(predictions_mean[1])  # Second class is bright
+                else:
+                    dark_score = float(predictions_mean[0])
+                    bright_score = 1.0 - dark_score
+            except Exception as e:
+                print(f"Error in timbre prediction for {file_path}: {e}", file=sys.stderr)
+                # Fallback to spectral analysis if model fails
+                spectral_centroid = librosa.feature.spectral_centroid(y=y, sr=sr)
+                mfccs = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13)
+                norm_centroid = np.mean(spectral_centroid) / (sr / 2.0)
+                abs_mfcc0_frames = np.abs(mfccs[0,:])
+                mfcc0_min, mfcc0_max = np.min(abs_mfcc0_frames), np.max(abs_mfcc0_frames)
+                mean_norm_mfcc0_energy = 0.0
+                if (mfcc0_max - mfcc0_min) > 1e-6:
+                    norm_mfcc0_energy_frames = (abs_mfcc0_frames - mfcc0_min) / (mfcc0_max - mfcc0_min)
+                    mean_norm_mfcc0_energy = np.mean(norm_mfcc0_energy_frames)
+                elif mfcc0_max > 1e-6:
+                    mean_norm_mfcc0_energy = 1.0 if mfcc0_max > np.median(abs_mfcc0_frames) else 0.0
+                bright_score = float(np.clip((norm_centroid + mean_norm_mfcc0_energy) / 2.0, 0.0, 1.0))
+                dark_score = 1.0 - bright_score
 
         onset_env = librosa.onset.onset_strength(y=y, sr=sr)
         onset_std, onset_mean = np.std(onset_env), np.mean(onset_env)
@@ -612,7 +666,7 @@ def analyze_spectral_features(file_path):
             lufs_value_str = f"{20 * np.log10(rms_value):.1f} (RMS)" if rms_value > 1e-10 else "-inf (RMS)"
 
         return {
-            "noisy": noisy_score, "tonal": tonal_score, "dark": dark_score, "bright": bright_score,
+            "atonal": atonal_score, "tonal": tonal_score, "dark": dark_score, "bright": bright_score,
             "percussive": percussive_score, "smooth": smooth_score, "lufs": lufs_value_str
         }
     except Exception as e:
@@ -627,11 +681,11 @@ def update_spectral_features_in_db(track_id, features_dict):
         try:
             cursor.execute('''
                 UPDATE classified_tracks
-                    SET noisy = ?, tonal = ?, dark = ?, bright = ?,
+                    SET atonal = ?, tonal = ?, dark = ?, bright = ?,
                         percussive = ?, smooth = ?, lufs = ?
                 WHERE id = ?
             ''', (
-                features_dict["noisy"], features_dict["tonal"], features_dict["dark"], features_dict["bright"],
+                features_dict["atonal"], features_dict["tonal"], features_dict["dark"], features_dict["bright"],
                 features_dict["percussive"], features_dict["smooth"], features_dict["lufs"], track_id
             ))
             conn.commit()
@@ -656,7 +710,7 @@ def analyze_missing_spectral_features_only(num_workers):
     try:
         cursor.execute('''
             SELECT id, path FROM classified_tracks
-            WHERE (noisy IS NULL OR tonal IS NULL OR dark IS NULL OR bright IS NULL OR
+            WHERE (atonal IS NULL OR tonal IS NULL OR dark IS NULL OR bright IS NULL OR
                    percussive IS NULL OR smooth IS NULL OR lufs IS NULL)
         ''')
         unanalyzed_spectral_tracks = cursor.fetchall()
@@ -691,8 +745,7 @@ def analyze_missing_spectral_features_only(num_workers):
 # ------------------------------------------------------------------------------
 def process_audio_file_path(file_path_to_process):
     try:
-        genre_features, audio_16k, audio_44k, happiness_sc, party_sc, aggressive_sc, \
-        danceability_sc, relaxed_sc, sad_sc, engagement_sc, approachability_sc, \
+        genre_features, audio_16k, audio_44k, _, _, _, _, _, _, _, _, \
         instrument_features_dict = classify_track(file_path_to_process)
 
         if not genre_features or audio_16k is None or audio_44k is None:
@@ -704,87 +757,90 @@ def process_audio_file_path(file_path_to_process):
         bpm_val = extract_bpm(audio_44k)
         current_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-        tags_sorted = sorted(genre_features.items(), key=lambda x: x[1], reverse=True)[:10]
-        tag_names_map, tag_probs_map = {}, {}
-        for i, (genre, prob) in enumerate(tags_sorted):
-            tag_names_map[f'tag{i+1}'] = genre
-            tag_probs_map[f'tag{i+1}_prob'] = float(prob)
+        # Store all genre features in the BLOB
         genre_features_blob = json.dumps(genre_features).encode('utf-8')
 
+        # Store all instrument features in the BLOB
         all_instrument_scores_blob = b"{}"
-        top_instrument_names_map, top_instrument_probs_map = {}, {}
         if instrument_features_dict:
-            significant_instrument_scores = {
-                k: v for k, v in instrument_features_dict.items() if v > 0.01 # Store only scores > 1%
-            }
-            all_instrument_scores_blob = json.dumps(significant_instrument_scores).encode('utf-8')
-            sorted_instruments = sorted(instrument_features_dict.items(), key=lambda item: item[1], reverse=True)
-            for i, (instrument, prob) in enumerate(sorted_instruments[:10]):
-                top_instrument_names_map[f'instrument{i+1}'] = instrument
-                top_instrument_probs_map[f'instrument{i+1}_prob'] = float(prob)
+            all_instrument_scores_blob = json.dumps(instrument_features_dict).encode('utf-8')
+
+        # Get mood theme predictions
+        mood_features_blob = b"{}"
+        if moodtheme_model is not None and moodtheme_labels:
+            try:
+                # Get embeddings from the audio
+                embeddings = embedding_model(audio_16k)
+                predictions = moodtheme_model(embeddings)
+                predictions_mean = np.mean(predictions, axis=0)
+                mood_scores = {
+                    moodtheme_labels[i]: float(predictions_mean[i])
+                    for i in range(len(moodtheme_labels))
+                    if predictions_mean[i] > 0.01  # Store only scores > 1%
+                }
+                mood_features_blob = json.dumps(mood_scores).encode('utf-8')
+            except Exception as e:
+                print(f"Error in mood theme prediction for {file_path_to_process}: {e}", file=sys.stderr)
 
         perceptual_spectral_features = analyze_spectral_features(file_path_to_process)
         if perceptual_spectral_features is None:
             perceptual_spectral_features = {
-                "noisy": None, "tonal": None, "dark": None, "bright": None,
+                "atonal": None, "tonal": None, "dark": None, "bright": None,
                 "percussive": None, "smooth": None, "lufs": None
             }
         
-        artwork_original_path, artwork_thumb_path = extract_artwork(file_path_to_process, None) # No track ID available here yet
+        artwork_original_path, artwork_thumb_path = extract_artwork(file_path_to_process, None)
 
         with db_lock:
             conn = sqlite3.connect(db_path)
             cursor = conn.cursor()
-
-            instrument_col_names_list, instrument_col_placeholders_list, instrument_values_for_tuple_list = [], [], []
-            for i in range(1, 11):
-                instrument_col_names_list.extend([f"instrument{i}", f"instrument{i}_prob"])
-                instrument_col_placeholders_list.extend(["?", "?"])
-                instrument_values_for_tuple_list.extend([
-                    top_instrument_names_map.get(f'instrument{i}'),
-                    top_instrument_probs_map.get(f'instrument{i}_prob')
-                ])
-
-            instrument_col_names_str = ", " + ", ".join(instrument_col_names_list) if instrument_col_names_list else ""
             
-            num_base_cols = 11 # path to date
-            num_tag_cols = 20 # tag1/prob to tag10/prob
-            num_artwork_cols = 2
-            num_spectral_cols = 7
-            num_mood_cols = 8
-            total_placeholders = num_base_cols + num_tag_cols + len(instrument_values_for_tuple_list) + \
-                                 num_artwork_cols + num_spectral_cols + num_mood_cols
+            # Count columns:
+            # 1. path
+            # 2. style_features
+            # 3. instrument_features
+            # 4. mood_features
+            # 5. artist
+            # 6. title
+            # 7. album
+            # 8. year
+            # 9. time
+            # 10. bpm
+            # 11. key
+            # 12. date
+            # 13. artwork_path
+            # 14. artwork_thumbnail_path
+            # 15. atonal
+            # 16. tonal
+            # 17. dark
+            # 18. bright
+            # 19. percussive
+            # 20. smooth
+            # 21. lufs
+            total_placeholders = 21
 
             sql_insert_query = f'''
                 INSERT OR REPLACE INTO classified_tracks (
-                    path, features, instrument_features, artist, title, album, year, time, bpm, key, date,
-                    {", ".join([f"tag{i}, tag{i}_prob" for i in range(1,11)])}
-                    {instrument_col_names_str},
+                    path, style_features, instrument_features, mood_features, artist, title, album, year, time, bpm, key, date,
                     artwork_path, artwork_thumbnail_path,
-                    noisy, tonal, dark, bright, percussive, smooth, lufs,
-                    happiness, party, aggressive, danceability, relaxed, sad, engagement, approachability
+                    atonal, tonal, dark, bright, percussive, smooth, lufs
                 ) VALUES ({", ".join(["?"] * total_placeholders)})
             '''
 
             values_tuple = (
-                file_path_to_process, genre_features_blob, all_instrument_scores_blob,
+                file_path_to_process, genre_features_blob, all_instrument_scores_blob, mood_features_blob,
                 metadata['artist'], metadata['title'], metadata['album'], metadata['year'], metadata['duration'],
                 bpm_val, key_val, current_date,
-                *[val for i in range(1, 11) for val in (tag_names_map.get(f'tag{i}'), tag_probs_map.get(f'tag{i}_prob'))],
-                *instrument_values_for_tuple_list,
                 artwork_original_path, artwork_thumb_path,
-                perceptual_spectral_features["noisy"], perceptual_spectral_features["tonal"],
+                perceptual_spectral_features["atonal"], perceptual_spectral_features["tonal"],
                 perceptual_spectral_features["dark"], perceptual_spectral_features["bright"],
                 perceptual_spectral_features["percussive"], perceptual_spectral_features["smooth"],
-                perceptual_spectral_features["lufs"],
-                happiness_sc, party_sc, aggressive_sc, danceability_sc,
-                relaxed_sc, sad_sc, engagement_sc, approachability_sc
+                perceptual_spectral_features["lufs"]
             )
 
             try:
                 cursor.execute(sql_insert_query, values_tuple)
                 conn.commit()
-                # print(f"Successfully processed and stored {file_path_to_process}", file=sys.stderr) # Reduce noise
             except Exception as db_error:
                 print(f"Database error for {file_path_to_process}: {db_error}", file=sys.stderr)
                 conn.rollback()
@@ -793,8 +849,6 @@ def process_audio_file_path(file_path_to_process):
 
     except Exception as e_main_process:
         print(f"FATAL error processing file {file_path_to_process}: {e_main_process}", file=sys.stderr)
-        # import traceback # Keep commented unless deep debugging
-        # traceback.print_exc(file=sys.stderr)
 
 # ------------------------------------------------------------------------------
 # Process All Audio Files in a Folder
@@ -871,12 +925,19 @@ def main():
     parser.add_argument("--threads", type=int, default=max(1, (os.cpu_count() or 1) // 2), help="Number of concurrent processes.")
     parser.add_argument("--reanalyze-spectral", action="store_true", help="Re-analyze spectral features for tracks missing them.")
     parser.add_argument("-n", "--max-tracks", type=int, help="Limit processing to N new tracks.")
+    parser.add_argument("--remove-old-columns", action="store_true", help="Remove old tag and instrument columns from database.")
     args = parser.parse_args()
 
     print(f"Using database: {db_path}", file=sys.stdout)
     init_db()
     check_db_integrity()
     init_spectral_columns() # Ensures DB schema is up-to-date
+
+    if args.remove_old_columns:
+        print("Removing old tag and instrument columns...", file=sys.stdout)
+        remove_old_columns()
+        print("Column removal completed.", file=sys.stdout)
+        return
 
     num_processes = args.threads
 
@@ -916,3 +977,30 @@ if __name__ == "__main__":
             _error_log_file_stream.close()
         sys.stderr = _actual_stderr  # Restore original stderr
         print(f"Script finished. Error log (if any) is at: {error_log_path}", file=_actual_stderr)
+
+def remove_old_columns():
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    # Get list of columns to remove
+    columns_to_remove = []
+    for i in range(1, 11):
+        columns_to_remove.extend([f"instrument{i}", f"instrument{i}_prob"])
+    
+    # Remove each column
+    for col in columns_to_remove:
+        try:
+            cursor.execute(f"ALTER TABLE classified_tracks DROP COLUMN {col}")
+            print(f"Removed column: {col}", file=sys.stdout)
+        except sqlite3.OperationalError as e:
+            print(f"Could not remove column {col}: {e}", file=sys.stderr)
+    
+    # Rename features to style_features if it exists
+    try:
+        cursor.execute("ALTER TABLE classified_tracks RENAME COLUMN features TO style_features")
+        print("Renamed 'features' column to 'style_features'", file=sys.stdout)
+    except sqlite3.OperationalError as e:
+        print(f"Could not rename features column: {e}", file=sys.stderr)
+    
+    conn.commit()
+    conn.close()

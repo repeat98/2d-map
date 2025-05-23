@@ -40,11 +40,7 @@ const CATEGORY_WEIGHTS = {
 };
 
 const SPECTRAL_KEYWORDS = [
-  'noisy', 'tonal', 'dark', 'bright', 'percussive', 'smooth', 'lufs'
-];
-
-const MOOD_KEYWORDS = [
-  'happiness', 'party', 'aggressive', 'danceability', 'relaxed', 'sad', 'engagement', 'approachability'
+  'atonal', 'tonal', 'dark', 'bright', 'percussive', 'smooth', 'lufs'
 ];
 
 const CATEGORY_BASE_COLORS = {
@@ -79,7 +75,7 @@ function getAllFeatureKeysAndCategories(tracks) {
   const determineFinalCategory = (keyName, sourceCategory) => {
     const lowerKeyName = keyName.toLowerCase();
     if (SPECTRAL_KEYWORDS.includes(lowerKeyName)) return 'spectral';
-    if (MOOD_KEYWORDS.includes(lowerKeyName)) return 'mood';
+    if (sourceCategory === 'mood') return 'mood';
     return sourceCategory;
   };
 
@@ -105,13 +101,12 @@ function getAllFeatureKeysAndCategories(tracks) {
 
   tracks.forEach(track => {
     if (!track || !track.id) return;
-    processFeatureSource(track.features, 'genre', track.id);
     processFeatureSource(track.style_features, 'style', track.id);
     processFeatureSource(track.instrument_features, 'instrument', track.id);
+    processFeatureSource(track.mood_features, 'mood', track.id);
   });
 
   SPECTRAL_KEYWORDS.forEach(key => featuresWithCategories.set(key, 'spectral'));
-  MOOD_KEYWORDS.forEach(key => featuresWithCategories.set(key, 'mood'));
 
   return Array.from(featuresWithCategories.entries())
     .map(([name, category]) => ({ name, category }))
@@ -124,7 +119,7 @@ function mergeFeatureVectors(track, allFeatureNames) {
     mergedFeatures[key] = 0;
   });
 
-  const parseAndMerge = (featureObj) => {
+  const parseAndMerge = (featureObj, category) => {
     if (!featureObj) return;
     try {
       const parsed = typeof featureObj === 'string' ? JSON.parse(featureObj) : featureObj;
@@ -137,25 +132,22 @@ function mergeFeatureVectors(track, allFeatureNames) {
         });
       }
     } catch (e) {
-      // console.warn(`Failed to parse features for track ${track?.id} during merge:`, e, featureObj);
+      // console.warn(`Failed to parse ${category} features for track ${track?.id} during merge:`, e, featureObj);
     }
   };
 
-  parseAndMerge(track.features);
-  parseAndMerge(track.style_features);
-  parseAndMerge(track.instrument_features);
+  parseAndMerge(track.style_features, 'style');
+  parseAndMerge(track.instrument_features, 'instrument');
+  parseAndMerge(track.mood_features, 'mood');
 
-  const directFeatures = {
-    ...Object.fromEntries(SPECTRAL_KEYWORDS.map(k => [k, track[k]])),
-    ...Object.fromEntries(MOOD_KEYWORDS.map(k => [k, track[k]]))
-  };
-
-  Object.entries(directFeatures).forEach(([key, value]) => {
-    if (allFeatureNames.includes(key)) {
-      const num = parseFloat(value);
-      if (!isNaN(num)) mergedFeatures[key] = num;
+  // Add direct spectral features
+  SPECTRAL_KEYWORDS.forEach(key => {
+    const value = track[key];
+    if (typeof value === 'number' && !isNaN(value)) {
+      mergedFeatures[key] = value;
     }
   });
+
   return allFeatureNames.map(key => mergedFeatures[key]);
 }
 
@@ -410,6 +402,7 @@ const TrackVisualizer = () => {
   const [featureMetadata, setFeatureMetadata] = useState({ names: [], categories: [] });
   const [styleColors, setStyleColors] = useState(new Map());
   const [featureThresholds, setFeatureThresholds] = useState(new Map());
+  const [thresholdMultiplier, setThresholdMultiplier] = useState(1.0);
 
   const [svgDimensions, setSvgDimensions] = useState({ width: window.innerWidth, height: window.innerHeight - 150 });
   const viewModeRef = React.useRef(null);
@@ -676,7 +669,7 @@ const TrackVisualizer = () => {
       let featuresToParse = null;
 
       if (selectedCategory === 'genre' || selectedCategory === 'style') {
-        featuresToParse = track.features;
+        featuresToParse = track.style_features;
         try {
           const parsed = typeof featuresToParse === 'string' ? JSON.parse(featuresToParse) : featuresToParse;
           if (typeof parsed === 'object' && parsed !== null) {
@@ -686,13 +679,14 @@ const TrackVisualizer = () => {
               
               // Split the key into genre and style parts
               const [genrePart, stylePart] = key.split('---');
-              if (!genrePart || !stylePart) return; // Skip if format is invalid
               
               // Store the appropriate part based on selected category
               const featureKey = selectedCategory === 'genre' ? genrePart : stylePart;
-              featureFrequencies.set(featureKey, (featureFrequencies.get(featureKey) || 0) + probability);
-              if (!featureValues.has(featureKey)) featureValues.set(featureKey, []);
-              featureValues.get(featureKey).push(probability);
+              if (featureKey) {
+                featureFrequencies.set(featureKey, (featureFrequencies.get(featureKey) || 0) + probability);
+                if (!featureValues.has(featureKey)) featureValues.set(featureKey, []);
+                featureValues.get(featureKey).push(probability);
+              }
             });
           }
         } catch (e) { /* console.warn(...) */ }
@@ -711,14 +705,19 @@ const TrackVisualizer = () => {
           }
         } catch (e) { /* console.warn(...) */ }
       } else if (selectedCategory === 'mood') {
-        MOOD_KEYWORDS.forEach(key => {
-          const value = track[key];
-          if (typeof value === 'number' && !isNaN(value)) {
-            featureFrequencies.set(key, (featureFrequencies.get(key) || 0) + value);
-            if (!featureValues.has(key)) featureValues.set(key, []);
-            featureValues.get(key).push(value);
+        try {
+          const features = typeof track.mood_features === 'string' ? JSON.parse(track.mood_features) : track.mood_features;
+          if (features && typeof features === 'object') {
+            Object.entries(features).forEach(([key, value]) => {
+              const numValue = parseFloat(value);
+              if (!isNaN(numValue)) {
+                featureFrequencies.set(key, (featureFrequencies.get(key) || 0) + numValue);
+                if (!featureValues.has(key)) featureValues.set(key, []);
+                featureValues.get(key).push(numValue);
+              }
+            });
           }
-        });
+        } catch (e) { /* console.warn(...) */ }
       } else if (selectedCategory === 'spectral') {
         SPECTRAL_KEYWORDS.forEach(key => {
           const value = track[key];
@@ -776,8 +775,6 @@ const TrackVisualizer = () => {
         (track.artist && track.artist.toLowerCase() === searchQuery.toLowerCase()) ||
         // Exact match for album
         (track.album && track.album.toLowerCase() === searchQuery.toLowerCase()) ||
-        // Exact match for genre/tag
-        (track.tag1 && track.tag1.toLowerCase() === searchQuery.toLowerCase()) ||
         // Exact match for key
         (track.key && track.key.toLowerCase() === searchQuery.toLowerCase()) ||
         // Partial matches as fallback
@@ -786,7 +783,6 @@ const TrackVisualizer = () => {
         filename.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (track.artist && track.artist.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (track.album && track.album.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (track.tag1 && track.tag1.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (track.key && track.key.toLowerCase().includes(searchQuery.toLowerCase()))
       );
 
@@ -807,18 +803,20 @@ const TrackVisualizer = () => {
         
         if (selectedCategory === 'genre' || selectedCategory === 'style') {
           try {
-            const features = typeof track.features === 'string' ? JSON.parse(track.features) : track.features;
-            // Find the feature key that contains our selected feature
-            const matchingKey = Object.keys(features).find(key => {
-              const [genrePart, stylePart] = key.split('---');
-              return selectedCategory === 'genre' ? 
-                genrePart === selectedFeature : 
-                stylePart === selectedFeature;
-            });
-            
-            if (matchingKey) {
-              featureValue = parseFloat(features[matchingKey]);
-              hasFeature = !isNaN(featureValue) && featureValue > 0;
+            const features = typeof track.style_features === 'string' ? JSON.parse(track.style_features) : track.style_features;
+            if (features && typeof features === 'object') {
+              // Find the feature key that contains our selected feature
+              const matchingKey = Object.keys(features).find(key => {
+                const [genrePart, stylePart] = key.split('---');
+                return selectedCategory === 'genre' ? 
+                  genrePart === selectedFeature : 
+                  stylePart === selectedFeature;
+              });
+              
+              if (matchingKey) {
+                featureValue = parseFloat(features[matchingKey]);
+                hasFeature = !isNaN(featureValue) && featureValue > 0;
+              }
             }
           } catch (e) {
             console.warn('Error parsing features:', e);
@@ -826,8 +824,10 @@ const TrackVisualizer = () => {
         } else if (selectedCategory === 'instrument') {
           try {
             const features = typeof track.instrument_features === 'string' ? JSON.parse(track.instrument_features) : track.instrument_features;
-            featureValue = parseFloat(features[selectedFeature]);
-            hasFeature = !isNaN(featureValue) && featureValue > 0;
+            if (features && typeof features === 'object') {
+              featureValue = parseFloat(features[selectedFeature]);
+              hasFeature = !isNaN(featureValue) && featureValue > 0;
+            }
           } catch (e) {
             console.warn('Error parsing instrument features:', e);
           }
@@ -837,12 +837,22 @@ const TrackVisualizer = () => {
         }
 
         // Check if the feature value exceeds the threshold
-        const threshold = featureThresholds.get(selectedFeature) || 0;
+        const threshold = (featureThresholds.get(selectedFeature) || 0) * thresholdMultiplier;
         hasFeature = hasFeature && featureValue >= threshold;
+
+        // Calculate color intensity based on feature value
+        const baseColor = CATEGORY_BASE_COLORS[selectedCategory];
+        const intensity = hasFeature ? Math.min(1, featureValue / (threshold * 1.5)) : 0;
+        
+        // Convert hex to rgba for opacity
+        const r = parseInt(baseColor.slice(1, 3), 16);
+        const g = parseInt(baseColor.slice(3, 5), 16);
+        const b = parseInt(baseColor.slice(5, 7), 16);
+        const color = `rgba(${r}, ${g}, ${b}, ${intensity})`;
 
         return {
           id: track.id,
-          color: hasFeature ? CATEGORY_BASE_COLORS[selectedCategory] : NOISE_CLUSTER_COLOR,
+          color: hasFeature ? color : NOISE_CLUSTER_COLOR,
           dominantFeature: hasFeature ? selectedFeature : null,
           isSearchMatch: false
         };
@@ -856,7 +866,7 @@ const TrackVisualizer = () => {
         isSearchMatch: false
       };
     });
-  }, [plotData, selectedCategory, selectedFeature, searchQuery, featureThresholds]);
+  }, [plotData, selectedCategory, selectedFeature, searchQuery, featureThresholds, thresholdMultiplier]);
 
   const fetchTracksData = useCallback(async () => {
     try {
@@ -989,6 +999,40 @@ const TrackVisualizer = () => {
               <div style={{ marginBottom: '4px' }}>{trackData.artist || 'Unknown Artist'}</div>
               <div style={{ fontStyle: 'italic', marginBottom: '4px' }}>{trackData.album || 'Unknown Album'} ({trackData.year || 'N/A'})</div>
               <div style={{ marginBottom: '4px' }}>BPM: {trackData.bpm?.toFixed(1) || 'N/A'}, Key: {trackData.key || 'N/A'}</div>
+              {selectedFeature && (
+                <div style={{ marginBottom: '4px' }}>
+                  {selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)}: {selectedFeature} 
+                  {(() => {
+                    let probability = 0;
+                    if (selectedCategory === 'genre' || selectedCategory === 'style') {
+                      try {
+                        const features = typeof trackData.style_features === 'string' ? JSON.parse(trackData.style_features) : trackData.style_features;
+                        if (features && typeof features === 'object') {
+                          const matchingKey = Object.keys(features).find(key => {
+                            const [genrePart, stylePart] = key.split('---');
+                            return selectedCategory === 'genre' ? 
+                              genrePart === selectedFeature : 
+                              stylePart === selectedFeature;
+                          });
+                          if (matchingKey) {
+                            probability = parseFloat(features[matchingKey]);
+                          }
+                        }
+                      } catch (e) {}
+                    } else if (selectedCategory === 'instrument') {
+                      try {
+                        const features = typeof trackData.instrument_features === 'string' ? JSON.parse(trackData.instrument_features) : trackData.instrument_features;
+                        if (features && typeof features === 'object') {
+                          probability = parseFloat(features[selectedFeature]);
+                        }
+                      } catch (e) {}
+                    } else if (selectedCategory === 'mood' || selectedCategory === 'spectral') {
+                      probability = trackData[selectedFeature];
+                    }
+                    return ` (${(probability * 100).toFixed(1)}%)`;
+                  })()}
+                </div>
+              )}
               {trackData.tag1 && <div>Genre: {trackData.tag1} ({trackData.tag1_prob?.toFixed(2) || 'N/A'})</div>}
             </div>
           </div>
@@ -1230,6 +1274,28 @@ const TrackVisualizer = () => {
             </button>
           ))}
         </div>
+        {selectedFeature && (
+          <div className="threshold-slider" style={{ marginLeft: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <label htmlFor="thresholdSlider" style={{ color: DARK_MODE_TEXT_PRIMARY }}>Threshold:</label>
+            <input
+              id="thresholdSlider"
+              type="range"
+              min="0.1"
+              max="3"
+              step="0.1"
+              value={thresholdMultiplier}
+              onChange={(e) => setThresholdMultiplier(parseFloat(e.target.value))}
+              style={{
+                width: '150px',
+                backgroundColor: DARK_MODE_SURFACE_ALT,
+                accentColor: CATEGORY_BASE_COLORS[selectedCategory]
+              }}
+            />
+            <span style={{ color: DARK_MODE_TEXT_SECONDARY, minWidth: '40px' }}>
+              {thresholdMultiplier.toFixed(1)}x
+            </span>
+          </div>
+        )}
         <div className="search-box" ref={searchInputRef}>
           <label htmlFor="trackSearch">Search Tracks:</label>
           <div style={{ position: 'relative' }}>

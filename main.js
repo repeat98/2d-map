@@ -263,13 +263,15 @@ function initDatabase() {
     }
     const columnNames = columns.map((column) => column.name);
     const newColumns = [
-      { name: "noisy", type: "REAL" },
+      // Spectral features
+      { name: "atonal", type: "REAL" },
       { name: "tonal", type: "REAL" },
       { name: "dark", type: "REAL" },
       { name: "bright", type: "REAL" },
       { name: "percussive", type: "REAL" },
       { name: "smooth", type: "REAL" },
       { name: "lufs", type: "TEXT" },
+      // Mood features
       { name: "happiness", type: "REAL" },
       { name: "party", type: "REAL" },
       { name: "aggressive", type: "REAL" },
@@ -283,22 +285,18 @@ function initDatabase() {
     const addColumnPromises = newColumns.map((column) => {
       return new Promise((resolve, reject) => {
         if (!columnNames.includes(column.name)) {
-          const addColumnQuery = `ALTER TABLE classified_tracks ADD COLUMN ${column.name} ${column.type};`;
+          const addColumnQuery = `ALTER TABLE classified_tracks ADD COLUMN ${column.name} ${column.type} DEFAULT NULL;`;
           db.run(addColumnQuery, [], (err) => {
             if (err) {
               console.error(`Error adding ${column.name} column:`, err.message);
               reject(err);
             } else {
-              console.log(
-                `Added ${column.name} column to classified_tracks table.`
-              );
+              console.log(`Added ${column.name} column to classified_tracks table.`);
               resolve();
             }
           });
         } else {
-          console.log(
-            `${column.name} column already exists in classified_tracks table.`
-          );
+          console.log(`${column.name} column already exists in classified_tracks table.`);
           resolve();
         }
       });
@@ -338,22 +336,10 @@ function initRoutes() {
       // Table exists, proceed with retrieving tracks
       const query = `
         SELECT id, path, artist, title, album, year, bpm, time, key, date,
-               features, instrument_features,
-               tag1, tag1_prob,
-               tag2, tag2_prob,
-               tag3, tag3_prob,
-               tag4, tag4_prob,
-               tag5, tag5_prob,
-               tag6, tag6_prob,
-               tag7, tag7_prob,
-               tag8, tag8_prob,
-               tag9, tag9_prob,
-               tag10, tag10_prob,
+               style_features, instrument_features, mood_features,
                artwork_path, artwork_thumbnail_path,
-               noisy, tonal, dark, bright,
-               percussive, smooth, lufs,
-               happiness, party, aggressive, danceability,
-               relaxed, sad, engagement, approachability
+               atonal, tonal, dark, bright,
+               percussive, smooth, lufs
         FROM classified_tracks
         ORDER BY id ASC
       `;
@@ -364,7 +350,7 @@ function initRoutes() {
           res.status(500).json({ error: "Failed to retrieve tracks" });
           return;
         }
-        // Parse the 'features' and 'instrument_features' JSON strings or Buffers into objects for each track
+        // Parse the feature JSON strings or Buffers into objects for each track
         const parseJsonField = (field, trackId, fieldName) => {
           if (!field) return null;
           try {
@@ -392,10 +378,24 @@ function initRoutes() {
           }
         };
         const tracksWithParsedFeatures = rows.map(track => {
+          const style = parseJsonField(track.style_features, track.id, 'style_features');
+          const instrument = parseJsonField(track.instrument_features, track.id, 'instrument_features');
+          const mood = parseJsonField(track.mood_features, track.id, 'mood_features');
+          // Flatten all features
+          if (style && typeof style === 'object') {
+            Object.entries(style).forEach(([k, v]) => { track[k] = v; });
+          }
+          if (instrument && typeof instrument === 'object') {
+            Object.entries(instrument).forEach(([k, v]) => { track[k] = v; });
+          }
+          if (mood && typeof mood === 'object') {
+            Object.entries(mood).forEach(([k, v]) => { track[k] = v; });
+          }
           return {
             ...track,
-            features: parseJsonField(track.features, track.id, 'features'),
-            instrument_features: parseJsonField(track.instrument_features, track.id, 'instrument_features')
+            style_features: style,
+            instrument_features: instrument,
+            mood_features: mood
           };
         });
         res.json(tracksWithParsedFeatures);
@@ -453,13 +453,10 @@ function initRoutes() {
 
     const query = `
       SELECT id, path, artist, title, album, year, BPM, TIME, KEY, DATE,
-             tag1, tag2, tag3, tag4, tag5, tag6, tag7, tag8, tag9, tag10,
              artwork_path, artwork_thumbnail_path,
-             features, instrument_features,
-             noisy, tonal, dark, bright,
-             percussive, smooth, lufs,
-             happiness, party, aggressive, danceability,
-             relaxed, sad, engagement, approachability
+             style_features, instrument_features, mood_features,
+             atonal, tonal, dark, bright,
+             percussive, smooth, lufs
       FROM classified_tracks
       WHERE id = ?
     `;
@@ -478,12 +475,14 @@ function initRoutes() {
 
       // Parse JSON fields
       try {
-        row.features = row.features ? JSON.parse(row.features) : null;
+        row.style_features = row.style_features ? JSON.parse(row.style_features) : null;
         row.instrument_features = row.instrument_features ? JSON.parse(row.instrument_features) : null;
+        row.mood_features = row.mood_features ? JSON.parse(row.mood_features) : null;
       } catch (e) {
         console.error(`Error parsing features for track ID ${row.id}:`, e);
-        row.features = null;
+        row.style_features = null;
         row.instrument_features = null;
+        row.mood_features = null;
       }
 
       res.json(row);
@@ -502,25 +501,27 @@ function initRoutes() {
       TIME,
       KEY,
       DATE,
-      tag1,
-      tag2,
-      tag3,
-      tag4,
-      tag5,
-      tag6,
-      tag7,
-      tag8,
-      tag9,
-      tag10,
+      style_features,
+      instrument_features,
+      mood_features,
       artwork_path,
-      artwork_thumbnail_path
+      artwork_thumbnail_path,
+      atonal,
+      tonal,
+      dark,
+      bright,
+      percussive,
+      smooth,
+      lufs
     } = req.body;
 
     const sql = `
       INSERT INTO classified_tracks (
         path, artist, title, album, year, BPM, TIME, KEY, DATE,
-        tag1, tag2, tag3, tag4, tag5, tag6, tag7, tag8, tag9, tag10,
-        artwork_path, artwork_thumbnail_path
+        style_features, instrument_features, mood_features,
+        artwork_path, artwork_thumbnail_path,
+        atonal, tonal, dark, bright,
+        percussive, smooth, lufs
       )
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
@@ -536,18 +537,18 @@ function initRoutes() {
         TIME,
         KEY,
         DATE,
-        tag1,
-        tag2,
-        tag3,
-        tag4,
-        tag5,
-        tag6,
-        tag7,
-        tag8,
-        tag9,
-        tag10,
+        style_features,
+        instrument_features,
+        mood_features,
         artwork_path,
-        artwork_thumbnail_path
+        artwork_thumbnail_path,
+        atonal,
+        tonal,
+        dark,
+        bright,
+        percussive,
+        smooth,
+        lufs
       ],
       function (err) {
         if (err) {

@@ -51,6 +51,11 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _Waveform__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./Waveform */ "./src/components/Waveform.jsx");
 /* harmony import */ var _context_PlaybackContext__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ../context/PlaybackContext */ "./src/context/PlaybackContext.jsx");
 function _regeneratorRuntime() { "use strict"; /*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/babel/babel/blob/main/packages/babel-helpers/LICENSE */ _regeneratorRuntime = function _regeneratorRuntime() { return r; }; var t, r = {}, e = Object.prototype, n = e.hasOwnProperty, o = "function" == typeof Symbol ? Symbol : {}, i = o.iterator || "@@iterator", a = o.asyncIterator || "@@asyncIterator", u = o.toStringTag || "@@toStringTag"; function c(t, r, e, n) { return Object.defineProperty(t, r, { value: e, enumerable: !n, configurable: !n, writable: !n }); } try { c({}, ""); } catch (t) { c = function c(t, r, e) { return t[r] = e; }; } function h(r, e, n, o) { var i = e && e.prototype instanceof Generator ? e : Generator, a = Object.create(i.prototype); return c(a, "_invoke", function (r, e, n) { var o = 1; return function (i, a) { if (3 === o) throw Error("Generator is already running"); if (4 === o) { if ("throw" === i) throw a; return { value: t, done: !0 }; } for (n.method = i, n.arg = a;;) { var u = n.delegate; if (u) { var c = d(u, n); if (c) { if (c === f) continue; return c; } } if ("next" === n.method) n.sent = n._sent = n.arg;else if ("throw" === n.method) { if (1 === o) throw o = 4, n.arg; n.dispatchException(n.arg); } else "return" === n.method && n.abrupt("return", n.arg); o = 3; var h = s(r, e, n); if ("normal" === h.type) { if (o = n.done ? 4 : 2, h.arg === f) continue; return { value: h.arg, done: n.done }; } "throw" === h.type && (o = 4, n.method = "throw", n.arg = h.arg); } }; }(r, n, new Context(o || [])), !0), a; } function s(t, r, e) { try { return { type: "normal", arg: t.call(r, e) }; } catch (t) { return { type: "throw", arg: t }; } } r.wrap = h; var f = {}; function Generator() {} function GeneratorFunction() {} function GeneratorFunctionPrototype() {} var l = {}; c(l, i, function () { return this; }); var p = Object.getPrototypeOf, y = p && p(p(x([]))); y && y !== e && n.call(y, i) && (l = y); var v = GeneratorFunctionPrototype.prototype = Generator.prototype = Object.create(l); function g(t) { ["next", "throw", "return"].forEach(function (r) { c(t, r, function (t) { return this._invoke(r, t); }); }); } function AsyncIterator(t, r) { function e(o, i, a, u) { var c = s(t[o], t, i); if ("throw" !== c.type) { var h = c.arg, f = h.value; return f && "object" == _typeof(f) && n.call(f, "__await") ? r.resolve(f.__await).then(function (t) { e("next", t, a, u); }, function (t) { e("throw", t, a, u); }) : r.resolve(f).then(function (t) { h.value = t, a(h); }, function (t) { return e("throw", t, a, u); }); } u(c.arg); } var o; c(this, "_invoke", function (t, n) { function i() { return new r(function (r, o) { e(t, n, r, o); }); } return o = o ? o.then(i, i) : i(); }, !0); } function d(r, e) { var n = e.method, o = r.i[n]; if (o === t) return e.delegate = null, "throw" === n && r.i["return"] && (e.method = "return", e.arg = t, d(r, e), "throw" === e.method) || "return" !== n && (e.method = "throw", e.arg = new TypeError("The iterator does not provide a '" + n + "' method")), f; var i = s(o, r.i, e.arg); if ("throw" === i.type) return e.method = "throw", e.arg = i.arg, e.delegate = null, f; var a = i.arg; return a ? a.done ? (e[r.r] = a.value, e.next = r.n, "return" !== e.method && (e.method = "next", e.arg = t), e.delegate = null, f) : a : (e.method = "throw", e.arg = new TypeError("iterator result is not an object"), e.delegate = null, f); } function w(t) { this.tryEntries.push(t); } function m(r) { var e = r[4] || {}; e.type = "normal", e.arg = t, r[4] = e; } function Context(t) { this.tryEntries = [[-1]], t.forEach(w, this), this.reset(!0); } function x(r) { if (null != r) { var e = r[i]; if (e) return e.call(r); if ("function" == typeof r.next) return r; if (!isNaN(r.length)) { var o = -1, a = function e() { for (; ++o < r.length;) if (n.call(r, o)) return e.value = r[o], e.done = !1, e; return e.value = t, e.done = !0, e; }; return a.next = a; } } throw new TypeError(_typeof(r) + " is not iterable"); } return GeneratorFunction.prototype = GeneratorFunctionPrototype, c(v, "constructor", GeneratorFunctionPrototype), c(GeneratorFunctionPrototype, "constructor", GeneratorFunction), GeneratorFunction.displayName = c(GeneratorFunctionPrototype, u, "GeneratorFunction"), r.isGeneratorFunction = function (t) { var r = "function" == typeof t && t.constructor; return !!r && (r === GeneratorFunction || "GeneratorFunction" === (r.displayName || r.name)); }, r.mark = function (t) { return Object.setPrototypeOf ? Object.setPrototypeOf(t, GeneratorFunctionPrototype) : (t.__proto__ = GeneratorFunctionPrototype, c(t, u, "GeneratorFunction")), t.prototype = Object.create(v), t; }, r.awrap = function (t) { return { __await: t }; }, g(AsyncIterator.prototype), c(AsyncIterator.prototype, a, function () { return this; }), r.AsyncIterator = AsyncIterator, r.async = function (t, e, n, o, i) { void 0 === i && (i = Promise); var a = new AsyncIterator(h(t, e, n, o), i); return r.isGeneratorFunction(e) ? a : a.next().then(function (t) { return t.done ? t.value : a.next(); }); }, g(v), c(v, u, "Generator"), c(v, i, function () { return this; }), c(v, "toString", function () { return "[object Generator]"; }), r.keys = function (t) { var r = Object(t), e = []; for (var n in r) e.unshift(n); return function t() { for (; e.length;) if ((n = e.pop()) in r) return t.value = n, t.done = !1, t; return t.done = !0, t; }; }, r.values = x, Context.prototype = { constructor: Context, reset: function reset(r) { if (this.prev = this.next = 0, this.sent = this._sent = t, this.done = !1, this.delegate = null, this.method = "next", this.arg = t, this.tryEntries.forEach(m), !r) for (var e in this) "t" === e.charAt(0) && n.call(this, e) && !isNaN(+e.slice(1)) && (this[e] = t); }, stop: function stop() { this.done = !0; var t = this.tryEntries[0][4]; if ("throw" === t.type) throw t.arg; return this.rval; }, dispatchException: function dispatchException(r) { if (this.done) throw r; var e = this; function n(t) { a.type = "throw", a.arg = r, e.next = t; } for (var o = e.tryEntries.length - 1; o >= 0; --o) { var i = this.tryEntries[o], a = i[4], u = this.prev, c = i[1], h = i[2]; if (-1 === i[0]) return n("end"), !1; if (!c && !h) throw Error("try statement without catch or finally"); if (null != i[0] && i[0] <= u) { if (u < c) return this.method = "next", this.arg = t, n(c), !0; if (u < h) return n(h), !1; } } }, abrupt: function abrupt(t, r) { for (var e = this.tryEntries.length - 1; e >= 0; --e) { var n = this.tryEntries[e]; if (n[0] > -1 && n[0] <= this.prev && this.prev < n[2]) { var o = n; break; } } o && ("break" === t || "continue" === t) && o[0] <= r && r <= o[2] && (o = null); var i = o ? o[4] : {}; return i.type = t, i.arg = r, o ? (this.method = "next", this.next = o[2], f) : this.complete(i); }, complete: function complete(t, r) { if ("throw" === t.type) throw t.arg; return "break" === t.type || "continue" === t.type ? this.next = t.arg : "return" === t.type ? (this.rval = this.arg = t.arg, this.method = "return", this.next = "end") : "normal" === t.type && r && (this.next = r), f; }, finish: function finish(t) { for (var r = this.tryEntries.length - 1; r >= 0; --r) { var e = this.tryEntries[r]; if (e[2] === t) return this.complete(e[4], e[3]), m(e), f; } }, "catch": function _catch(t) { for (var r = this.tryEntries.length - 1; r >= 0; --r) { var e = this.tryEntries[r]; if (e[0] === t) { var n = e[4]; if ("throw" === n.type) { var o = n.arg; m(e); } return o; } } throw Error("illegal catch attempt"); }, delegateYield: function delegateYield(r, e, n) { return this.delegate = { i: x(r), r: e, n: n }, "next" === this.method && (this.arg = t), f; } }, r; }
+function ownKeys(e, r) { var t = Object.keys(e); if (Object.getOwnPropertySymbols) { var o = Object.getOwnPropertySymbols(e); r && (o = o.filter(function (r) { return Object.getOwnPropertyDescriptor(e, r).enumerable; })), t.push.apply(t, o); } return t; }
+function _objectSpread(e) { for (var r = 1; r < arguments.length; r++) { var t = null != arguments[r] ? arguments[r] : {}; r % 2 ? ownKeys(Object(t), !0).forEach(function (r) { _defineProperty(e, r, t[r]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function (r) { Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r)); }); } return e; }
+function _defineProperty(e, r, t) { return (r = _toPropertyKey(r)) in e ? Object.defineProperty(e, r, { value: t, enumerable: !0, configurable: !0, writable: !0 }) : e[r] = t, e; }
+function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" == _typeof(i) ? i : i + ""; }
+function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e = t[Symbol.toPrimitive]; if (void 0 !== e) { var i = e.call(t, r || "default"); if ("object" != _typeof(i)) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === r ? String : Number)(t); }
 function asyncGeneratorStep(n, t, e, r, o, a, c) { try { var i = n[a](c), u = i.value; } catch (n) { return void e(n); } i.done ? t(u) : Promise.resolve(u).then(r, o); }
 function _asyncToGenerator(n) { return function () { var t = this, e = arguments; return new Promise(function (r, o) { var a = n.apply(t, e); function _next(n) { asyncGeneratorStep(a, r, o, _next, _throw, "next", n); } function _throw(n) { asyncGeneratorStep(a, r, o, _next, _throw, "throw", n); } _next(void 0); }); }; }
 function _toConsumableArray(r) { return _arrayWithoutHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray(r) || _nonIterableSpread(); }
@@ -58,11 +63,6 @@ function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread n
 function _iterableToArray(r) { if ("undefined" != typeof Symbol && null != r[Symbol.iterator] || null != r["@@iterator"]) return Array.from(r); }
 function _arrayWithoutHoles(r) { if (Array.isArray(r)) return _arrayLikeToArray(r); }
 function _createForOfIteratorHelper(r, e) { var t = "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (!t) { if (Array.isArray(r) || (t = _unsupportedIterableToArray(r)) || e && r && "number" == typeof r.length) { t && (r = t); var _n = 0, F = function F() {}; return { s: F, n: function n() { return _n >= r.length ? { done: !0 } : { done: !1, value: r[_n++] }; }, e: function e(r) { throw r; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var o, a = !0, u = !1; return { s: function s() { t = t.call(r); }, n: function n() { var r = t.next(); return a = r.done, r; }, e: function e(r) { u = !0, o = r; }, f: function f() { try { a || null == t["return"] || t["return"](); } finally { if (u) throw o; } } }; }
-function ownKeys(e, r) { var t = Object.keys(e); if (Object.getOwnPropertySymbols) { var o = Object.getOwnPropertySymbols(e); r && (o = o.filter(function (r) { return Object.getOwnPropertyDescriptor(e, r).enumerable; })), t.push.apply(t, o); } return t; }
-function _objectSpread(e) { for (var r = 1; r < arguments.length; r++) { var t = null != arguments[r] ? arguments[r] : {}; r % 2 ? ownKeys(Object(t), !0).forEach(function (r) { _defineProperty(e, r, t[r]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function (r) { Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r)); }); } return e; }
-function _defineProperty(e, r, t) { return (r = _toPropertyKey(r)) in e ? Object.defineProperty(e, r, { value: t, enumerable: !0, configurable: !0, writable: !0 }) : e[r] = t, e; }
-function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" == _typeof(i) ? i : i + ""; }
-function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e = t[Symbol.toPrimitive]; if (void 0 !== e) { var i = e.call(t, r || "default"); if ("object" != _typeof(i)) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === r ? String : Number)(t); }
 function _slicedToArray(r, e) { return _arrayWithHoles(r) || _iterableToArrayLimit(r, e) || _unsupportedIterableToArray(r, e) || _nonIterableRest(); }
 function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
 function _unsupportedIterableToArray(r, a) { if (r) { if ("string" == typeof r) return _arrayLikeToArray(r, a); var t = {}.toString.call(r).slice(8, -1); return "Object" === t && r.constructor && (t = r.constructor.name), "Map" === t || "Set" === t ? Array.from(r) : "Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t) ? _arrayLikeToArray(r, a) : void 0; } }
@@ -103,8 +103,7 @@ var CATEGORY_WEIGHTS = {
   'instrument': 0.5,
   'default': 0.2
 };
-var SPECTRAL_KEYWORDS = ['noisy', 'tonal', 'dark', 'bright', 'percussive', 'smooth', 'lufs'];
-var MOOD_KEYWORDS = ['happiness', 'party', 'aggressive', 'danceability', 'relaxed', 'sad', 'engagement', 'approachability'];
+var SPECTRAL_KEYWORDS = ['atonal', 'tonal', 'dark', 'bright', 'percussive', 'smooth', 'lufs'];
 var CATEGORY_BASE_COLORS = {
   'genre': '#F44336',
   'style': '#4CAF50',
@@ -134,7 +133,7 @@ function getAllFeatureKeysAndCategories(tracks) {
   var determineFinalCategory = function determineFinalCategory(keyName, sourceCategory) {
     var lowerKeyName = keyName.toLowerCase();
     if (SPECTRAL_KEYWORDS.includes(lowerKeyName)) return 'spectral';
-    if (MOOD_KEYWORDS.includes(lowerKeyName)) return 'mood';
+    if (sourceCategory === 'mood') return 'mood';
     return sourceCategory;
   };
   var processFeatureSource = function processFeatureSource(featureObj, sourceCategory, trackId) {
@@ -158,15 +157,12 @@ function getAllFeatureKeysAndCategories(tracks) {
   };
   tracks.forEach(function (track) {
     if (!track || !track.id) return;
-    processFeatureSource(track.features, 'genre', track.id);
     processFeatureSource(track.style_features, 'style', track.id);
     processFeatureSource(track.instrument_features, 'instrument', track.id);
+    processFeatureSource(track.mood_features, 'mood', track.id);
   });
   SPECTRAL_KEYWORDS.forEach(function (key) {
     return featuresWithCategories.set(key, 'spectral');
-  });
-  MOOD_KEYWORDS.forEach(function (key) {
-    return featuresWithCategories.set(key, 'mood');
   });
   return Array.from(featuresWithCategories.entries()).map(function (_ref) {
     var _ref2 = _slicedToArray(_ref, 2),
@@ -185,7 +181,7 @@ function mergeFeatureVectors(track, allFeatureNames) {
   allFeatureNames.forEach(function (key) {
     mergedFeatures[key] = 0;
   });
-  var parseAndMerge = function parseAndMerge(featureObj) {
+  var parseAndMerge = function parseAndMerge(featureObj, category) {
     if (!featureObj) return;
     try {
       var parsed = typeof featureObj === 'string' ? JSON.parse(featureObj) : featureObj;
@@ -201,24 +197,18 @@ function mergeFeatureVectors(track, allFeatureNames) {
         });
       }
     } catch (e) {
-      // console.warn(`Failed to parse features for track ${track?.id} during merge:`, e, featureObj);
+      // console.warn(`Failed to parse ${category} features for track ${track?.id} during merge:`, e, featureObj);
     }
   };
-  parseAndMerge(track.features);
-  parseAndMerge(track.style_features);
-  parseAndMerge(track.instrument_features);
-  var directFeatures = _objectSpread(_objectSpread({}, Object.fromEntries(SPECTRAL_KEYWORDS.map(function (k) {
-    return [k, track[k]];
-  }))), Object.fromEntries(MOOD_KEYWORDS.map(function (k) {
-    return [k, track[k]];
-  })));
-  Object.entries(directFeatures).forEach(function (_ref5) {
-    var _ref6 = _slicedToArray(_ref5, 2),
-      key = _ref6[0],
-      value = _ref6[1];
-    if (allFeatureNames.includes(key)) {
-      var num = parseFloat(value);
-      if (!isNaN(num)) mergedFeatures[key] = num;
+  parseAndMerge(track.style_features, 'style');
+  parseAndMerge(track.instrument_features, 'instrument');
+  parseAndMerge(track.mood_features, 'mood');
+
+  // Add direct spectral features
+  SPECTRAL_KEYWORDS.forEach(function (key) {
+    var value = track[key];
+    if (typeof value === 'number' && !isNaN(value)) {
+      mergedFeatures[key] = value;
     }
   });
   return allFeatureNames.map(function (key) {
@@ -530,9 +520,9 @@ function hdbscan(data) {
         rootJ = findSet(j);
       if (rootI !== rootJ) {
         if (componentSize[rootI] < componentSize[rootJ]) {
-          var _ref7 = [rootJ, rootI];
-          rootI = _ref7[0];
-          rootJ = _ref7[1];
+          var _ref5 = [rootJ, rootI];
+          rootI = _ref5[0];
+          rootJ = _ref5[1];
         }
         parent[rootJ] = rootI;
         componentSize[rootI] += componentSize[rootJ];
@@ -633,36 +623,40 @@ var TrackVisualizer = function TrackVisualizer() {
     _useState28 = _slicedToArray(_useState27, 2),
     featureThresholds = _useState28[0],
     setFeatureThresholds = _useState28[1];
-  var _useState29 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
+  var _useState29 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(1.0),
+    _useState30 = _slicedToArray(_useState29, 2),
+    thresholdMultiplier = _useState30[0],
+    setThresholdMultiplier = _useState30[1];
+  var _useState31 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
       width: window.innerWidth,
       height: window.innerHeight - 150
     }),
-    _useState30 = _slicedToArray(_useState29, 2),
-    svgDimensions = _useState30[0],
-    setSvgDimensions = _useState30[1];
-  var viewModeRef = react__WEBPACK_IMPORTED_MODULE_0___default().useRef(null);
-  var _useState31 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(1),
     _useState32 = _slicedToArray(_useState31, 2),
-    zoom = _useState32[0],
-    setZoom = _useState32[1];
-  var _useState33 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
-      x: 0,
-      y: 0
-    }),
+    svgDimensions = _useState32[0],
+    setSvgDimensions = _useState32[1];
+  var viewModeRef = react__WEBPACK_IMPORTED_MODULE_0___default().useRef(null);
+  var _useState33 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(1),
     _useState34 = _slicedToArray(_useState33, 2),
-    pan = _useState34[0],
-    setPan = _useState34[1];
-  var _useState35 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(false),
-    _useState36 = _slicedToArray(_useState35, 2),
-    isDragging = _useState36[0],
-    setIsDragging = _useState36[1];
-  var _useState37 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
+    zoom = _useState34[0],
+    setZoom = _useState34[1];
+  var _useState35 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
       x: 0,
       y: 0
     }),
+    _useState36 = _slicedToArray(_useState35, 2),
+    pan = _useState36[0],
+    setPan = _useState36[1];
+  var _useState37 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(false),
     _useState38 = _slicedToArray(_useState37, 2),
-    dragStart = _useState38[0],
-    setDragStart = _useState38[1];
+    isDragging = _useState38[0],
+    setIsDragging = _useState38[1];
+  var _useState39 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
+      x: 0,
+      y: 0
+    }),
+    _useState40 = _slicedToArray(_useState39, 2),
+    dragStart = _useState40[0],
+    setDragStart = _useState40[1];
   var VIEW_BOX_VALUE = "0 0 ".concat(svgDimensions.width, " ").concat(svgDimensions.height);
 
   // Ref to hold the currently active/playing WaveSurfer instance from a tooltip
@@ -932,14 +926,14 @@ var TrackVisualizer = function TrackVisualizer() {
       if (!track) return;
       var featuresToParse = null;
       if (selectedCategory === 'genre' || selectedCategory === 'style') {
-        featuresToParse = track.features;
+        featuresToParse = track.style_features;
         try {
           var parsed = typeof featuresToParse === 'string' ? JSON.parse(featuresToParse) : featuresToParse;
           if (_typeof(parsed) === 'object' && parsed !== null) {
-            Object.entries(parsed).forEach(function (_ref8) {
-              var _ref9 = _slicedToArray(_ref8, 2),
-                key = _ref9[0],
-                value = _ref9[1];
+            Object.entries(parsed).forEach(function (_ref6) {
+              var _ref7 = _slicedToArray(_ref6, 2),
+                key = _ref7[0],
+                value = _ref7[1];
               var probability = parseFloat(value);
               if (isNaN(probability) || probability <= 0) return;
 
@@ -948,13 +942,14 @@ var TrackVisualizer = function TrackVisualizer() {
                 _key$split2 = _slicedToArray(_key$split, 2),
                 genrePart = _key$split2[0],
                 stylePart = _key$split2[1];
-              if (!genrePart || !stylePart) return; // Skip if format is invalid
 
               // Store the appropriate part based on selected category
               var featureKey = selectedCategory === 'genre' ? genrePart : stylePart;
-              featureFrequencies.set(featureKey, (featureFrequencies.get(featureKey) || 0) + probability);
-              if (!featureValues.has(featureKey)) featureValues.set(featureKey, []);
-              featureValues.get(featureKey).push(probability);
+              if (featureKey) {
+                featureFrequencies.set(featureKey, (featureFrequencies.get(featureKey) || 0) + probability);
+                if (!featureValues.has(featureKey)) featureValues.set(featureKey, []);
+                featureValues.get(featureKey).push(probability);
+              }
             });
           }
         } catch (e) {/* console.warn(...) */}
@@ -963,10 +958,10 @@ var TrackVisualizer = function TrackVisualizer() {
         try {
           var _parsed = typeof featuresToParse === 'string' ? JSON.parse(featuresToParse) : featuresToParse;
           if (_typeof(_parsed) === 'object' && _parsed !== null) {
-            Object.entries(_parsed).forEach(function (_ref10) {
-              var _ref11 = _slicedToArray(_ref10, 2),
-                key = _ref11[0],
-                value = _ref11[1];
+            Object.entries(_parsed).forEach(function (_ref8) {
+              var _ref9 = _slicedToArray(_ref8, 2),
+                key = _ref9[0],
+                value = _ref9[1];
               var probability = parseFloat(value);
               if (isNaN(probability) || probability <= 0) return;
               featureFrequencies.set(key, (featureFrequencies.get(key) || 0) + probability);
@@ -976,14 +971,22 @@ var TrackVisualizer = function TrackVisualizer() {
           }
         } catch (e) {/* console.warn(...) */}
       } else if (selectedCategory === 'mood') {
-        MOOD_KEYWORDS.forEach(function (key) {
-          var value = track[key];
-          if (typeof value === 'number' && !isNaN(value)) {
-            featureFrequencies.set(key, (featureFrequencies.get(key) || 0) + value);
-            if (!featureValues.has(key)) featureValues.set(key, []);
-            featureValues.get(key).push(value);
+        try {
+          var features = typeof track.mood_features === 'string' ? JSON.parse(track.mood_features) : track.mood_features;
+          if (features && _typeof(features) === 'object') {
+            Object.entries(features).forEach(function (_ref10) {
+              var _ref11 = _slicedToArray(_ref10, 2),
+                key = _ref11[0],
+                value = _ref11[1];
+              var numValue = parseFloat(value);
+              if (!isNaN(numValue)) {
+                featureFrequencies.set(key, (featureFrequencies.get(key) || 0) + numValue);
+                if (!featureValues.has(key)) featureValues.set(key, []);
+                featureValues.get(key).push(numValue);
+              }
+            });
           }
-        });
+        } catch (e) {/* console.warn(...) */}
       } else if (selectedCategory === 'spectral') {
         SPECTRAL_KEYWORDS.forEach(function (key) {
           var value = track[key];
@@ -1043,12 +1046,10 @@ var TrackVisualizer = function TrackVisualizer() {
       track.artist && track.artist.toLowerCase() === searchQuery.toLowerCase() ||
       // Exact match for album
       track.album && track.album.toLowerCase() === searchQuery.toLowerCase() ||
-      // Exact match for genre/tag
-      track.tag1 && track.tag1.toLowerCase() === searchQuery.toLowerCase() ||
       // Exact match for key
       track.key && track.key.toLowerCase() === searchQuery.toLowerCase() ||
       // Partial matches as fallback
-      displayTitle.toLowerCase().includes(searchQuery.toLowerCase()) || track.title && track.title.toLowerCase().includes(searchQuery.toLowerCase()) || filename.toLowerCase().includes(searchQuery.toLowerCase()) || track.artist && track.artist.toLowerCase().includes(searchQuery.toLowerCase()) || track.album && track.album.toLowerCase().includes(searchQuery.toLowerCase()) || track.tag1 && track.tag1.toLowerCase().includes(searchQuery.toLowerCase()) || track.key && track.key.toLowerCase().includes(searchQuery.toLowerCase()));
+      displayTitle.toLowerCase().includes(searchQuery.toLowerCase()) || track.title && track.title.toLowerCase().includes(searchQuery.toLowerCase()) || filename.toLowerCase().includes(searchQuery.toLowerCase()) || track.artist && track.artist.toLowerCase().includes(searchQuery.toLowerCase()) || track.album && track.album.toLowerCase().includes(searchQuery.toLowerCase()) || track.key && track.key.toLowerCase().includes(searchQuery.toLowerCase()));
 
       // If there's a search match, highlight in gold
       if (isSearchMatch) {
@@ -1066,18 +1067,20 @@ var TrackVisualizer = function TrackVisualizer() {
         var featureValue = 0;
         if (selectedCategory === 'genre' || selectedCategory === 'style') {
           try {
-            var features = typeof track.features === 'string' ? JSON.parse(track.features) : track.features;
-            // Find the feature key that contains our selected feature
-            var matchingKey = Object.keys(features).find(function (key) {
-              var _key$split3 = key.split('---'),
-                _key$split4 = _slicedToArray(_key$split3, 2),
-                genrePart = _key$split4[0],
-                stylePart = _key$split4[1];
-              return selectedCategory === 'genre' ? genrePart === selectedFeature : stylePart === selectedFeature;
-            });
-            if (matchingKey) {
-              featureValue = parseFloat(features[matchingKey]);
-              hasFeature = !isNaN(featureValue) && featureValue > 0;
+            var features = typeof track.style_features === 'string' ? JSON.parse(track.style_features) : track.style_features;
+            if (features && _typeof(features) === 'object') {
+              // Find the feature key that contains our selected feature
+              var matchingKey = Object.keys(features).find(function (key) {
+                var _key$split3 = key.split('---'),
+                  _key$split4 = _slicedToArray(_key$split3, 2),
+                  genrePart = _key$split4[0],
+                  stylePart = _key$split4[1];
+                return selectedCategory === 'genre' ? genrePart === selectedFeature : stylePart === selectedFeature;
+              });
+              if (matchingKey) {
+                featureValue = parseFloat(features[matchingKey]);
+                hasFeature = !isNaN(featureValue) && featureValue > 0;
+              }
             }
           } catch (e) {
             console.warn('Error parsing features:', e);
@@ -1085,8 +1088,10 @@ var TrackVisualizer = function TrackVisualizer() {
         } else if (selectedCategory === 'instrument') {
           try {
             var _features = typeof track.instrument_features === 'string' ? JSON.parse(track.instrument_features) : track.instrument_features;
-            featureValue = parseFloat(_features[selectedFeature]);
-            hasFeature = !isNaN(featureValue) && featureValue > 0;
+            if (_features && _typeof(_features) === 'object') {
+              featureValue = parseFloat(_features[selectedFeature]);
+              hasFeature = !isNaN(featureValue) && featureValue > 0;
+            }
           } catch (e) {
             console.warn('Error parsing instrument features:', e);
           }
@@ -1096,11 +1101,21 @@ var TrackVisualizer = function TrackVisualizer() {
         }
 
         // Check if the feature value exceeds the threshold
-        var threshold = featureThresholds.get(selectedFeature) || 0;
+        var threshold = (featureThresholds.get(selectedFeature) || 0) * thresholdMultiplier;
         hasFeature = hasFeature && featureValue >= threshold;
+
+        // Calculate color intensity based on feature value
+        var baseColor = CATEGORY_BASE_COLORS[selectedCategory];
+        var intensity = hasFeature ? Math.min(1, featureValue / (threshold * 1.5)) : 0;
+
+        // Convert hex to rgba for opacity
+        var r = parseInt(baseColor.slice(1, 3), 16);
+        var g = parseInt(baseColor.slice(3, 5), 16);
+        var b = parseInt(baseColor.slice(5, 7), 16);
+        var color = "rgba(".concat(r, ", ").concat(g, ", ").concat(b, ", ").concat(intensity, ")");
         return {
           id: track.id,
-          color: hasFeature ? CATEGORY_BASE_COLORS[selectedCategory] : NOISE_CLUSTER_COLOR,
+          color: hasFeature ? color : NOISE_CLUSTER_COLOR,
           dominantFeature: hasFeature ? selectedFeature : null,
           isSearchMatch: false
         };
@@ -1114,7 +1129,7 @@ var TrackVisualizer = function TrackVisualizer() {
         isSearchMatch: false
       };
     });
-  }, [plotData, selectedCategory, selectedFeature, searchQuery, featureThresholds]);
+  }, [plotData, selectedCategory, selectedFeature, searchQuery, featureThresholds, thresholdMultiplier]);
   var fetchTracksData = (0,react__WEBPACK_IMPORTED_MODULE_0__.useCallback)(/*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee() {
     var response, errorData, rawData, keysWithCats, featureNames, featureCats, parsedTracks;
     return _regeneratorRuntime().wrap(function _callee$(_context) {
@@ -1314,7 +1329,40 @@ var TrackVisualizer = function TrackVisualizer() {
         style: {
           marginBottom: '4px'
         }
-      }, "BPM: ", ((_trackData$bpm = trackData.bpm) === null || _trackData$bpm === void 0 ? void 0 : _trackData$bpm.toFixed(1)) || 'N/A', ", Key: ", trackData.key || 'N/A'), trackData.tag1 && /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", null, "Genre: ", trackData.tag1, " (", ((_trackData$tag1_prob = trackData.tag1_prob) === null || _trackData$tag1_prob === void 0 ? void 0 : _trackData$tag1_prob.toFixed(2)) || 'N/A', ")"))), audioPath && /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
+      }, "BPM: ", ((_trackData$bpm = trackData.bpm) === null || _trackData$bpm === void 0 ? void 0 : _trackData$bpm.toFixed(1)) || 'N/A', ", Key: ", trackData.key || 'N/A'), selectedFeature && /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
+        style: {
+          marginBottom: '4px'
+        }
+      }, selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1), ": ", selectedFeature, function () {
+        var probability = 0;
+        if (selectedCategory === 'genre' || selectedCategory === 'style') {
+          try {
+            var features = typeof trackData.style_features === 'string' ? JSON.parse(trackData.style_features) : trackData.style_features;
+            if (features && _typeof(features) === 'object') {
+              var matchingKey = Object.keys(features).find(function (key) {
+                var _key$split5 = key.split('---'),
+                  _key$split6 = _slicedToArray(_key$split5, 2),
+                  genrePart = _key$split6[0],
+                  stylePart = _key$split6[1];
+                return selectedCategory === 'genre' ? genrePart === selectedFeature : stylePart === selectedFeature;
+              });
+              if (matchingKey) {
+                probability = parseFloat(features[matchingKey]);
+              }
+            }
+          } catch (e) {}
+        } else if (selectedCategory === 'instrument') {
+          try {
+            var _features2 = typeof trackData.instrument_features === 'string' ? JSON.parse(trackData.instrument_features) : trackData.instrument_features;
+            if (_features2 && _typeof(_features2) === 'object') {
+              probability = parseFloat(_features2[selectedFeature]);
+            }
+          } catch (e) {}
+        } else if (selectedCategory === 'mood' || selectedCategory === 'spectral') {
+          probability = trackData[selectedFeature];
+        }
+        return " (".concat((probability * 100).toFixed(1), "%)");
+      }()), trackData.tag1 && /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", null, "Genre: ", trackData.tag1, " (", ((_trackData$tag1_prob = trackData.tag1_prob) === null || _trackData$tag1_prob === void 0 ? void 0 : _trackData$tag1_prob.toFixed(2)) || 'N/A', ")"))), audioPath && /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
         className: "waveform-container",
         style: {
           width: '100%',
@@ -1553,7 +1601,40 @@ var TrackVisualizer = function TrackVisualizer() {
         border: "2px solid ".concat(selectedCategory === categoryKey ? adjustLuminance(colorValue, -0.2) : DARK_MODE_BORDER)
       }
     }, categoryKey.charAt(0).toUpperCase() + categoryKey.slice(1));
-  })), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
+  })), selectedFeature && /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
+    className: "threshold-slider",
+    style: {
+      marginLeft: '20px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '10px'
+    }
+  }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("label", {
+    htmlFor: "thresholdSlider",
+    style: {
+      color: DARK_MODE_TEXT_PRIMARY
+    }
+  }, "Threshold:"), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("input", {
+    id: "thresholdSlider",
+    type: "range",
+    min: "0.1",
+    max: "3",
+    step: "0.1",
+    value: thresholdMultiplier,
+    onChange: function onChange(e) {
+      return setThresholdMultiplier(parseFloat(e.target.value));
+    },
+    style: {
+      width: '150px',
+      backgroundColor: DARK_MODE_SURFACE_ALT,
+      accentColor: CATEGORY_BASE_COLORS[selectedCategory]
+    }
+  }), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("span", {
+    style: {
+      color: DARK_MODE_TEXT_SECONDARY,
+      minWidth: '40px'
+    }
+  }, thresholdMultiplier.toFixed(1), "x")), /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("div", {
     className: "search-box",
     ref: searchInputRef
   }, /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0___default().createElement("label", {
