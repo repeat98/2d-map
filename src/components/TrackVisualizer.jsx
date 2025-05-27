@@ -4,6 +4,7 @@ import './TrackVisualizer.scss';
 import defaultArtwork from "../../assets/default-artwork.png";
 import Waveform from './Waveform'; // Assuming Waveform.jsx is in the same directory or correctly pathed
 import { PlaybackContext } from '../context/PlaybackContext'; // Assuming PlaybackContext.js is in ../context/
+import * as d3 from 'd3';
 
 // --- Dark Mode Theme Variables (mirroring SCSS for JS logic if needed) ---
 const DARK_MODE_TEXT_PRIMARY = '#e0e0e0';
@@ -31,12 +32,12 @@ const DEFAULT_CLUSTER_COLORS = [
 // const PLACEHOLDER_IMAGE = '/placeholder.png'; // Not used, defaultArtwork is used
 
 const CATEGORY_WEIGHTS = {
-  'genre': 4.0,
-  'style': 4.0,
-  'spectral': 2.0,
-  'mood': 1.0,
-  'instrument': 0.5,
-  'default': 0.2,
+  'genre': 0.2,
+  'style': 1,
+  'spectral': 0,
+  'mood': 0.1,
+  'instrument': 0,
+  'default': 0,
 };
 
 const SPECTRAL_KEYWORDS = [
@@ -527,6 +528,10 @@ const TrackVisualizer = () => {
   const searchInputRef = useRef(null);
   const suggestionsRef = useRef(null);
 
+  const svgRef = useRef(null);
+  const d3ContainerRef = useRef(null);
+  const zoomBehaviorRef = useRef(null);
+
   useEffect(() => {
     const updateDimensions = () => {
       if (viewModeRef.current) {
@@ -734,7 +739,14 @@ const TrackVisualizer = () => {
     }
   }, [isDragging]);
 
-  const handleReset = useCallback(() => { setZoom(1); setPan({ x: 0, y: 0 }); }, []);
+  const handleReset = useCallback(() => {
+    if (d3ContainerRef.current?.svg && zoomBehaviorRef.current) {
+      d3ContainerRef.current.svg
+        .transition()
+        .duration(750)
+        .call(zoomBehaviorRef.current.transform, d3.zoomIdentity);
+    }
+  }, []);
 
   const adjustLuminance = (hex, lum) => {
     hex = String(hex).replace(/[^0-9a-f]/gi, '');
@@ -1358,6 +1370,69 @@ const TrackVisualizer = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Initialize D3 visualization
+  useEffect(() => {
+    if (!svgRef.current || !plotData.length) return;
+
+    // Clear any existing visualization
+    d3.select(svgRef.current).selectAll("*").remove();
+
+    // Create SVG container
+    const svg = d3.select(svgRef.current)
+      .attr("width", svgDimensions.width)
+      .attr("height", svgDimensions.height)
+      .attr("viewBox", `0 0 ${svgDimensions.width} ${svgDimensions.height}`)
+      .attr("preserveAspectRatio", "xMidYMid meet");
+
+    // Create main group for all elements
+    const g = svg.append("g");
+
+    // Initialize zoom behavior
+    zoomBehaviorRef.current = d3.zoom()
+      .scaleExtent([1, 200])
+      .on("zoom", (event) => {
+        setZoom(event.transform.k);
+        setPan({ x: event.transform.x, y: event.transform.y });
+        g.attr("transform", event.transform);
+      });
+
+    // Apply zoom behavior to SVG
+    svg.call(zoomBehaviorRef.current);
+
+    // Create dots
+    const dots = g.selectAll("circle")
+      .data(plotData)
+      .enter()
+      .append("circle")
+      .attr("cx", d => d.x)
+      .attr("cy", d => d.y)
+      .attr("r", 4)
+      .attr("fill", (d, i) => trackColors[i]?.color || NOISE_CLUSTER_COLOR)
+      .attr("class", "track-dot")
+      .style("transition", "none")
+      .on("mouseover", (event, d) => handleMouseOver(d, event))
+      .on("mouseout", handleMouseOut)
+      .on("click", (event, d) => handleDotClick(d));
+
+    // Store D3 container reference
+    d3ContainerRef.current = { svg, g, dots };
+
+    // Cleanup function
+    return () => {
+      if (d3ContainerRef.current) {
+        d3ContainerRef.current.svg.selectAll("*").remove();
+      }
+    };
+  }, [plotData, svgDimensions, trackColors]);
+
+  // Update dots when trackColors change
+  useEffect(() => {
+    if (!d3ContainerRef.current?.dots) return;
+
+    d3ContainerRef.current.dots
+      .attr("fill", (d, i) => trackColors[i]?.color || NOISE_CLUSTER_COLOR);
+  }, [trackColors]);
+
   if (loading) return <div className="track-visualizer-loading">Loading tracks and features...</div>;
   if (error) return <div className="track-visualizer-error">Error: {error} <button onClick={fetchTracksData}>Try Reload</button></div>;
   if (plotData.length === 0 && !loading && tracks.length > 0) return <div className="track-visualizer-empty">Data processed, but no points to visualize. Check feature processing.</div>;
@@ -1478,54 +1553,14 @@ const TrackVisualizer = () => {
         <small>Scroll to zoom, drag to pan.</small>
       </p>
       <div className="visualization-area" ref={viewModeRef}>
-        {svgDimensions.width > 0 && svgDimensions.height > 0 && (
-            <svg
-                className="track-plot"
-                viewBox={VIEW_BOX_VALUE}
-                preserveAspectRatio="xMidYMid meet"
-                aria-labelledby="plotTitle" role="graphics-document"
-                onWheel={handleWheel} onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}
-                onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}
-            >
-            <title id="plotTitle">Track Similarity Plot</title>
-            <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
-                {plotData
-                  .map((track, index) => ({
-                    ...track,
-                    colorInfo: trackColors[index] || { color: NOISE_CLUSTER_COLOR, dominantFeature: 'N/A' }
-                  }))
-                  .sort((a, b) => {
-                    // Sort search matches to the end (top) of the array
-                    if (a.colorInfo.isSearchMatch && !b.colorInfo.isSearchMatch) return 1;
-                    if (!a.colorInfo.isSearchMatch && b.colorInfo.isSearchMatch) return -1;
-                    return 0;
-                  })
-                  .map((track) => {
-                    // Calculate screen-space radius (in pixels)
-                    const screenRadius = 4; // Fixed screen-space radius in pixels
-                    // Convert to SVG space
-                    const svgRadius = screenRadius / zoom;
-                    return (
-                      <circle
-                        key={track.id || `track-${track.id}`}
-                        cx={track.x}
-                        cy={track.y}
-                        r={svgRadius}
-                        fill={track.colorInfo.color}
-                        onMouseMove={(e) => handleMouseOver(track, e)}
-                        onMouseOut={handleMouseOut}
-                        onClick={() => handleDotClick(track)}
-                        className="track-dot"
-                        style={{ transition: 'none' }} // Prevent any size transitions
-                        tabIndex={0}
-                        aria-label={`Track: ${track.title || 'Unknown'} by ${track.artist || 'Unknown'}, Feature: ${track.colorInfo.dominantFeature || 'None'}`}
-                      />
-                    );
-                  })}
-            </g>
-            </svg>
-        )}
+        <svg
+          ref={svgRef}
+          className="track-plot"
+          aria-labelledby="plotTitle"
+          role="graphics-document"
+        >
+          <title id="plotTitle">Track Similarity Plot</title>
+        </svg>
         {tooltip && (
           <div 
             ref={tooltipRef}
@@ -1552,7 +1587,6 @@ const TrackVisualizer = () => {
               }
             }}
             onMouseLeave={(e) => {
-              // Check if we're moving to a child element
               const relatedTarget = e.relatedTarget;
               if (tooltipRef.current && tooltipRef.current.contains(relatedTarget)) {
                 return;
