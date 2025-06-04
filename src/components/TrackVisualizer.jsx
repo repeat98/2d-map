@@ -57,6 +57,8 @@ const LUMINANCE_INCREMENT = 0.3;
 const MAX_LUM_OFFSET = 0.5;
 const HIGHLIGHT_COLOR = '#FF5A16';
 
+const VISUALIZATION_MODES = { SIMILARITY: 'similarity', XY: 'xy' };
+
 
 // --- Helper Functions ---
 
@@ -549,6 +551,31 @@ const TrackVisualizer = () => {
 
   const [featureMinMax, setFeatureMinMax] = useState({});
 
+  const [visualizationMode, setVisualizationMode] = useState(VISUALIZATION_MODES.SIMILARITY);
+  const [xAxisFeature, setXAxisFeature] = useState('');
+  const [yAxisFeature, setYAxisFeature] = useState('');
+
+  // Remove axis dropdowns, add axis assignment state
+  const [xyAxisAssignNext, setXyAxisAssignNext] = useState('x'); // 'x' or 'y'
+
+  // In XY mode, clicking a feature in the FilterPanel assigns it to X or Y
+  const handleAxisFeatureSelect = useCallback((category, feature) => {
+    if (visualizationMode !== VISUALIZATION_MODES.XY) return;
+    if (xyAxisAssignNext === 'x') {
+      setXAxisFeature(feature);
+      setXyAxisAssignNext('y');
+    } else {
+      setYAxisFeature(feature);
+      setXyAxisAssignNext('x');
+    }
+  }, [visualizationMode, xyAxisAssignNext]);
+
+  // Pass axis assignment info to FilterPanel
+  const axisAssignments = useMemo(() => ({
+    x: xAxisFeature,
+    y: yAxisFeature
+  }), [xAxisFeature, yAxisFeature]);
+
   useEffect(() => {
     const updateDimensions = () => {
       if (viewModeRef.current) {
@@ -949,7 +976,6 @@ const TrackVisualizer = () => {
   // Generate dynamic colors for selected features
   const getFeatureColors = useCallback(() => {
     const allSelectedFeatures = Object.values(selectedFeatures).flat();
-    console.log('Selected features:', allSelectedFeatures);
     
     if (allSelectedFeatures.length === 0) return {};
     
@@ -957,56 +983,20 @@ const TrackVisualizer = () => {
     allSelectedFeatures.forEach((feature, index) => {
       const colorStr = DEFAULT_CLUSTER_COLORS[index % DEFAULT_CLUSTER_COLORS.length];
       colors[feature] = colorStr;
-      console.log(`Assigned color ${colorStr} to feature ${feature}`);
     });
     return colors;
   }, [selectedFeatures]);
 
-  // Helper function to safely parse a color
-  const safeParseColor = useCallback((colorStr) => {
-    if (!colorStr) {
-      console.warn('No color string provided to safeParseColor');
-      return null;
-    }
-    try {
-      const color = d3.color(colorStr);
-      if (!color) {
-        console.warn('d3.color returned null for:', colorStr);
-        return null;
-      }
-      return { r: color.r, g: color.g, b: color.b };
-    } catch (e) {
-      console.warn('Failed to parse color:', colorStr, e);
-      return null;
-    }
-  }, []);
-
-  // Helper function to safely create a color string
-  const safeCreateColor = useCallback((r, g, b) => {
-    // Ensure RGB values are within valid range
-    r = Math.max(0, Math.min(255, Math.round(r)));
-    g = Math.max(0, Math.min(255, Math.round(g)));
-    b = Math.max(0, Math.min(255, Math.round(b)));
-    
-    try {
-      // Create hex color string directly
-      const toHex = (n) => {
-        const hex = n.toString(16);
-        return hex.length === 1 ? '0' + hex : hex;
-      };
-      return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
-    } catch (e) {
-      console.warn('Error creating color:', { r, g, b }, e);
-      return NOISE_CLUSTER_COLOR;
-    }
-  }, []);
-
-  // Modify the dot color calculation to use normalized feature values for thresholding
+  // Modify the dot color calculation to use feature-specific colors in OR mode
   const getDotColor = useCallback((track) => {
     const selectedFeaturesList = Object.values(selectedFeatures).flat();
     if (selectedFeaturesList.length === 0) {
       return NOISE_CLUSTER_COLOR;
     }
+
+    // Get feature colors for OR mode
+    const featureColors = getFeatureColors();
+    
     // Check if track has any of the selected features above normalized threshold
     const matchingFeatures = selectedFeaturesList.filter(feature => {
       // Style features
@@ -1066,14 +1056,18 @@ const TrackVisualizer = () => {
       }
       return false;
     });
+
     if (matchingFeatures.length === 0) {
       return NOISE_CLUSTER_COLOR;
     }
-    if (filterLogicMode === 'intersection' && matchingFeatures.length !== selectedFeaturesList.length) {
-      return NOISE_CLUSTER_COLOR;
+
+    if (filterLogicMode === 'intersection') {
+      return matchingFeatures.length === selectedFeaturesList.length ? HIGHLIGHT_COLOR : NOISE_CLUSTER_COLOR;
+    } else {
+      // In OR mode, use the color of the first matching feature
+      return featureColors[matchingFeatures[0]] || HIGHLIGHT_COLOR;
     }
-    return HIGHLIGHT_COLOR;
-  }, [selectedFeatures, filterLogicMode, highlightThreshold, featureMinMax]);
+  }, [selectedFeatures, filterLogicMode, highlightThreshold, featureMinMax, getFeatureColors]);
 
   // Update trackColors to use the new getDotColor function
   const trackColors = useMemo(() => {
@@ -1377,7 +1371,7 @@ const TrackVisualizer = () => {
         try {
           wavesurferRef.current.stop();
           // wavesurferRef.current.destroy(); // The instance is owned by Waveform.jsx, it will destroy it.
-        } catch(e) {
+        } catch (e) {
             // console.warn("Error stopping wavesurfer on TrackVisualizer unmount", e);
         }
         wavesurferRef.current = null;
@@ -1508,7 +1502,7 @@ const TrackVisualizer = () => {
 
   // Initialize D3 visualization
   useEffect(() => {
-    if (!svgRef.current || !plotData.length) return;
+    if (!svgRef.current || !plotDataToUse.length) return;
 
     // Clear any existing visualization
     d3.select(svgRef.current).selectAll("*").remove();
@@ -1537,7 +1531,7 @@ const TrackVisualizer = () => {
 
     // Create dots
     const dots = g.selectAll("circle")
-      .data(plotData)
+      .data(plotDataToUse)
       .enter()
       .append("circle")
       .attr("cx", d => d.x)
@@ -1559,9 +1553,21 @@ const TrackVisualizer = () => {
         d3ContainerRef.current.svg.selectAll("*").remove();
       }
     };
-  }, [plotData, svgDimensions, trackColors]);
+  }, [plotDataToUse, svgDimensions, trackColors]);
 
-  // Update dots when trackColors change
+  // Update dots positions when plotDataToUse changes
+  useEffect(() => {
+    if (!d3ContainerRef.current?.dots) return;
+
+    d3ContainerRef.current.dots
+      .data(plotDataToUse)
+      .transition()
+      .duration(500)
+      .attr("cx", d => d.x)
+      .attr("cy", d => d.y);
+  }, [plotDataToUse]);
+
+  // Update dots colors when trackColors change
   useEffect(() => {
     if (!d3ContainerRef.current?.dots) return;
 
@@ -1682,6 +1688,248 @@ const TrackVisualizer = () => {
     return () => clearTimeout(thresholdDebounceRef.current);
   }, [tempThreshold]);
 
+  // Compute plotData for X/Y mode
+  const xyPlotData = useMemo(() => {
+    if (visualizationMode !== VISUALIZATION_MODES.XY || !xAxisFeature || !yAxisFeature || !tracks.length) return [];
+    
+    // Helper function to get feature value and check confidence
+    const getFeatureValueAndConfidence = (track, feature) => {
+      let value = null;
+      let confidence = 0;
+      
+      // Style features
+      try {
+        const styleFeatures = typeof track.style_features === 'string' ? JSON.parse(track.style_features) : track.style_features;
+        if (styleFeatures && styleFeatures[feature] !== undefined) {
+          value = parseFloat(styleFeatures[feature]);
+          confidence = value;
+        }
+      } catch (e) {}
+      
+      // Mood features
+      try {
+        const moodFeatures = typeof track.mood_features === 'string' ? JSON.parse(track.mood_features) : track.mood_features;
+        if (moodFeatures && moodFeatures[feature] !== undefined) {
+          value = parseFloat(moodFeatures[feature]);
+          confidence = value;
+        }
+      } catch (e) {}
+      
+      // Instrument features
+      try {
+        const instrumentFeatures = typeof track.instrument_features === 'string' ? JSON.parse(track.instrument_features) : track.instrument_features;
+        if (instrumentFeatures && instrumentFeatures[feature] !== undefined) {
+          value = parseFloat(instrumentFeatures[feature]);
+          confidence = value;
+        }
+      } catch (e) {}
+      
+      // Spectral features
+      if (SPECTRAL_KEYWORDS.includes(feature) && track[feature] !== undefined) {
+        value = track[feature];
+        confidence = 1; // Spectral features are always considered high confidence
+      }
+      
+      return { value, confidence };
+    };
+
+    // --- Logarithmic scaling for XY mode ---
+    // Use log1p (log(1 + x)) for all values >= 0. Clamp negative values to 0.
+    const safeLog1p = v => (v != null && v >= 0) ? Math.log1p(v) : 0;
+
+    // Compute log-transformed min/max for normalization
+    const xMinMax = featureMinMax[xAxisFeature];
+    const yMinMax = featureMinMax[yAxisFeature];
+    let xLogMin = 0, xLogMax = 1, yLogMin = 0, yLogMax = 1;
+    if (xMinMax && xMinMax.max > xMinMax.min && xMinMax.min >= 0) {
+      xLogMin = safeLog1p(xMinMax.min);
+      xLogMax = safeLog1p(xMinMax.max);
+      if (xLogMax === xLogMin) xLogMax = xLogMin + 1e-6;
+    }
+    if (yMinMax && yMinMax.max > yMinMax.min && yMinMax.min >= 0) {
+      yLogMin = safeLog1p(yMinMax.min);
+      yLogMax = safeLog1p(yMinMax.max);
+      if (yLogMax === yLogMin) yLogMax = yLogMin + 1e-6;
+    }
+
+    return tracks
+      .map(track => {
+        const xData = getFeatureValueAndConfidence(track, xAxisFeature);
+        const yData = getFeatureValueAndConfidence(track, yAxisFeature);
+        
+        // Skip if either feature is below confidence threshold
+        if (xData.confidence < highlightThreshold || yData.confidence < highlightThreshold) {
+          return null;
+        }
+
+        // Log-transform the values for plotting
+        let xLog = (xData.value != null && xData.value >= 0) ? Math.log1p(xData.value) : 0;
+        let yLog = (yData.value != null && yData.value >= 0) ? Math.log1p(yData.value) : 0;
+
+        // Normalize the log values using log-transformed min/max
+        let xNorm = 0.5;
+        let yNorm = 0.5;
+        if (xLogMax > xLogMin) {
+          xNorm = (xLog - xLogMin) / (xLogMax - xLogMin);
+        }
+        if (yLogMax > yLogMin) {
+          yNorm = (yLog - yLogMin) / (yLogMax - yLogMin);
+        }
+
+        return {
+          ...track,
+          x: PADDING + xNorm * (svgDimensions.width - 2 * PADDING),
+          y: PADDING + (1 - yNorm) * (svgDimensions.height - 2 * PADDING), // invert y for visual
+          xValue: xData.value, // original value for tooltips/labels
+          yValue: yData.value
+        };
+      })
+      .filter(Boolean); // Remove null entries
+  }, [visualizationMode, xAxisFeature, yAxisFeature, tracks, featureMinMax, svgDimensions, highlightThreshold]);
+
+  // Update D3 visualization when data changes
+  useEffect(() => {
+    if (!d3ContainerRef.current?.dots || !plotDataToUse.length) return;
+
+    // Update data binding
+    const dots = d3ContainerRef.current.g.selectAll("circle")
+      .data(plotDataToUse, d => d.id);
+
+    // Remove dots that are no longer in the data
+    dots.exit()
+      .transition()
+      .duration(750) // Increased duration for smoother exit
+      .attr("r", 0)
+      .remove();
+
+    // Add new dots
+    const dotsEnter = dots.enter()
+      .append("circle")
+      .attr("r", 0)
+      .attr("class", "track-dot")
+      .style("transition", "none")
+      .on("mouseover", (event, d) => handleMouseOver(d, event))
+      .on("mouseout", handleMouseOut)
+      .on("click", (event, d) => handleDotClick(d));
+
+    // Update all dots (including new ones) with smooth transitions
+    dots.merge(dotsEnter)
+      .transition()
+      .duration(750) // Increased duration for smoother transitions
+      .ease(d3.easeCubicInOut) // Add easing for smoother motion
+      .attr("cx", d => d.x)
+      .attr("cy", d => d.y)
+      .attr("r", 4)
+      .attr("fill", (d, i) => trackColors[i]?.color || NOISE_CLUSTER_COLOR);
+
+    // Store updated selection
+    d3ContainerRef.current.dots = dots.merge(dotsEnter);
+
+    // Update axis labels for XY mode with smooth transitions
+    if (visualizationMode === VISUALIZATION_MODES.XY && xAxisFeature && yAxisFeature) {
+      // Remove existing labels with fade out
+      d3ContainerRef.current.g.selectAll(".axis-label")
+        .transition()
+        .duration(500)
+        .style("opacity", 0)
+        .remove();
+
+      // Add X axis label with fade in
+      d3ContainerRef.current.g.append("text")
+        .attr("class", "axis-label")
+        .attr("x", svgDimensions.width / 2)
+        .attr("y", svgDimensions.height - 8)
+        .attr("text-anchor", "middle")
+        .attr("fill", "#b0b0b0")
+        .attr("font-size", "1em")
+        .style("opacity", 0)
+        .text(xAxisFeature)
+        .transition()
+        .duration(500)
+        .style("opacity", 1);
+
+      // Add Y axis label with fade in
+      d3ContainerRef.current.g.append("text")
+        .attr("class", "axis-label")
+        .attr("x", 18)
+        .attr("y", svgDimensions.height / 2)
+        .attr("text-anchor", "middle")
+        .attr("fill", "#b0b0b0")
+        .attr("font-size", "1em")
+        .attr("transform", `rotate(-90 18,${svgDimensions.height / 2})`)
+        .style("opacity", 0)
+        .text(yAxisFeature)
+        .transition()
+        .duration(500)
+        .style("opacity", 1);
+    }
+
+    // Update legend with smooth transitions
+    const legendGroup = d3ContainerRef.current.g.selectAll(".legend-group")
+      .data([1]); // Single group for the legend
+
+    const legendGroupEnter = legendGroup.enter()
+      .append("g")
+      .attr("class", "legend-group")
+      .attr("transform", `translate(${svgDimensions.width - 150}, 20)`);
+
+    // Remove existing legend items with fade out
+    d3ContainerRef.current.g.selectAll(".legend-item")
+      .transition()
+      .duration(500)
+      .style("opacity", 0)
+      .remove();
+
+    // Add new legend items with fade in
+    if (filterLogicMode === 'union' && Object.values(selectedFeatures).flat().length > 0) {
+      const legendItems = legendGroupEnter.selectAll(".legend-item")
+        .data(Object.values(selectedFeatures).flat())
+        .enter()
+        .append("g")
+        .attr("class", "legend-item")
+        .attr("transform", (d, i) => `translate(0, ${i * 20})`)
+        .style("opacity", 0);
+
+      // Add colored squares
+      legendItems.append("rect")
+        .attr("width", 12)
+        .attr("height", 12)
+        .attr("fill", d => getFeatureColors()[d])
+        .attr("rx", 2);
+
+      // Add feature names
+      legendItems.append("text")
+        .attr("x", 20)
+        .attr("y", 10)
+        .attr("fill", "#b0b0b0")
+        .attr("font-size", "0.8em")
+        .text(d => d);
+
+      // Fade in new legend items
+      legendItems.transition()
+        .duration(500)
+        .style("opacity", 1);
+    }
+  }, [plotDataToUse, trackColors, visualizationMode, xAxisFeature, yAxisFeature, svgDimensions, filterLogicMode, selectedFeatures, getFeatureColors]);
+
+  // Choose which plotData to use
+  const plotDataToUse = visualizationMode === VISUALIZATION_MODES.XY ? xyPlotData : plotData;
+
+  // Axis feature options
+  const allFeatureOptions = useMemo(() => {
+    const options = new Set();
+    tracks.forEach(track => {
+      [track.style_features, track.mood_features, track.instrument_features].forEach(obj => {
+        try {
+          const parsed = typeof obj === 'string' ? JSON.parse(obj) : obj;
+          if (parsed) Object.keys(parsed).forEach(k => options.add(k));
+        } catch (e) {}
+      });
+      SPECTRAL_KEYWORDS.forEach(k => options.add(k));
+    });
+    return Array.from(options).sort();
+  }, [tracks]);
+
   if (loading) return <div className="track-visualizer-loading">Loading tracks and features...</div>;
   if (loading) return <div className="track-visualizer-loading">Loading tracks and features...</div>;
   if (error) return <div className="track-visualizer-error">Error: {error} <button onClick={fetchTracksData}>Try Reload</button></div>;
@@ -1691,6 +1939,43 @@ const TrackVisualizer = () => {
   return (
     <div className="TrackVisualizer" ref={containerRef}>
       <div className="VisualizationContainer" ref={visualizationRef}>
+        <div className="visualization-mode-toggle" style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 10 }}>
+          <button
+            style={{
+              backgroundColor: visualizationMode === VISUALIZATION_MODES.SIMILARITY ? HIGHLIGHT_COLOR : '#232323',
+              color: visualizationMode === VISUALIZATION_MODES.SIMILARITY ? '#fff' : '#b0b0b0',
+              border: `1.5px solid ${HIGHLIGHT_COLOR}`,
+              borderRadius: 6,
+              padding: '4px 14px',
+              fontWeight: 500,
+              cursor: 'pointer',
+              fontSize: '1em',
+            }}
+            onClick={() => setVisualizationMode(VISUALIZATION_MODES.SIMILARITY)}
+          >
+            Similarity
+          </button>
+          <button
+            style={{
+              backgroundColor: visualizationMode === VISUALIZATION_MODES.XY ? HIGHLIGHT_COLOR : '#232323',
+              color: visualizationMode === VISUALIZATION_MODES.XY ? '#fff' : '#b0b0b0',
+              border: `1.5px solid ${HIGHLIGHT_COLOR}`,
+              borderRadius: 6,
+              padding: '4px 14px',
+              fontWeight: 500,
+              cursor: 'pointer',
+              fontSize: '1em',
+            }}
+            onClick={() => setVisualizationMode(VISUALIZATION_MODES.XY)}
+          >
+            X/Y
+          </button>
+          {visualizationMode === VISUALIZATION_MODES.XY && (
+            <span style={{ marginLeft: 16, color: '#b0b0b0', fontWeight: 500 }}>
+              Assign axes: Click a feature below ({xyAxisAssignNext.toUpperCase()} next)
+            </span>
+          )}
+        </div>
         <div className="controls-panel sticky-controls">
           <div className="search-box" ref={searchInputRef}>
             <label htmlFor="trackSearch">Search Tracks:</label>
@@ -1842,11 +2127,12 @@ const TrackVisualizer = () => {
         <FilterPanel
           filterOptions={filterOptions}
           activeFilters={selectedFeatures}
-          onToggleFilter={handleFeatureToggle}
+          onToggleFilter={visualizationMode === VISUALIZATION_MODES.XY ? handleAxisFeatureSelect : handleFeatureToggle}
           filterLogicMode={filterLogicMode}
           onToggleFilterLogicMode={() => setFilterLogicMode(prev => 
             prev === 'intersection' ? 'union' : 'intersection'
           )}
+          axisAssignments={visualizationMode === VISUALIZATION_MODES.XY ? axisAssignments : undefined}
         />
       </div>
     </div>

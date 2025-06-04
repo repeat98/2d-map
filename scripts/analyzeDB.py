@@ -261,6 +261,47 @@ def analyze_blob_features(df_main, output_dir):
     else:
         print("Column 'instrument_features' (instrument blob) not found.")
 
+def analyze_mood_distributions(df, output_dir):
+    print("\n--- Analyzing Mood Distributions ---")
+    
+    # List of mood columns to analyze
+    mood_columns = ['happiness', 'party', 'aggressive', 'danceability', 'relaxed', 'sad', 'engagement', 'approachability']
+    
+    # Filter to only include mood columns that exist in the DataFrame
+    existing_mood_cols = [col for col in mood_columns if col in df.columns]
+    
+    if not existing_mood_cols:
+        print("No mood columns found for analysis.")
+        return
+    
+    # Create a figure with subplots for each mood
+    n_cols = min(3, len(existing_mood_cols))
+    n_rows = (len(existing_mood_cols) + n_cols - 1) // n_cols
+    
+    plt.figure(figsize=(15, 5 * n_rows))
+    
+    for idx, mood in enumerate(existing_mood_cols, 1):
+        plt.subplot(n_rows, n_cols, idx)
+        sns.histplot(df[mood].dropna(), kde=True, bins=30)
+        plt.title(f'Distribution of {mood}')
+        plt.xlabel(mood)
+        plt.ylabel('Frequency')
+    
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, 'mood_distributions.png'))
+    plt.close()
+    print(f"Mood distribution plots saved to {output_dir}")
+    
+    # Create a correlation matrix for moods
+    mood_corr = df[existing_mood_cols].corr()
+    plt.figure(figsize=(12, 10))
+    sns.heatmap(mood_corr, annot=True, fmt=".2f", cmap='coolwarm', linewidths=.5)
+    plt.title('Correlation Matrix of Moods')
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, 'mood_correlation_matrix.png'))
+    plt.close()
+    print(f"Mood correlation matrix saved to {output_dir}")
+
 def generate_text_summary(df, output_dir):
     """Generate a comprehensive text summary of the data analysis."""
     print("\nGenerating text summary...")
@@ -330,7 +371,8 @@ def main():
     analyze_numerical_features(df, output_dir)
     analyze_categorical_features(df, output_dir)
     analyze_blob_features(df, output_dir)
-    generate_text_summary(df, output_dir)  # Add the new summary generation
+    analyze_mood_distributions(df, output_dir)  # Add the new mood analysis
+    generate_text_summary(df, output_dir)
 
     print("\n--- Analysis Summary ---")
     print(f"Total tracks analyzed: {len(df)}")
