@@ -1,0 +1,171 @@
+.SearchAndFilterControls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+  align-items: center;
+}
+
+.FilterToggleButton {
+  padding: 10px 15px;
+  font-size: 0.9rem;
+  background-color: #4a4a4a;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  white-space: nowrap;
+}
+
+.FilterToggleButton:hover {
+  background-color: #5a5a5a;
+}
+
+.FilterPanelOuterContainer {
+  background-color: #252525;
+  border: 1px solid #383838;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  padding: 10px;
+}
+
+.FilterPanelHeader {
+  display: flex;
+  justify-content: flex-end; // Position button to the right, or center/start as preferred
+  margin-bottom: 10px;
+}
+
+.FilterLogicButton {
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  background-color: #4a4a4a;
+  color: white;
+  border: 1px solid #555;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.FilterLogicButton:hover {
+  background-color: #5a5a5a;
+}
+
+.FilterPanelContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  // padding: 15px; // Padding moved to OuterContainer
+  // background-color: #252525; // Moved to OuterContainer
+  // border-radius: 4px; // Moved to OuterContainer
+  // margin-bottom: 16px; // Controlled by OuterContainer
+  // border: 1px solid #383838; // Moved to OuterContainer
+}
+
+.FilterCategory {
+  flex: 1 1 180px; // Allow categories to grow and shrink, with a base size
+  min-width: 150px;
+}
+
+.FilterCategoryTitle {
+  font-size: 0.95rem;
+  color: #e0e0e0;
+  margin-top: 0;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #444;
+  padding-bottom: 4px;
+}
+
+.FilterSearchContainer {
+  position: relative;
+  margin-bottom: 8px;
+}
+
+.FilterSearchInput {
+  width: 100%;
+  padding: 6px 30px 6px 8px; // Add right padding for clear button
+  font-size: 0.8rem;
+  background-color: #1a1a1a;
+  color: #e0e0e0;
+  border: 1px solid #444;
+  border-radius: 3px;
+  outline: none;
+  transition: border-color 0.2s ease;
+  box-sizing: border-box;
+}
+
+.FilterSearchInput:focus {
+  border-color: #666;
+  background-color: #222;
+}
+
+.FilterSearchInput::placeholder {
+  color: #888;
+  font-style: italic;
+}
+
+.FilterSearchClear {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 2px;
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.FilterSearchClear:hover {
+  color: #fff;
+  background-color: #444;
+}
+
+.FilterNoResults {
+  padding: 8px 0;
+  text-align: center;
+  color: #888;
+  font-size: 0.8rem;
+  font-style: italic;
+}
+
+.FilterCheckboxList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 150px; // Limit height and make scrollable
+  overflow-y: auto;
+}
+
+.FilterCheckboxItem label {
+  display: flex; // Use flex for alignment of checkbox, name, and count
+  align-items: center;
+  padding: 4px 0;
+  font-size: 0.85rem;
+  color: #ccc;
+  cursor: pointer;
+  gap: 6px; // Space between checkbox and text
+}
+
+.FilterCheckboxItem input[type="checkbox"] {
+  margin-right: 6px;
+  cursor: pointer;
+}
+
+.FilterCheckboxItem:hover {
+  background-color: #303030;
+}
+
+.FilterOptionName {
+  flex-grow: 1; // Allow name to take available space
+}
+
+.FilterOptionCount {
+  color: #888; // Dimmer color for the count
+  font-size: 0.75rem;
+  margin-left: auto; // Push count to the right if using flex on label
+  padding-left: 5px;
+} 

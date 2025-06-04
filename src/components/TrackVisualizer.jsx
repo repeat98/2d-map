@@ -2,8 +2,9 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import './TrackVisualizer.scss';
 // import WaveSurfer from 'wavesurfer.js'; // WaveSurfer is used by the Waveform component, not directly here usually
 import defaultArtwork from "../../assets/default-artwork.png";
-import Waveform from './Waveform'; // Assuming Waveform.jsx is in the same directory or correctly pathed
-import { PlaybackContext } from '../context/PlaybackContext'; // Assuming PlaybackContext.js is in ../context/
+import Waveform from './Waveform';
+import FilterPanel from './FilterPanel';
+import { PlaybackContext } from '../context/PlaybackContext';
 import * as d3 from 'd3';
 
 // --- Dark Mode Theme Variables (mirroring SCSS for JS logic if needed) ---
@@ -54,6 +55,7 @@ const CATEGORY_BASE_COLORS = {
 
 const LUMINANCE_INCREMENT = 0.3;
 const MAX_LUM_OFFSET = 0.5;
+const HIGHLIGHT_COLOR = '#FF5A16';
 
 
 // --- Helper Functions ---
@@ -500,7 +502,20 @@ const TrackVisualizer = () => {
   const [styleColors, setStyleColors] = useState(new Map());
   const [featureThresholds, setFeatureThresholds] = useState(new Map());
   const [thresholdMultiplier, setThresholdMultiplier] = useState(1.0);
+  const [selectedFeatures, setSelectedFeatures] = useState({
+    genre: [],
+    style: [],
+    mood: [],
+    instrument: [],
+    spectral: []
+  });
+  const [filterLogicMode, setFilterLogicMode] = useState('intersection');
+  const [highlightThreshold, setHighlightThreshold] = useState(0.1);
+  const [tempThreshold, setTempThreshold] = useState(0.1);
+  const thresholdDebounceRef = useRef();
 
+  const containerRef = useRef(null);
+  const visualizationRef = useRef(null);
   const [svgDimensions, setSvgDimensions] = useState({ width: window.innerWidth, height: window.innerHeight - 150 });
   const viewModeRef = React.useRef(null);
 
@@ -531,6 +546,8 @@ const TrackVisualizer = () => {
   const svgRef = useRef(null);
   const d3ContainerRef = useRef(null);
   const zoomBehaviorRef = useRef(null);
+
+  const [featureMinMax, setFeatureMinMax] = useState({});
 
   useEffect(() => {
     const updateDimensions = () => {
@@ -765,6 +782,7 @@ const TrackVisualizer = () => {
     if (!tracks || tracks.length === 0 || !selectedCategory || !featureMetadata.names || featureMetadata.names.length === 0) {
       setStyleColors(new Map());
       setFeatureThresholds(new Map());
+      setFeatureMinMax({});
       return;
     }
 
@@ -859,8 +877,205 @@ const TrackVisualizer = () => {
 
     setStyleColors(newStyleColors);
     setFeatureThresholds(newThresholds);
+
+    // Compute min/max for each feature after loading tracks
+    const minMax = {};
+    tracks.forEach(track => {
+      // Style features
+      try {
+        const styleFeatures = typeof track.style_features === 'string' ? JSON.parse(track.style_features) : track.style_features;
+        if (styleFeatures) {
+          Object.entries(styleFeatures).forEach(([key, value]) => {
+            const v = parseFloat(value);
+            if (!isNaN(v)) {
+              if (!(key in minMax)) minMax[key] = { min: v, max: v };
+              else {
+                minMax[key].min = Math.min(minMax[key].min, v);
+                minMax[key].max = Math.max(minMax[key].max, v);
+              }
+            }
+          });
+        }
+      } catch (e) {}
+      // Mood features
+      try {
+        const moodFeatures = typeof track.mood_features === 'string' ? JSON.parse(track.mood_features) : track.mood_features;
+        if (moodFeatures) {
+          Object.entries(moodFeatures).forEach(([key, value]) => {
+            const v = parseFloat(value);
+            if (!isNaN(v)) {
+              if (!(key in minMax)) minMax[key] = { min: v, max: v };
+              else {
+                minMax[key].min = Math.min(minMax[key].min, v);
+                minMax[key].max = Math.max(minMax[key].max, v);
+              }
+            }
+          });
+        }
+      } catch (e) {}
+      // Instrument features
+      try {
+        const instrumentFeatures = typeof track.instrument_features === 'string'
+          ? JSON.parse(track.instrument_features)
+          : track.instrument_features;
+        if (instrumentFeatures) {
+          Object.entries(instrumentFeatures).forEach(([key, value]) => {
+            const v = parseFloat(value);
+            if (!isNaN(v)) {
+              if (!(key in minMax)) minMax[key] = { min: v, max: v };
+              else {
+                minMax[key].min = Math.min(minMax[key].min, v);
+                minMax[key].max = Math.max(minMax[key].max, v);
+              }
+            }
+          });
+        }
+      } catch (e) {}
+      // Spectral features
+      SPECTRAL_KEYWORDS.forEach(key => {
+        const v = track[key];
+        if (typeof v === 'number' && !isNaN(v)) {
+          if (!(key in minMax)) minMax[key] = { min: v, max: v };
+          else {
+            minMax[key].min = Math.min(minMax[key].min, v);
+            minMax[key].max = Math.max(minMax[key].max, v);
+          }
+        }
+      });
+    });
+    setFeatureMinMax(minMax);
   }, [tracks, selectedCategory, featureMetadata]);
 
+  // Generate dynamic colors for selected features
+  const getFeatureColors = useCallback(() => {
+    const allSelectedFeatures = Object.values(selectedFeatures).flat();
+    console.log('Selected features:', allSelectedFeatures);
+    
+    if (allSelectedFeatures.length === 0) return {};
+    
+    const colors = {};
+    allSelectedFeatures.forEach((feature, index) => {
+      const colorStr = DEFAULT_CLUSTER_COLORS[index % DEFAULT_CLUSTER_COLORS.length];
+      colors[feature] = colorStr;
+      console.log(`Assigned color ${colorStr} to feature ${feature}`);
+    });
+    return colors;
+  }, [selectedFeatures]);
+
+  // Helper function to safely parse a color
+  const safeParseColor = useCallback((colorStr) => {
+    if (!colorStr) {
+      console.warn('No color string provided to safeParseColor');
+      return null;
+    }
+    try {
+      const color = d3.color(colorStr);
+      if (!color) {
+        console.warn('d3.color returned null for:', colorStr);
+        return null;
+      }
+      return { r: color.r, g: color.g, b: color.b };
+    } catch (e) {
+      console.warn('Failed to parse color:', colorStr, e);
+      return null;
+    }
+  }, []);
+
+  // Helper function to safely create a color string
+  const safeCreateColor = useCallback((r, g, b) => {
+    // Ensure RGB values are within valid range
+    r = Math.max(0, Math.min(255, Math.round(r)));
+    g = Math.max(0, Math.min(255, Math.round(g)));
+    b = Math.max(0, Math.min(255, Math.round(b)));
+    
+    try {
+      // Create hex color string directly
+      const toHex = (n) => {
+        const hex = n.toString(16);
+        return hex.length === 1 ? '0' + hex : hex;
+      };
+      return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+    } catch (e) {
+      console.warn('Error creating color:', { r, g, b }, e);
+      return NOISE_CLUSTER_COLOR;
+    }
+  }, []);
+
+  // Modify the dot color calculation to use normalized feature values for thresholding
+  const getDotColor = useCallback((track) => {
+    const selectedFeaturesList = Object.values(selectedFeatures).flat();
+    if (selectedFeaturesList.length === 0) {
+      return NOISE_CLUSTER_COLOR;
+    }
+    // Check if track has any of the selected features above normalized threshold
+    const matchingFeatures = selectedFeaturesList.filter(feature => {
+      // Style features
+      try {
+        const styleFeatures = typeof track.style_features === 'string' 
+          ? JSON.parse(track.style_features) 
+          : track.style_features;
+        if (styleFeatures && styleFeatures[feature]) {
+          const v = parseFloat(styleFeatures[feature]);
+          const minmax = featureMinMax[feature];
+          if (minmax && minmax.max > minmax.min) {
+            const norm = (v - minmax.min) / (minmax.max - minmax.min);
+            if (norm >= highlightThreshold) return true;
+          }
+        }
+      } catch (e) {}
+      // Mood features
+      try {
+        const moodFeatures = typeof track.mood_features === 'string'
+          ? JSON.parse(track.mood_features)
+          : track.mood_features;
+        if (moodFeatures && moodFeatures[feature]) {
+          const v = parseFloat(moodFeatures[feature]);
+          const minmax = featureMinMax[feature];
+          if (minmax && minmax.max > minmax.min) {
+            const norm = (v - minmax.min) / (minmax.max - minmax.min);
+            if (norm >= highlightThreshold) return true;
+          }
+        }
+      } catch (e) {}
+      // Instrument features
+      try {
+        const instrumentFeatures = typeof track.instrument_features === 'string'
+          ? JSON.parse(track.instrument_features)
+          : track.instrument_features;
+        if (instrumentFeatures && instrumentFeatures[feature]) {
+          const v = parseFloat(instrumentFeatures[feature]);
+          const minmax = featureMinMax[feature];
+          if (minmax && minmax.max > minmax.min) {
+            const norm = (v - minmax.min) / (minmax.max - minmax.min);
+            if (norm >= highlightThreshold) return true;
+          }
+        }
+      } catch (e) {}
+      // Spectral features
+      if (SPECTRAL_KEYWORDS.includes(feature) && track[feature] !== undefined) {
+        const v = track[feature];
+        const minmax = featureMinMax[feature];
+        if (minmax && minmax.max > minmax.min) {
+          const norm = (v - minmax.min) / (minmax.max - minmax.min);
+          if (norm >= highlightThreshold) return true;
+        }
+      }
+      // Genre (no normalization, just match)
+      if (track.genre === feature) {
+        return true;
+      }
+      return false;
+    });
+    if (matchingFeatures.length === 0) {
+      return NOISE_CLUSTER_COLOR;
+    }
+    if (filterLogicMode === 'intersection' && matchingFeatures.length !== selectedFeaturesList.length) {
+      return NOISE_CLUSTER_COLOR;
+    }
+    return HIGHLIGHT_COLOR;
+  }, [selectedFeatures, filterLogicMode, highlightThreshold, featureMinMax]);
+
+  // Update trackColors to use the new getDotColor function
   const trackColors = useMemo(() => {
     return plotData.map(track => {
       // Get the display title (filename without extension if title is unknown)
@@ -904,94 +1119,15 @@ const TrackVisualizer = () => {
         };
       }
 
-      // If a feature is selected, check if this track has that feature
-      if (selectedFeature) {
-        let hasFeature = false;
-        let featureValue = 0;
-        
-        if (selectedCategory === 'genre' || selectedCategory === 'style') {
-          try {
-            const features = typeof track.style_features === 'string' ? JSON.parse(track.style_features) : track.style_features;
-            if (features && typeof features === 'object') {
-              if (selectedCategory === 'genre') {
-                // For genre, find the most probable genre
-                let maxProb = 0;
-                let maxGenre = null;
-                
-                Object.entries(features).forEach(([key, value]) => {
-                  const [genrePart] = key.split('---');
-                  const prob = parseFloat(value);
-                  if (!isNaN(prob) && prob > maxProb) {
-                    maxProb = prob;
-                    maxGenre = genrePart;
-                  }
-                });
-                
-                // Only highlight if this is the most probable genre
-                hasFeature = maxGenre === selectedFeature;
-                featureValue = maxProb;
-              } else {
-                // For style, keep existing behavior
-                const matchingKey = Object.keys(features).find(key => {
-                  const [_, stylePart] = key.split('---');
-                  return stylePart === selectedFeature;
-                });
-                
-                if (matchingKey) {
-                  featureValue = parseFloat(features[matchingKey]);
-                  hasFeature = !isNaN(featureValue) && featureValue > 0;
-                }
-              }
-            }
-          } catch (e) {
-            console.warn('Error parsing features:', e);
-          }
-        } else if (selectedCategory === 'instrument') {
-          try {
-            const features = typeof track.instrument_features === 'string' ? JSON.parse(track.instrument_features) : track.instrument_features;
-            if (features && typeof features === 'object') {
-              featureValue = parseFloat(features[selectedFeature]);
-              hasFeature = !isNaN(featureValue) && featureValue > 0;
-            }
-          } catch (e) {
-            console.warn('Error parsing instrument features:', e);
-          }
-        } else if (selectedCategory === 'mood' || selectedCategory === 'spectral') {
-          featureValue = track[selectedFeature];
-          hasFeature = typeof featureValue === 'number' && !isNaN(featureValue) && featureValue > 0;
-        }
-
-        // Check if the feature value exceeds the threshold
-        const threshold = (featureThresholds.get(selectedFeature) || 0) * thresholdMultiplier;
-        hasFeature = hasFeature && featureValue >= threshold;
-
-        // Calculate color intensity based on feature value
-        const baseColor = CATEGORY_BASE_COLORS[selectedCategory];
-        const intensity = hasFeature ? Math.min(1, featureValue / (threshold * 1.5)) : 0;
-        
-        // Convert hex to rgba for opacity
-        const r = parseInt(baseColor.slice(1, 3), 16);
-        const g = parseInt(baseColor.slice(3, 5), 16);
-        const b = parseInt(baseColor.slice(5, 7), 16);
-        const color = `rgba(${r}, ${g}, ${b}, ${intensity})`;
-
-        return {
-          id: track.id,
-          color: hasFeature ? color : NOISE_CLUSTER_COLOR,
-          dominantFeature: hasFeature ? selectedFeature : null,
-          isSearchMatch: false
-        };
-      }
-
-      // Default case: all tracks are neutral
+      // Use the new getDotColor function for feature-based coloring
       return {
         id: track.id,
-        color: NOISE_CLUSTER_COLOR,
+        color: getDotColor(track),
         dominantFeature: null,
         isSearchMatch: false
       };
     });
-  }, [plotData, selectedCategory, selectedFeature, searchQuery, featureThresholds, thresholdMultiplier]);
+  }, [plotData, searchQuery, getDotColor]);
 
   const fetchTracksData = useCallback(async () => {
     try {
@@ -1433,205 +1569,285 @@ const TrackVisualizer = () => {
       .attr("fill", (d, i) => trackColors[i]?.color || NOISE_CLUSTER_COLOR);
   }, [trackColors]);
 
+  // Handle feature selection
+  const handleFeatureToggle = useCallback((category, feature) => {
+    setSelectedFeatures(prev => {
+      const newFeatures = { ...prev };
+      const categoryFeatures = [...prev[category]];
+      const index = categoryFeatures.indexOf(feature);
+      
+      if (index === -1) {
+        categoryFeatures.push(feature);
+      } else {
+        categoryFeatures.splice(index, 1);
+      }
+      
+      newFeatures[category] = categoryFeatures;
+      return newFeatures;
+    });
+  }, []);
+
+  // Get filter options from tracks
+  const filterOptions = useMemo(() => {
+    const options = {
+      genre: [],
+      style: [],
+      mood: [],
+      instrument: [],
+      spectral: []
+    };
+
+    tracks.forEach(track => {
+      // Process genre
+      if (track.genre) {
+        const genre = { name: track.genre, count: 1 };
+        const existingGenre = options.genre.find(g => g.name === genre.name);
+        if (existingGenre) existingGenre.count++;
+        else options.genre.push(genre);
+      }
+
+      // Process style features
+      try {
+        const styleFeatures = typeof track.style_features === 'string' 
+          ? JSON.parse(track.style_features) 
+          : track.style_features;
+        if (styleFeatures) {
+          Object.entries(styleFeatures).forEach(([name, value]) => {
+            const feature = { name, count: 1 };
+            const existing = options.style.find(f => f.name === name);
+            if (existing) existing.count++;
+            else options.style.push(feature);
+          });
+        }
+      } catch (e) {}
+
+      // Process mood features
+      try {
+        const moodFeatures = typeof track.mood_features === 'string'
+          ? JSON.parse(track.mood_features)
+          : track.mood_features;
+        if (moodFeatures) {
+          Object.entries(moodFeatures).forEach(([name, value]) => {
+            const feature = { name, count: 1 };
+            const existing = options.mood.find(f => f.name === name);
+            if (existing) existing.count++;
+            else options.mood.push(feature);
+          });
+        }
+      } catch (e) {}
+
+      // Process instrument features
+      try {
+        const instrumentFeatures = typeof track.instrument_features === 'string'
+          ? JSON.parse(track.instrument_features)
+          : track.instrument_features;
+        if (instrumentFeatures) {
+          Object.entries(instrumentFeatures).forEach(([name, value]) => {
+            const feature = { name, count: 1 };
+            const existing = options.instrument.find(f => f.name === name);
+            if (existing) existing.count++;
+            else options.instrument.push(feature);
+          });
+        }
+      } catch (e) {}
+
+      // Process spectral features
+      SPECTRAL_KEYWORDS.forEach(key => {
+        if (track[key] !== undefined) {
+          const feature = { name: key, count: 1 };
+          const existing = options.spectral.find(f => f.name === key);
+          if (existing) existing.count++;
+          else options.spectral.push(feature);
+        }
+      });
+    });
+
+    // Sort all options by count (descending) and then by name
+    Object.keys(options).forEach(category => {
+      options[category].sort((a, b) => {
+        if (b.count !== a.count) return b.count - a.count;
+        return a.name.localeCompare(b.name);
+      });
+    });
+
+    return options;
+  }, [tracks]);
+
+  // Debounce threshold update for smooth slider
+  useEffect(() => {
+    if (thresholdDebounceRef.current) clearTimeout(thresholdDebounceRef.current);
+    thresholdDebounceRef.current = setTimeout(() => {
+      setHighlightThreshold(tempThreshold);
+    }, 40); // 40ms debounce for smoothness
+    return () => clearTimeout(thresholdDebounceRef.current);
+  }, [tempThreshold]);
+
+  if (loading) return <div className="track-visualizer-loading">Loading tracks and features...</div>;
   if (loading) return <div className="track-visualizer-loading">Loading tracks and features...</div>;
   if (error) return <div className="track-visualizer-error">Error: {error} <button onClick={fetchTracksData}>Try Reload</button></div>;
   if (plotData.length === 0 && !loading && tracks.length > 0) return <div className="track-visualizer-empty">Data processed, but no points to visualize. Check feature processing.</div>;
   if (plotData.length === 0 && !loading && tracks.length === 0) return <div className="track-visualizer-empty">No tracks data loaded.</div>;
 
   return (
-    <div className="track-visualizer-container">
-      <h3>Track Similarity Visualization</h3>
-      <div className="controls-panel">
-        <div className="category-toggle">
-          <label htmlFor="categorySelect">Color by:</label>
-          {Object.entries(CATEGORY_BASE_COLORS).map(([categoryKey, colorValue]) => (
-            <button
-              key={categoryKey}
-              onClick={() => {
-                setSelectedCategory(categoryKey);
-                setSelectedFeature(null);
-              }}
-              className={selectedCategory === categoryKey ? 'active' : ''}
-              style={{
-                backgroundColor: selectedCategory === categoryKey ? colorValue : DARK_MODE_SURFACE_ALT,
-                color: selectedCategory === categoryKey ? (parseInt(colorValue.slice(1,3),16)*0.299 + parseInt(colorValue.slice(3,5),16)*0.587 + parseInt(colorValue.slice(5,7),16)*0.114 > 160 ? '#000000' : DARK_MODE_TEXT_PRIMARY) : DARK_MODE_TEXT_SECONDARY,
-                border: `2px solid ${selectedCategory === categoryKey ? adjustLuminance(colorValue, -0.2) : DARK_MODE_BORDER}`,
-              }}
-            >
-              {categoryKey.charAt(0).toUpperCase() + categoryKey.slice(1)}
-            </button>
-          ))}
-        </div>
-        {selectedFeature && (
-          <div className="threshold-slider" style={{ marginLeft: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <label htmlFor="thresholdSlider" style={{ color: DARK_MODE_TEXT_PRIMARY }}>Threshold:</label>
-            <input
-              id="thresholdSlider"
-              type="range"
-              min="0.1"
-              max="3"
-              step="0.1"
-              value={thresholdMultiplier}
-              onChange={(e) => setThresholdMultiplier(parseFloat(e.target.value))}
-              style={{
-                width: '150px',
-                backgroundColor: DARK_MODE_SURFACE_ALT,
-                accentColor: CATEGORY_BASE_COLORS[selectedCategory]
-              }}
-            />
-            <span style={{ color: DARK_MODE_TEXT_SECONDARY, minWidth: '40px' }}>
-              {thresholdMultiplier.toFixed(1)}x
-            </span>
-          </div>
-        )}
-        <div className="search-box" ref={searchInputRef}>
-          <label htmlFor="trackSearch">Search Tracks:</label>
-          <div style={{ position: 'relative' }}>
-            <input
-              id="trackSearch"
-              type="text"
-              value={searchQuery}
-              onChange={handleSearchChange}
-              onKeyDown={handleKeyDown}
-              onFocus={() => setShowSuggestions(true)}
-              placeholder="Search by title, filename, artist, album, genre, or key..."
-              style={{
-                backgroundColor: DARK_MODE_SURFACE_ALT,
-                color: DARK_MODE_TEXT_PRIMARY,
-                border: `1px solid ${DARK_MODE_BORDER}`,
-                padding: '4px 8px',
-                borderRadius: '4px',
-                width: '300px'
-              }}
-            />
-            {showSuggestions && searchSuggestions.length > 0 && (
-              <div
-                ref={suggestionsRef}
+    <div className="TrackVisualizer" ref={containerRef}>
+      <div className="VisualizationContainer" ref={visualizationRef}>
+        <div className="controls-panel sticky-controls">
+          <div className="search-box" ref={searchInputRef}>
+            <label htmlFor="trackSearch">Search Tracks:</label>
+            <div style={{ position: 'relative' }}>
+              <input
+                id="trackSearch"
+                type="text"
+                value={searchQuery}
+                onChange={handleSearchChange}
+                onKeyDown={handleKeyDown}
+                onFocus={() => setShowSuggestions(true)}
+                placeholder="Search by title, filename, artist, album, genre, or key..."
                 style={{
-                  position: 'absolute',
-                  top: '100%',
-                  left: 0,
-                  right: 0,
                   backgroundColor: DARK_MODE_SURFACE_ALT,
+                  color: DARK_MODE_TEXT_PRIMARY,
                   border: `1px solid ${DARK_MODE_BORDER}`,
+                  padding: '4px 8px',
                   borderRadius: '4px',
-                  marginTop: '4px',
-                  zIndex: 1000,
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                  width: '300px'
                 }}
-              >
-                {searchSuggestions.map((suggestion, index) => (
-                  <div
-                    key={suggestion}
-                    onClick={() => handleSuggestionClick(suggestion)}
-                    style={{
-                      padding: '8px 12px',
-                      cursor: 'pointer',
-                      backgroundColor: index === selectedSuggestionIndex ? 
-                        adjustLuminance(DARK_MODE_SURFACE_ALT, 0.1) : 
-                        'transparent',
-                      color: DARK_MODE_TEXT_PRIMARY,
-                      ':hover': {
-                        backgroundColor: adjustLuminance(DARK_MODE_SURFACE_ALT, 0.1)
-                      }
-                    }}
-                  >
-                    {suggestion}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-        <button onClick={handleReset} className="reset-button">Reset View</button>
-      </div>
-      <p className="info-text">
-        {selectedFeature ? 
-          `Showing tracks with feature: ${selectedFeature}` :
-          `Tracks clustered by audio feature similarity. Click a feature in the legend to highlight tracks.`}
-        {searchQuery && ` Search results highlighted in gold.`}
-        <small>Scroll to zoom, drag to pan.</small>
-      </p>
-      <div className="visualization-area" ref={viewModeRef}>
-        <svg
-          ref={svgRef}
-          className="track-plot"
-          aria-labelledby="plotTitle"
-          role="graphics-document"
-        >
-          <title id="plotTitle">Track Similarity Plot</title>
-        </svg>
-        {tooltip && (
-          <div 
-            ref={tooltipRef}
-            className="track-tooltip" 
-            style={{ 
-              top: tooltip.y, 
-              left: tooltip.x,
-              position: 'fixed',
-              zIndex: 1000,
-              backgroundColor: DARK_MODE_SURFACE_ALT,
-              color: DARK_MODE_TEXT_PRIMARY,
-              padding: '10px',
-              borderRadius: '4px',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-              pointerEvents: 'auto',
-              border: `1px solid ${DARK_MODE_BORDER}`
-            }} 
-            role="tooltip"
-            onMouseEnter={() => {
-              isHoveringRef.current = true;
-              if (hoverTimeoutRef.current) {
-                clearTimeout(hoverTimeoutRef.current);
-                hoverTimeoutRef.current = null;
-              }
-            }}
-            onMouseLeave={(e) => {
-              const relatedTarget = e.relatedTarget;
-              if (tooltipRef.current && tooltipRef.current.contains(relatedTarget)) {
-                return;
-              }
-              isHoveringRef.current = false;
-              handleMouseOut();
-            }}
-          >
-            {tooltip.content}
-          </div>
-        )}
-        <div className="legend">
-          <h4>{selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)} Features</h4>
-          <div className="style-legend">
-            {Array.from(styleColors.entries())
-              .sort((a, b) => b[1] - a[1]) // Sort by frequency
-              .map(([feature, color]) => (
-                <div 
-                  key={feature} 
-                  className={`legend-item ${selectedFeature === feature ? 'selected' : ''}`}
-                  onClick={() => setSelectedFeature(selectedFeature === feature ? null : feature)}
+              />
+              {showSuggestions && searchSuggestions.length > 0 && (
+                <div
+                  ref={suggestionsRef}
                   style={{
-                    cursor: 'pointer',
-                    backgroundColor: selectedFeature === feature ? DARK_MODE_SURFACE_ALT : 'transparent',
-                    padding: '4px 8px',
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    right: 0,
+                    backgroundColor: DARK_MODE_SURFACE_ALT,
+                    border: `1px solid ${DARK_MODE_BORDER}`,
                     borderRadius: '4px',
-                    margin: '2px 0',
-                    transition: 'background-color 0.2s ease'
+                    marginTop: '4px',
+                    zIndex: 1000,
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
                   }}
                 >
-                  <div className="color-box" style={{ backgroundColor: color }}></div>
-                  <span className="feature-name">{feature}</span>
+                  {searchSuggestions.map((suggestion, index) => (
+                    <div
+                      key={suggestion}
+                      onClick={() => handleSuggestionClick(suggestion)}
+                      style={{
+                        padding: '8px 12px',
+                        cursor: 'pointer',
+                        backgroundColor: index === selectedSuggestionIndex ? 
+                          adjustLuminance(DARK_MODE_SURFACE_ALT, 0.1) : 
+                          'transparent',
+                        color: DARK_MODE_TEXT_PRIMARY,
+                        ':hover': {
+                          backgroundColor: adjustLuminance(DARK_MODE_SURFACE_ALT, 0.1)
+                        }
+                      }}
+                    >
+                      {suggestion}
+                    </div>
+                  ))}
                 </div>
-            ))}
-            {styleColors.size === 0 && selectedCategory && (
-              <div className="legend-item">No features found for '{selectedCategory}'.</div>
-            )}
+              )}
+            </div>
           </div>
-          {plotData.some(p => p.cluster === NOISE_CLUSTER_ID || trackColors.some(tc => tc.color === NOISE_CLUSTER_COLOR)) && (
-            <div className="legend-item noise-legend">
-              <div className="color-box" style={{ backgroundColor: NOISE_CLUSTER_COLOR }}></div>
-              <span className="feature-name">Noise / Other</span>
+          <div className="threshold-slider">
+            <label htmlFor="highlightThreshold">Confidence: {highlightThreshold}</label>
+            <input
+              id="highlightThreshold"
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value={highlightThreshold}
+              onChange={e => setHighlightThreshold(Number(e.target.value))}
+              style={{ marginLeft: '10px', width: '120px', accentColor: HIGHLIGHT_COLOR }}
+            />
+          </div>
+          <div className="control-buttons">
+            <button 
+              onClick={handleReset} 
+              className="reset-button"
+              title="Reset zoom and pan to default view"
+            >
+              Reset View
+            </button>
+            <button
+              onClick={() => setFilterLogicMode(prev => prev === 'intersection' ? 'union' : 'intersection')}
+              className="filter-logic-button"
+              title={`Current mode: ${filterLogicMode}. Click to switch between AND/OR logic`}
+              style={{
+                backgroundColor: filterLogicMode === 'intersection' ? HIGHLIGHT_COLOR : '#2196F3',
+                color: 'white',
+                border: 'none',
+                padding: '4px 8px',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                marginLeft: '10px'
+              }}
+            >
+              {filterLogicMode === 'intersection' ? 'AND Mode' : 'OR Mode'}
+            </button>
+          </div>
+        </div>
+        <div className="visualization-area" ref={viewModeRef}>
+          <svg
+            ref={svgRef}
+            className="track-plot"
+            aria-labelledby="plotTitle"
+            role="graphics-document"
+          >
+            <title id="plotTitle">Track Similarity Plot</title>
+          </svg>
+          {tooltip && (
+            <div 
+              ref={tooltipRef}
+              className="track-tooltip" 
+              style={{ 
+                top: tooltip.y, 
+                left: tooltip.x,
+                position: 'fixed',
+                zIndex: 1000,
+                backgroundColor: DARK_MODE_SURFACE_ALT,
+                color: DARK_MODE_TEXT_PRIMARY,
+                padding: '10px',
+                borderRadius: '4px',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                pointerEvents: 'auto',
+                border: `1px solid ${DARK_MODE_BORDER}`
+              }} 
+              role="tooltip"
+              onMouseEnter={() => {
+                isHoveringRef.current = true;
+                if (hoverTimeoutRef.current) {
+                  clearTimeout(hoverTimeoutRef.current);
+                  hoverTimeoutRef.current = null;
+                }
+              }}
+              onMouseLeave={(e) => {
+                const relatedTarget = e.relatedTarget;
+                if (tooltipRef.current && tooltipRef.current.contains(relatedTarget)) {
+                  return;
+                }
+                isHoveringRef.current = false;
+                handleMouseOut();
+              }}
+            >
+              {tooltip.content}
             </div>
           )}
         </div>
+      </div>
+      <div className="FilterPanelWrapper">
+        <FilterPanel
+          filterOptions={filterOptions}
+          activeFilters={selectedFeatures}
+          onToggleFilter={handleFeatureToggle}
+          filterLogicMode={filterLogicMode}
+          onToggleFilterLogicMode={() => setFilterLogicMode(prev => 
+            prev === 'intersection' ? 'union' : 'intersection'
+          )}
+        />
       </div>
     </div>
   );
