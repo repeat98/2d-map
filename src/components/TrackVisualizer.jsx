@@ -525,6 +525,7 @@ const TrackVisualizer = () => {
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const lastZoomStateRef = useRef({ k: 1, x: 0, y: 0 });
 
   const VIEW_BOX_VALUE = `0 0 ${svgDimensions.width} ${svgDimensions.height}`;
 
@@ -1538,15 +1539,19 @@ const TrackVisualizer = () => {
       .on("zoom", (event) => {
         setZoom(event.transform.k);
         setPan({ x: event.transform.x, y: event.transform.y });
+        lastZoomStateRef.current = event.transform;
         g.attr("transform", event.transform);
       });
 
     // Apply zoom behavior to SVG
     svg.call(zoomBehaviorRef.current);
 
-    // Always reset D3's internal zoom state to match the current view
+    // Apply the last known zoom state if it exists, otherwise use identity
     if (zoomBehaviorRef.current) {
-      svg.call(zoomBehaviorRef.current.transform, d3.zoomIdentity);
+      const transform = lastZoomStateRef.current.k !== 1 ? 
+        d3.zoomIdentity.translate(lastZoomStateRef.current.x, lastZoomStateRef.current.y).scale(lastZoomStateRef.current.k) :
+        d3.zoomIdentity;
+      svg.call(zoomBehaviorRef.current.transform, transform);
     }
 
     // Create dots
