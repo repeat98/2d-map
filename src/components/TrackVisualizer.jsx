@@ -787,7 +787,7 @@ const TrackVisualizer = () => {
     if (d3ContainerRef.current?.svg && zoomBehaviorRef.current) {
       d3ContainerRef.current.svg
         .transition()
-        .duration(750)
+        .duration(1000) // Smooth 1s zoom out
         .call(zoomBehaviorRef.current.transform, d3.zoomIdentity);
     }
   }, []);
@@ -1543,6 +1543,11 @@ const TrackVisualizer = () => {
 
     // Apply zoom behavior to SVG
     svg.call(zoomBehaviorRef.current);
+
+    // Always reset D3's internal zoom state to match the current view
+    if (zoomBehaviorRef.current) {
+      svg.call(zoomBehaviorRef.current.transform, d3.zoomIdentity);
+    }
 
     // Create dots
     const dots = g.selectAll("circle")

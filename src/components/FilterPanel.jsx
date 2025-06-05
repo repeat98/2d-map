@@ -119,7 +119,9 @@ const FilterPanel = ({
               Match: {filterLogicMode === 'intersection' ? 'All Categories (AND)' : 'Any Tag (OR)'}
             </button>
             <div className="confidence-slider">
-              <label htmlFor="highlightThreshold">Confidence: {highlightThreshold}</label>
+              <label htmlFor="highlightThreshold" style={{ minWidth: 110, display: 'inline-block' }}>
+                Confidence: {highlightThreshold.toFixed(2)}
+              </label>
               <input
                 id="highlightThreshold"
                 type="range"
