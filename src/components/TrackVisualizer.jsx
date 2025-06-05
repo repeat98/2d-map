@@ -2022,105 +2022,6 @@ const TrackVisualizer = () => {
             </span>
           )}
         </div>
-        <div className="controls-panel sticky-controls">
-          <div className="search-box" ref={searchInputRef}>
-            <label htmlFor="trackSearch">Search Tracks:</label>
-            <div style={{ position: 'relative' }}>
-              <input
-                id="trackSearch"
-                type="text"
-                value={searchQuery}
-                onChange={handleSearchChange}
-                onKeyDown={handleKeyDown}
-                onFocus={() => setShowSuggestions(true)}
-                placeholder="Search by title, filename, artist, album, genre, or key..."
-                style={{
-                  backgroundColor: DARK_MODE_SURFACE_ALT,
-                  color: DARK_MODE_TEXT_PRIMARY,
-                  border: `1px solid ${DARK_MODE_BORDER}`,
-                  padding: '4px 8px',
-                  borderRadius: '4px',
-                  width: '300px'
-                }}
-              />
-              {showSuggestions && searchSuggestions.length > 0 && (
-                <div
-                  ref={suggestionsRef}
-                  style={{
-                    position: 'absolute',
-                    top: '100%',
-                    left: 0,
-                    right: 0,
-                    backgroundColor: DARK_MODE_SURFACE_ALT,
-                    border: `1px solid ${DARK_MODE_BORDER}`,
-                    borderRadius: '4px',
-                    marginTop: '4px',
-                    zIndex: 1000,
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-                  }}
-                >
-                  {searchSuggestions.map((suggestion, index) => (
-                    <div
-                      key={suggestion}
-                      onClick={() => handleSuggestionClick(suggestion)}
-                      style={{
-                        padding: '8px 12px',
-                        cursor: 'pointer',
-                        backgroundColor: index === selectedSuggestionIndex ? 
-                          adjustLuminance(DARK_MODE_SURFACE_ALT, 0.1) : 
-                          'transparent',
-                        color: DARK_MODE_TEXT_PRIMARY,
-                        ':hover': {
-                          backgroundColor: adjustLuminance(DARK_MODE_SURFACE_ALT, 0.1)
-                        }
-                      }}
-                    >
-                      {suggestion}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-          <div className="threshold-slider">
-            <label htmlFor="highlightThreshold">Confidence: {highlightThreshold}</label>
-            <input
-              id="highlightThreshold"
-              type="range"
-              min="0"
-              max="1"
-              step="0.01"
-              value={highlightThreshold}
-              onChange={e => setHighlightThreshold(Number(e.target.value))}
-              style={{ marginLeft: '10px', width: '120px', accentColor: HIGHLIGHT_COLOR }}
-            />
-          </div>
-          <div className="control-buttons">
-            <button 
-              onClick={handleReset} 
-              className="reset-button"
-              title="Reset zoom and pan to default view"
-            >
-              Reset View
-            </button>
-            <button
-              onClick={() => setFilterLogicMode(prev => prev === 'intersection' ? 'union' : 'intersection')}
-              className="filter-logic-button"
-              title={`Current mode: ${filterLogicMode}. Click to switch between AND/OR logic`}
-              style={{
-                backgroundColor: filterLogicMode === 'intersection' ? HIGHLIGHT_COLOR : '#2196F3',
-                color: 'white',
-                border: 'none',
-                padding: '4px 8px',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                marginLeft: '10px'
-              }}
-            >
-              {filterLogicMode === 'intersection' ? 'AND Mode' : 'OR Mode'}
-            </button>
-          </div>
-        </div>
         <div className="visualization-area" ref={viewModeRef}>
           <svg
             ref={svgRef}
@@ -2148,21 +2049,6 @@ const TrackVisualizer = () => {
                 border: `1px solid ${DARK_MODE_BORDER}`
               }} 
               role="tooltip"
-              onMouseEnter={() => {
-                isHoveringRef.current = true;
-                if (hoverTimeoutRef.current) {
-                  clearTimeout(hoverTimeoutRef.current);
-                  hoverTimeoutRef.current = null;
-                }
-              }}
-              onMouseLeave={(e) => {
-                const relatedTarget = e.relatedTarget;
-                if (tooltipRef.current && tooltipRef.current.contains(relatedTarget)) {
-                  return;
-                }
-                isHoveringRef.current = false;
-                handleMouseOut();
-              }}
             >
               {tooltip.content}
             </div>
@@ -2179,6 +2065,14 @@ const TrackVisualizer = () => {
             prev === 'intersection' ? 'union' : 'intersection'
           )}
           axisAssignments={visualizationMode === VISUALIZATION_MODES.XY ? axisAssignments : undefined}
+          highlightThreshold={highlightThreshold}
+          onHighlightThresholdChange={setHighlightThreshold}
+          searchQuery={searchQuery}
+          onSearchChange={handleSearchChange}
+          searchSuggestions={searchSuggestions}
+          onSuggestionClick={handleSuggestionClick}
+          showSuggestions={showSuggestions}
+          selectedSuggestionIndex={selectedSuggestionIndex}
         />
       </div>
     </div>

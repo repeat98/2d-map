@@ -61,7 +61,21 @@ const FilterCategory = ({ title, options, activeItems, onToggle }) => {
   );
 };
 
-const FilterPanel = ({ filterOptions, activeFilters, onToggleFilter, filterLogicMode, onToggleFilterLogicMode }) => {
+const FilterPanel = ({ 
+  filterOptions, 
+  activeFilters, 
+  onToggleFilter, 
+  filterLogicMode, 
+  onToggleFilterLogicMode, 
+  highlightThreshold, 
+  onHighlightThresholdChange,
+  searchQuery,
+  onSearchChange,
+  searchSuggestions,
+  onSuggestionClick,
+  showSuggestions,
+  selectedSuggestionIndex
+}) => {
   const categories = [
     { id: 'genre', title: 'Genre', options: filterOptions.genre, active: activeFilters.genre },
     { id: 'style', title: 'Style', options: filterOptions.style, active: activeFilters.style },
@@ -73,9 +87,52 @@ const FilterPanel = ({ filterOptions, activeFilters, onToggleFilter, filterLogic
   return (
     <div className="FilterPanelOuterContainer">
       <div className="FilterPanelHeader">
-        <button onClick={onToggleFilterLogicMode} className="FilterLogicButton">
-          Match: {filterLogicMode === 'intersection' ? 'All Categories (AND)' : 'Any Tag (OR)'}
-        </button>
+        <div className="FilterPanelControls">
+          <div className="search-box">
+            <label htmlFor="trackSearch">Search Tracks:</label>
+            <div className="search-input-container">
+              <input
+                id="trackSearch"
+                type="text"
+                value={searchQuery}
+                onChange={onSearchChange}
+                placeholder="Search by title, filename, artist, album, genre, or key..."
+                className="search-input"
+              />
+              {showSuggestions && searchSuggestions.length > 0 && (
+                <div className="search-suggestions">
+                  {searchSuggestions.map((suggestion, index) => (
+                    <div
+                      key={suggestion}
+                      onClick={() => onSuggestionClick(suggestion)}
+                      className={`suggestion-item ${index === selectedSuggestionIndex ? 'selected' : ''}`}
+                    >
+                      {suggestion}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="FilterPanelActions">
+            <button onClick={onToggleFilterLogicMode} className="FilterLogicButton">
+              Match: {filterLogicMode === 'intersection' ? 'All Categories (AND)' : 'Any Tag (OR)'}
+            </button>
+            <div className="confidence-slider">
+              <label htmlFor="highlightThreshold">Confidence: {highlightThreshold}</label>
+              <input
+                id="highlightThreshold"
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={highlightThreshold}
+                onChange={e => onHighlightThresholdChange(Number(e.target.value))}
+                className="confidence-input"
+              />
+            </div>
+          </div>
+        </div>
       </div>
       <div className="FilterPanelContainer">
         {categories.map(cat => (

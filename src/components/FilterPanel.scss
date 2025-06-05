@@ -31,8 +31,106 @@
 
 .FilterPanelHeader {
   display: flex;
-  justify-content: flex-end; // Position button to the right, or center/start as preferred
+  justify-content: flex-end;
   margin-bottom: 10px;
+}
+
+.FilterPanelControls {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+.search-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+
+  label {
+    color: #b0b0b0;
+    font-size: 0.9rem;
+  }
+}
+
+.search-input-container {
+  position: relative;
+  width: 100%;
+}
+
+.search-input {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 0.9rem;
+  background-color: #1a1a1a;
+  color: #e0e0e0;
+  border: 1px solid #444;
+  border-radius: 4px;
+  outline: none;
+  transition: border-color 0.2s ease;
+
+  &:focus {
+    border-color: #666;
+    background-color: #222;
+  }
+
+  &::placeholder {
+    color: #888;
+    font-style: italic;
+  }
+}
+
+.search-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background-color: #1a1a1a;
+  border: 1px solid #444;
+  border-radius: 4px;
+  margin-top: 4px;
+  z-index: 1000;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.suggestion-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  color: #e0e0e0;
+  font-size: 0.9rem;
+  transition: background-color 0.2s ease;
+
+  &:hover, &.selected {
+    background-color: #2a2a2a;
+  }
+}
+
+.FilterPanelActions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+}
+
+.confidence-slider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #b0b0b0;
+  font-size: 0.9rem;
+  flex: 1;
+
+  label {
+    white-space: nowrap;
+  }
+
+  .confidence-input {
+    width: 120px;
+    accent-color: #4CAF50;
+  }
 }
 
 .FilterLogicButton {
@@ -44,10 +142,11 @@
   border-radius: 4px;
   cursor: pointer;
   transition: background-color 0.2s ease;
-}
+  white-space: nowrap;
 
-.FilterLogicButton:hover {
-  background-color: #5a5a5a;
+  &:hover {
+    background-color: #5a5a5a;
+  }
 }
 
 .FilterPanelContainer {
