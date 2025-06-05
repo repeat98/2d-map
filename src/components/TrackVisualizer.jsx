@@ -999,17 +999,36 @@ const TrackVisualizer = () => {
     
     // Check if track has any of the selected features above normalized threshold
     const matchingFeatures = selectedFeaturesList.filter(feature => {
-      // Style features
+      // Style features (including genres)
       try {
         const styleFeatures = typeof track.style_features === 'string' 
           ? JSON.parse(track.style_features) 
           : track.style_features;
-        if (styleFeatures && styleFeatures[feature]) {
-          const v = parseFloat(styleFeatures[feature]);
-          const minmax = featureMinMax[feature];
-          if (minmax && minmax.max > minmax.min) {
-            const norm = (v - minmax.min) / (minmax.max - minmax.min);
-            if (norm >= highlightThreshold) return true;
+        if (styleFeatures) {
+          // Check if the feature is a genre
+          if (selectedFeatures.genre.includes(feature)) {
+            // Find the most probable genre
+            let maxGenreProb = 0;
+            let mostProbableGenre = null;
+            
+            Object.entries(styleFeatures).forEach(([name, value]) => {
+              const [genrePart] = name.split('---');
+              const prob = parseFloat(value);
+              if (genrePart && !isNaN(prob) && prob > maxGenreProb) {
+                maxGenreProb = prob;
+                mostProbableGenre = genrePart;
+              }
+            });
+            
+            return mostProbableGenre === feature;
+          }
+          // Check if the feature is a style
+          else if (selectedFeatures.style.includes(feature)) {
+            return Object.entries(styleFeatures).some(([key, value]) => {
+              const [, stylePart] = key.split('---');
+              const prob = parseFloat(value);
+              return stylePart === feature && !isNaN(prob) && prob >= highlightThreshold;
+            });
           }
         }
       } catch (e) {}
@@ -1049,10 +1068,6 @@ const TrackVisualizer = () => {
           const norm = (v - minmax.min) / (minmax.max - minmax.min);
           if (norm >= highlightThreshold) return true;
         }
-      }
-      // Genre (no normalization, just match)
-      if (track.genre === feature) {
-        return true;
       }
       return false;
     });
@@ -1604,26 +1619,42 @@ const TrackVisualizer = () => {
     };
 
     tracks.forEach(track => {
-      // Process genre
-      if (track.genre) {
-        const genre = { name: track.genre, count: 1 };
-        const existingGenre = options.genre.find(g => g.name === genre.name);
-        if (existingGenre) existingGenre.count++;
-        else options.genre.push(genre);
-      }
-
-      // Process style features
+      // Process style features for both genre and style
       try {
         const styleFeatures = typeof track.style_features === 'string' 
           ? JSON.parse(track.style_features) 
           : track.style_features;
         if (styleFeatures) {
+          // Find the most probable genre for this track
+          let maxGenreProb = 0;
+          let mostProbableGenre = null;
+          
           Object.entries(styleFeatures).forEach(([name, value]) => {
-            const feature = { name, count: 1 };
-            const existing = options.style.find(f => f.name === name);
-            if (existing) existing.count++;
-            else options.style.push(feature);
+            const [genrePart, stylePart] = name.split('---');
+            const prob = parseFloat(value);
+            
+            // Update most probable genre if this one has higher probability
+            if (genrePart && !isNaN(prob) && prob > maxGenreProb) {
+              maxGenreProb = prob;
+              mostProbableGenre = genrePart;
+            }
+            
+            // Add style if it exists
+            if (stylePart) {
+              const style = { name: stylePart, count: 1 };
+              const existingStyle = options.style.find(s => s.name === style.name);
+              if (existingStyle) existingStyle.count++;
+              else options.style.push(style);
+            }
           });
+          
+          // Add the most probable genre
+          if (mostProbableGenre) {
+            const genre = { name: mostProbableGenre, count: 1 };
+            const existingGenre = options.genre.find(g => g.name === genre.name);
+            if (existingGenre) existingGenre.count++;
+            else options.genre.push(genre);
+          }
         }
       } catch (e) {}
 
@@ -1700,9 +1731,24 @@ const TrackVisualizer = () => {
       // Style features
       try {
         const styleFeatures = typeof track.style_features === 'string' ? JSON.parse(track.style_features) : track.style_features;
-        if (styleFeatures && styleFeatures[feature] !== undefined) {
-          value = parseFloat(styleFeatures[feature]);
-          confidence = value;
+        if (styleFeatures) {
+          // Look for exact match first
+          if (styleFeatures[feature] !== undefined) {
+            value = parseFloat(styleFeatures[feature]);
+            confidence = value;
+          } else {
+            // Look for style part match
+            Object.entries(styleFeatures).forEach(([key, val]) => {
+              const [, stylePart] = key.split('---');
+              if (stylePart === feature) {
+                const prob = parseFloat(val);
+                if (!isNaN(prob) && prob > confidence) {
+                  value = prob;
+                  confidence = prob;
+                }
+              }
+            });
+          }
         }
       } catch (e) {}
       
