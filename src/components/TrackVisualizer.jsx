@@ -1214,137 +1214,118 @@ const TrackVisualizer = () => {
       hoverTimeoutRef.current = null;
     }
 
-    isHoveringRef.current = true;
+    // Set a new timeout to show the tooltip after a delay
+    hoverTimeoutRef.current = setTimeout(() => {
+      isHoveringRef.current = true;
 
-    const audioPath = trackData.audioUrl || (trackData.path ? `http://localhost:3000/audio/${trackData.id}` : null);
-    const tooltipWidth = 300;
-    const tooltipHeight = audioPath ? 200 : 150;
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
+      const audioPath = trackData.audioUrl || (trackData.path ? `http://localhost:3000/audio/${trackData.id}` : null);
+      const tooltipWidth = 300;
+      const tooltipHeight = audioPath ? 200 : 150;
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
 
-    // Position tooltip vertically aligned with the cursor
-    let x = event.clientX + 5; // Minimal horizontal offset
-    let y = event.clientY - tooltipHeight - 5; // Position above the cursor by default
+      // Position the tooltip so the waveform is near the dot
+      // The waveform is at the bottom of the tooltip, so we'll position the tooltip above the dot
+      let x = event.clientX - tooltipWidth / 2; // Center horizontally
+      let y = event.clientY - tooltipHeight - 2; // Position just 2px above the dot
 
-    // If there's not enough space above, position below
-    if (y < 10) {
-      y = event.clientY + 5;
-    }
+      // Adjust if we would go off the right edge
+      if (x + tooltipWidth > viewportWidth) {
+        x = viewportWidth - tooltipWidth - 2;
+      }
 
-    // Ensure tooltip stays within viewport bounds horizontally
-    if (x + tooltipWidth > viewportWidth) {
-      x = Math.max(10, event.clientX - tooltipWidth - 5);
-    }
+      // Adjust if we would go off the left edge
+      if (x < 2) {
+        x = 2;
+      }
 
-    // Calculate cursor position relative to tooltip width for waveform centering
-    const cursorPositionRelative = (event.clientX - x) / tooltipWidth;
+      // If there's not enough space above, position just 2px below
+      if (y < 2) {
+        y = event.clientY + 2;
+      }
 
-    // Get display title - use filename without suffix if title is "Unknown Title"
-    const displayTitle = trackData.title === 'Unknown Title' && trackData.path ? 
-      trackData.path.split('/').pop().replace(/\.[^/.]+$/, '') : 
-      (trackData.title || 'Unknown Title');
+      // If we would go off the bottom edge, position above
+      if (y + tooltipHeight > viewportHeight) {
+        y = viewportHeight - tooltipHeight - 2;
+      }
 
-    setTooltip({
-      content: (
-        <div style={{ maxWidth: tooltipWidth }}>
-          <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
-            <img
-              src={trackData.artwork_thumbnail_path || defaultArtwork}
-              alt={`${trackData.artist || 'Unknown'} - ${displayTitle}`}
-              onError={(e) => {
-                e.target.onerror = null;
-                e.target.src = defaultArtwork;
-                e.target.style.opacity = '0.7';
-              }}
-              style={{
-                width: '80px',
-                height: '80px',
-                objectFit: 'cover',
-                borderRadius: '4px',
-                transition: 'opacity 0.2s ease',
-                flexShrink: 0
-              }}
-            />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{displayTitle}</div>
-              <div style={{ marginBottom: '4px' }}>{trackData.artist || 'Unknown Artist'}</div>
-              <div style={{ fontStyle: 'italic', marginBottom: '4px' }}>{trackData.album || 'Unknown Album'} ({trackData.year || 'N/A'})</div>
-              <div style={{ marginBottom: '4px' }}>BPM: {trackData.bpm?.toFixed(1) || 'N/A'}, Key: {trackData.key || 'N/A'}</div>
-              {selectedFeature && (
-                <div style={{ marginBottom: '4px' }}>
-                  {selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)}: {selectedFeature} 
-                  {(() => {
-                    let probability = 0;
-                    if (selectedCategory === 'genre' || selectedCategory === 'style') {
-                      try {
-                        const features = typeof trackData.style_features === 'string' ? JSON.parse(trackData.style_features) : trackData.style_features;
-                        if (features && typeof features === 'object') {
-                          const matchingKey = Object.keys(features).find(key => {
-                            const [genrePart, stylePart] = key.split('---');
-                            return selectedCategory === 'genre' ? 
-                              genrePart === selectedFeature : 
-                              stylePart === selectedFeature;
-                          });
-                          if (matchingKey) {
-                            probability = parseFloat(features[matchingKey]);
-                          }
-                        }
-                      } catch (e) {}
-                    } else if (selectedCategory === 'instrument') {
-                      try {
-                        const features = typeof trackData.instrument_features === 'string' ? JSON.parse(trackData.instrument_features) : trackData.instrument_features;
-                        if (features && typeof features === 'object') {
-                          probability = parseFloat(features[selectedFeature]);
-                        }
-                      } catch (e) {}
-                    } else if (selectedCategory === 'mood' || selectedCategory === 'spectral') {
-                      probability = trackData[selectedFeature];
-                    }
-                    return ` (${(probability * 100).toFixed(1)}%)`;
-                  })()}
-                </div>
-              )}
-              {trackData.tag1 && <div>Genre: {trackData.tag1} ({trackData.tag1_prob?.toFixed(2) || 'N/A'})</div>}
+      // Calculate cursor position relative to tooltip width for waveform centering
+      const cursorPositionRelative = (event.clientX - x) / tooltipWidth;
+
+      // Get display title - use filename without suffix if title is "Unknown Title"
+      const displayTitle = trackData.title === 'Unknown Title' && trackData.path ? 
+        trackData.path.split('/').pop().replace(/\.[^/.]+$/, '') : 
+        (trackData.title || 'Unknown Title');
+
+      setTooltip({
+        content: (
+          <div style={{ maxWidth: tooltipWidth }}>
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+              <img
+                src={trackData.artwork_thumbnail_path || defaultArtwork}
+                alt={`${trackData.artist || 'Unknown'} - ${displayTitle}`}
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src = defaultArtwork;
+                  e.target.style.opacity = '0.7';
+                }}
+                style={{
+                  width: '80px',
+                  height: '80px',
+                  objectFit: 'cover',
+                  borderRadius: '4px',
+                  transition: 'opacity 0.2s ease',
+                  flexShrink: 0
+                }}
+              />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{displayTitle}</div>
+                <div style={{ marginBottom: '4px' }}>{trackData.artist || 'Unknown Artist'}</div>
+                <div style={{ fontStyle: 'italic', marginBottom: '4px' }}>{trackData.album || 'Unknown Album'} ({trackData.year || 'N/A'})</div>
+                <div style={{ marginBottom: '4px' }}>BPM: {trackData.bpm?.toFixed(1) || 'N/A'}, Key: {trackData.key || 'N/A'}</div>
+                {trackData.tag1 && <div>Genre: {trackData.tag1} ({trackData.tag1_prob?.toFixed(2) || 'N/A'})</div>}
+              </div>
             </div>
+            {audioPath && (
+              <div className="waveform-container" style={{ width: '100%', height: '40px' }}>
+                <PlaybackContext.Provider value={{
+                  setPlayingWaveSurfer: (newlyPlayingWavesurfer) => {
+                    if (wavesurferRef.current && wavesurferRef.current !== newlyPlayingWavesurfer) {
+                      try {
+                        wavesurferRef.current.stop();
+                      } catch (e) {
+                        console.warn("Error stopping previous wavesurfer:", e);
+                      }
+                    }
+                    wavesurferRef.current = newlyPlayingWavesurfer;
+                  },
+                  currentTrack: trackData,
+                  setCurrentTrack: () => {}
+                }}>
+                  <Waveform
+                    key={`waveform-tooltip-${trackData.id}`}
+                    trackId={trackData.id.toString()}
+                    audioPath={audioPath}
+                    isInteractive={true}
+                    onPlay={() => {}}
+                    initialPosition={cursorPositionRelative}
+                    seekTo={cursorPositionRelative}
+                  />
+                </PlaybackContext.Provider>
+              </div>
+            )}
           </div>
-          {audioPath && (
-            <div className="waveform-container" style={{ width: '100%', height: '40px' }}>
-              <PlaybackContext.Provider value={{
-                setPlayingWaveSurfer: (newlyPlayingWavesurfer) => {
-                  if (wavesurferRef.current && wavesurferRef.current !== newlyPlayingWavesurfer) {
-                    try {
-                      wavesurferRef.current.stop();
-                    } catch (e) {
-                      console.warn("Error stopping previous wavesurfer:", e);
-                    }
-                  }
-                  wavesurferRef.current = newlyPlayingWavesurfer;
-                },
-                currentTrack: trackData,
-                setCurrentTrack: () => {}
-              }}>
-                <Waveform
-                  key={`waveform-tooltip-${trackData.id}`}
-                  trackId={trackData.id.toString()}
-                  audioPath={audioPath}
-                  isInteractive={true}
-                  onPlay={() => {}}
-                  initialPosition={cursorPositionRelative}
-                  seekTo={cursorPositionRelative}
-                />
-              </PlaybackContext.Provider>
-            </div>
-          )}
-        </div>
-      ),
-      x,
-      y,
-    });
+        ),
+        x,
+        y,
+      });
+    }, 150); // 150ms delay before showing tooltip
   }, [wavesurferRef]);
 
-  const handleMouseOut = useCallback(() => {
+  const handleMouseOut = useCallback((event) => {
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
     }
     
     // Check if we're actually hovering over the tooltip
@@ -1354,19 +1335,25 @@ const TrackVisualizer = () => {
       const mouseX = event.clientX;
       const mouseY = event.clientY;
       
-      if (mouseX >= rect.left && mouseX <= rect.right && 
-          mouseY >= rect.top && mouseY <= rect.bottom) {
+      // Add a small buffer zone around the tooltip to make it easier to move to it
+      const buffer = 10;
+      if (mouseX >= rect.left - buffer && 
+          mouseX <= rect.right + buffer && 
+          mouseY >= rect.top - buffer && 
+          mouseY <= rect.bottom + buffer) {
         isHoveringRef.current = true;
         return;
       }
     }
     
     isHoveringRef.current = false;
-    hoverTimeoutRef.current = setTimeout(() => {
-      if (!isHoveringRef.current) {
-        setTooltip(null);
-      }
-    }, 500);
+    setTooltip(null);
+  }, []);
+
+  // Add a new handler for when the mouse leaves the tooltip
+  const handleTooltipMouseLeave = useCallback(() => {
+    isHoveringRef.current = false;
+    setTooltip(null);
   }, []);
 
   // Clean up timeout on unmount
@@ -2059,6 +2046,7 @@ const TrackVisualizer = () => {
                 border: `1px solid ${DARK_MODE_BORDER}`
               }} 
               role="tooltip"
+              onMouseLeave={handleTooltipMouseLeave}
             >
               {tooltip.content}
             </div>
